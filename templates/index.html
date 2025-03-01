@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LabManager - Accueil</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        body {
+            background-color: #f0f4f8;
+        }
+
+        /* Header */
+        .navbar {
+            background-color: #2c3e50;
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        /* Main Content */
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        /* Cartes */
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .card h2 {
+            color: #2c3e50;
+            margin-bottom: 1rem;
+        }
+
+        /* Quick Actions */
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .btn {
+            padding: 1rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+
+        .btn-primary {
+            background-color: #3498db;
+            color: white;
+        }
+
+        /* Tableau des TP */
+        .tp-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        .tp-table th, .tp-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        footer {
+            background-color: #2c3e50;
+            color: white;
+            text-align: center;
+            padding: 1rem;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">LabManager</div>
+        <div class="user-menu">
+            <span>Professeur Dupont</span>
+            <!-- Ajouter icône utilisateur -->
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="quick-actions">
+            <button class="btn btn-primary">Créer un TP</button>
+            <button class="btn btn-primary">Voir le stock</button>
+            <button class="btn btn-primary">Générer un reçu</button>
+            <button class="btn btn-primary">Historique</button>
+        </div>
+
+        <div class="dashboard-grid">
+            <!-- Carte TP à venir -->
+            <div class="card">
+                <h2>TP Programmes</h2>
+                <table class="tp-table">
+                    <thead>
+                        <tr>
+                            <th>Nom</th>
+                            <th>Date</th>
+                            <th>Statut</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>TP Chimie 101</td>
+                            <td>15/11/2023</td>
+                            <td>🟢 En cours</td>
+                        </tr>
+                        <tr>
+                            <td>TP Biologie 202</td>
+                            <td>17/11/2023</td>
+                            <td>🟡 Planifié</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Carte Alertes Stock -->
+            <div class="card">
+                <h2>Alertes Stock</h2>
+                <ul style="list-style: none;">
+                    <li>⚠️ Acide chlorhydrique: 50ml restants</li>
+                    <li>⚠️ Éprouvettes: 10 unités</li>
+                    <li>✅ Gants: 200 paires</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Dernières Activités -->
+        <div class="card" style="margin-top: 2rem;">
+            <h2>Dernières Activités</h2>
+            <div class="activity-list">
+                <p>➔ TP Chimie 101 terminé - 14/11 10:30</p>
+                <p>➔ Reçu #458 généré - 13/11 15:45</p>
+                <p>➔ Commande de matériel validée - 12/11 09:15</p>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        © 2023 LabManager - Tous droits réservés
+    </footer>
+</body>
+</html>
