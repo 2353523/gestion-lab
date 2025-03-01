@@ -8,25 +8,63 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="/">LabManager</a>
+    <!-- Barre de navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('index') }}">
+                <i class="fas fa-flask"></i> Gestion Lab
+            </a>
+            
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
+
             <div class="collapse navbar-collapse" id="navbarNav">
+                <!-- Menu de gauche -->
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link active" href="{{ url_for('index') }}">Accueil</a>
+                        <a class="nav-link" href="{{ url_for('index') }}">
+                            <i class="fas fa-calendar-day"></i> TP du Jour
+                        </a>
                     </li>
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
-                            Ajouter
+                        <a class="nav-link dropdown-toggle" href="#" id="gestionDropdown" data-bs-toggle="dropdown">
+                            <i class="fas fa-cogs"></i> Gestion
                         </a>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{{ url_for('creer_tp') }}">Nouveau TP</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('ajouter_professeur') }}">Professeur</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('ajouter_matiere') }}">Matière</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('liste_professeurs') }}">
+                                <i class="fas fa-chalkboard-teacher"></i> Professeurs
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('liste_matieres') }}">
+                                <i class="fas fa-book"></i> Matières
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('liste_laboratoires') }}">
+                                <i class="fas fa-microscope"></i> Laboratoires
+                            </a></li>
+                        </ul>
+                    </li>
+                </ul>
+
+                <!-- Menu de création à droite -->
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="createDropdown" data-bs-toggle="dropdown">
+                            <i class="fas fa-plus-circle"></i> Nouveau
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="{{ url_for('creer_tp') }}">
+                                <i class="fas fa-flask me-2"></i>Nouveau TP
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('creer_professeur') }}">
+                                <i class="fas fa-user-plus me-2"></i>Nouveau Professeur
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('creer_matiere') }}">
+                                <i class="fas fa-book-medical me-2"></i>Nouvelle Matière
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('creer_laboratoire') }}">
+                                <i class="fas fa-vial me-2"></i>Nouveau Laboratoire
+                            </a></li>
                         </ul>
                     </li>
                 </ul>
@@ -34,84 +72,110 @@
         </div>
     </nav>
 
-    <div class="container mt-4">
-        {% if alertes_stock %}
-        <div class="alert alert-warning mb-4">
-            <h4><i class="fas fa-exclamation-triangle me-2"></i>Alertes Stock</h4>
-            <div class="row">
-                {% for article in alertes_stock %}
-                <div class="col-md-4 mb-3">
-                    <div class="card border-warning">
-                        <div class="card-body">
-                            <h5 class="card-title">{{ article.nom_article }}</h5>
-                            <p class="card-text">
-                                Stock restant: {{ article.quantite }} {{ article.unite_mesure }}
-                            </p>
-                        </div>
+    <main class="container">
+        <!-- Messages flash -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
-                </div>
                 {% endfor %}
-            </div>
-        </div>
-        {% endif %}
+            {% endif %}
+        {% endwith %}
 
-        <div class="card shadow">
+        <!-- Section TP du Jour -->
+        <div class="card mb-4">
             <div class="card-header bg-primary text-white">
-                TP du {{ date_actuelle }}
+                <h3 class="mb-0">
+                    <i class="fas fa-calendar-day me-2"></i>TP du Jour - {{ date_actuelle }}
+                </h3>
             </div>
+            
             <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>Nom TP</th>
-                                <th>Matière</th>
-                                <th>Laboratoire</th>
-                                <th>Horaire</th>
-                                <th>Professeur</th>
-                                <th>Statut</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for tp in tps_jour %}
-                            <tr>
-                                <td>{{ tp.nom_tp }}</td>
-                                <td>{{ tp.matiere }}</td>
-                                <td>{{ tp.nom_laboratoire }}</td>
-                                <td>{{ tp.heure_debut }} - {{ tp.heure_fin }}</td>
-                                <td>{{ tp.professeur }}</td>
-                                <td>
-                                    <span class="badge 
-                                        {% if tp.statut == 'En attente' %}bg-secondary
-                                        {% elif tp.statut == 'En cours' %}bg-warning
-                                        {% else %}bg-success{% endif %}">
-                                        {{ tp.statut }}
-                                    </span>
-                                </td>
-                                <td>
-                                    <button class="btn btn-sm btn-outline-primary me-2">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button class="btn btn-sm btn-success">
-                                        <i class="fas fa-file-pdf"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                            {% else %}
-                            <tr>
-                                <td colspan="7" class="text-center py-4">
-                                    <i class="fas fa-calendar-times fa-2x text-muted mb-2"></i>
-                                    <p class="mb-0">Aucun TP programmé aujourd'hui</p>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+                {% if tps_jour %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Nom TP</th>
+                                    <th>Horaire</th>
+                                    <th>Professeur</th>
+                                    <th>Matière</th>
+                                    <th>Laboratoire</th>
+                                    <th>Statut</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for tp in tps_jour %}
+                                <tr>
+                                    <td>{{ tp.nom_tp }}</td>
+                                    <td>{{ tp.heure_debut }} - {{ tp.heure_fin }}</td>
+                                    <td>{{ tp.professeur }}</td>
+                                    <td>{{ tp.matiere }}</td>
+                                    <td>{{ tp.nom_laboratoire or '-' }}</td>
+                                    <td>
+                                        <span class="badge 
+                                            {% if tp.statut == 'En cours' %}bg-success
+                                            {% elif tp.statut == 'En attente' %}bg-warning
+                                            {% else %}bg-secondary{% endif %}">
+                                            {{ tp.statut }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <a href="#" class="btn btn-sm btn-warning">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <form method="POST" action="#" style="display:inline;">
+                                            <button type="button" class="btn btn-sm btn-danger" 
+                                                onclick="if(confirm('Supprimer ce TP ?')) this.form.submit()">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="alert alert-info mb-0">
+                        Aucun TP prévu aujourd'hui
+                    </div>
+                {% endif %}
             </div>
         </div>
-    </div>
+
+        <!-- Section Alertes Stock -->
+        <div class="card">
+            <div class="card-header bg-warning">
+                <h3 class="mb-0">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Alertes Stock
+                </h3>
+            </div>
+            
+            <div class="card-body">
+                {% if alertes_stock %}
+                    <ul class="list-group">
+                        {% for alerte in alertes_stock %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {{ alerte.nom_article }}
+                            <span class="badge bg-danger rounded-pill">
+                                {{ alerte.quantite }} {{ alerte.unite_mesure }}
+                            </span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <div class="alert alert-success mb-0">
+                        Stock suffisant pour tous les articles
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>

@@ -23,13 +23,15 @@
 
     <form method="POST">
         <div class="row g-3">
+            <!-- Nom TP -->
             <div class="col-md-6">
-                <label for="nom_tp" class="form-label">Nom du TP</label>
+                <label for="nom_tp" class="form-label">Nom du TP *</label>
                 <input type="text" class="form-control" id="nom_tp" name="nom_tp" required>
             </div>
 
+            <!-- Professeur -->
             <div class="col-md-6">
-                <label for="id_prof" class="form-label">Professeur</label>
+                <label for="id_prof" class="form-label">Professeur *</label>
                 <select class="form-select" id="id_prof" name="id_prof" required>
                     <option value="">Choisir un professeur...</option>
                     {% for prof in professeurs %}
@@ -38,8 +40,9 @@
                 </select>
             </div>
 
+            <!-- Matière -->
             <div class="col-md-6">
-                <label for="id_matiere" class="form-label">Matière</label>
+                <label for="id_matiere" class="form-label">Matière *</label>
                 <select class="form-select" id="id_matiere" name="id_matiere" required>
                     <option value="">Choisir une matière...</option>
                     {% for matiere in matieres %}
@@ -48,6 +51,7 @@
                 </select>
             </div>
 
+            <!-- Laboratoire -->
             <div class="col-md-6">
                 <label for="id_laboratoire" class="form-label">Laboratoire</label>
                 <select class="form-select" id="id_laboratoire" name="id_laboratoire">
@@ -58,26 +62,35 @@
                 </select>
             </div>
 
+            <!-- Date et Heures -->
             <div class="col-md-6">
-                <label for="date_tp" class="form-label">Date du TP</label>
+                <label for="date_tp" class="form-label">Date du TP *</label>
                 <input type="date" class="form-control" id="date_tp" name="date_tp" required>
             </div>
-
             <div class="col-md-3">
-                <label for="heure_debut" class="form-label">Heure de début</label>
+                <label for="heure_debut" class="form-label">Heure de début *</label>
                 <input type="time" class="form-control" id="heure_debut" name="heure_debut" required>
             </div>
-
             <div class="col-md-3">
-                <label for="heure_fin" class="form-label">Heure de fin</label>
+                <label for="heure_fin" class="form-label">Heure de fin *</label>
                 <input type="time" class="form-control" id="heure_fin" name="heure_fin" required>
             </div>
-            
+
+            <!-- Année Scolaire -->
             <div class="col-md-6">
-                <label for="annee_scolaire" class="form-label">Année Scolaire</label>
-                <input type="text" class="form-control" id="annee_scolaire" name="annee_scolaire" required>
+                <label for="annee_scolaire" class="form-label">Année Scolaire *</label>
+                <input 
+                    type="text" 
+                    class="form-control" 
+                    id="annee_scolaire" 
+                    name="annee_scolaire" 
+                    pattern="\d{4}-\d{4}"
+                    title="Format: 2023-2024" 
+                    required
+                >
             </div>
-            
+
+            <!-- Boutons -->
             <div class="col-12">
                 <button type="submit" class="btn btn-primary"><i class="fas fa-save me-2"></i>Créer</button>
                 <a href="{{ url_for('index') }}" class="btn btn-secondary"><i class="fas fa-times me-2"></i>Annuler</a>
