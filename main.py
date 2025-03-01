@@ -98,6 +98,21 @@ def index():
                          },
                          date_actuelle=datetime.now().strftime('%d/%m/%Y'))
 
+@app.route('/supprimer_tp/<int:id>', methods=['POST'])  # 👈 Nouvelle route
+def supprimer_tp(id):
+    cur = mysql.connection.cursor()
+    try:
+        cur.execute("DELETE FROM tp WHERE id_tp = %s", (id,))
+        mysql.connection.commit()
+        flash("TP supprimé avec succès", "success")
+    except Exception as e:
+        mysql.connection.rollback()
+        flash(f"Erreur: {str(e)}", "danger")
+    finally:
+        cur.close()
+    return redirect(url_for('index'))
+
+
 @app.route('/creer_tp', methods=['GET', 'POST'])
 def creer_tp():
     cur = mysql.connection.cursor()

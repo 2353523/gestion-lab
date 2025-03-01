@@ -128,9 +128,9 @@
                                         <a href="#" class="btn btn-sm btn-warning">
                                             <i class="fas fa-edit"></i>
                                         </a>
-                                        <form method="POST" action="#" style="display:inline;">
-                                            <button type="button" class="btn btn-sm btn-danger" 
-                                                onclick="if(confirm('Supprimer ce TP ?')) this.form.submit()">
+                                        <form method="POST" action="{{ url_for('supprimer_tp', id=tp.id_tp) }}" style="display:inline;">
+                                            <button type="submit" class="btn btn-sm btn-danger" 
+                                            onclick="return confirm('Supprimer ce TP définitivement ?')">
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </form>
