@@ -50,7 +50,7 @@
 
             <div class="col-md-6">
                 <label for="id_laboratoire" class="form-label">Laboratoire</label>
-                <select class="form-select" id="id_laboratoire" name="id_laboratoire" required>
+                <select class="form-select" id="id_laboratoire" name="id_laboratoire">
                     <option value="">Choisir un laboratoire...</option>
                     {% for lab in laboratoires %}
                     <option value="{{ lab.id_laboratoire }}">{{ lab.nom_laboratoire }}</option>
@@ -72,7 +72,12 @@
                 <label for="heure_fin" class="form-label">Heure de fin</label>
                 <input type="time" class="form-control" id="heure_fin" name="heure_fin" required>
             </div>
-
+            
+            <div class="col-md-6">
+                <label for="annee_scolaire" class="form-label">Année Scolaire</label>
+                <input type="text" class="form-control" id="annee_scolaire" name="annee_scolaire" required>
+            </div>
+            
             <div class="col-12">
                 <button type="submit" class="btn btn-primary"><i class="fas fa-save me-2"></i>Créer</button>
                 <a href="{{ url_for('index') }}" class="btn btn-secondary"><i class="fas fa-times me-2"></i>Annuler</a>

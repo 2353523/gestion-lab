@@ -1,5 +1,5 @@
 import os
-from datetime import datetime
+from datetime import datetime, time
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_mysqldb import MySQL
 
@@ -15,11 +15,11 @@ app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
 
 mysql = MySQL(app)
 
-def get_tp_status(start, end):
-    now = datetime.now()
-    if now < start:
+def get_tp_status(start_time, end_time):
+    now = datetime.now().time()
+    if now < start_time:
         return 'En attente'
-    elif start <= now <= end:
+    elif start_time <= now <= end_time:
         return 'En cours'
     else:
         return 'Terminé'
@@ -29,7 +29,8 @@ def index():
     try:
         cur = mysql.connection.cursor()
         
-        today = datetime.now().strftime('%Y-%m-%d')
+        # Récupération des TP du jour
+        today = datetime.now().date()
         cur.execute("""
             SELECT 
                 tp.id_tp,
@@ -49,27 +50,25 @@ def index():
         
         tps_jour = []
         for tp in cur.fetchall():
-            start = tp['heure_debut']
-            end = tp['heure_fin']
+            start = tp['heure_debut'].time()
+            end = tp['heure_fin'].time()
             
             tps_jour.append({
                 **tp,
                 'statut': get_tp_status(start, end),
-                'heure_debut': start.strftime('%H:%M'),
-                'heure_fin': end.strftime('%H:%M')
+                'heure_debut': tp['heure_debut'].strftime('%H:%M'),
+                'heure_fin': tp['heure_fin'].strftime('%H:%M')
             })
 
+        # Alertes stock (seuil fixe à 10)
         cur.execute("""
             SELECT 
-                a.id_article,
                 a.nom_article,
                 a.unite_mesure,
-                sm.quantite,
-                t.seuil_urgence
+                sm.quantite
             FROM article a
-            JOIN stock_magasin sm ON a.id_article = sm.id_article
-            JOIN type t ON a.id_type = t.id_type
-            WHERE sm.quantite <= t.seuil_urgence
+            JOIN stock_magasin sm ON a.id_stock_magasin = sm.id_stock_magasin
+            WHERE sm.quantite < 10
         """)
         alertes_stock = cur.fetchall()
 
@@ -90,7 +89,6 @@ def creer_tp():
     cur = mysql.connection.cursor()
     
     try:
-        # Récupération des données pour les menus déroulants
         cur.execute("SELECT id_prof, prenom, nom FROM professeur")
         professeurs = cur.fetchall()
         
@@ -108,15 +106,27 @@ def creer_tp():
             date_tp = request.form['date_tp']
             heure_debut = f"{date_tp} {request.form['heure_debut']}"
             heure_fin = f"{date_tp} {request.form['heure_fin']}"
-
-            # Conversion en datetime
-            heure_debut = datetime.strptime(heure_debut, '%Y-%m-%d %H:%M')
-            heure_fin = datetime.strptime(heure_fin, '%Y-%m-%d %H:%M')
+            annee_scolaire = request.form['annee_scolaire']
 
             cur.execute("""
-                INSERT INTO tp (nom_tp, id_prof, id_matiere, id_laboratoire, heure_debut, heure_fin)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """, (nom_tp, id_prof, id_matiere, id_laboratoire, heure_debut, heure_fin))
+                INSERT INTO tp (
+                    nom_tp, 
+                    heure_debut, 
+                    heure_fin, 
+                    annee_scolaire, 
+                    id_laboratoire, 
+                    id_matiere, 
+                    id_prof
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (
+                nom_tp, 
+                heure_debut, 
+                heure_fin, 
+                annee_scolaire, 
+                id_laboratoire, 
+                id_matiere, 
+                id_prof
+            ))
             
             mysql.connection.commit()
             flash("TP créé avec succès!", "success")
@@ -132,8 +142,6 @@ def creer_tp():
                          professeurs=professeurs,
                          matieres=matieres,
                          laboratoires=laboratoires)
-
-# ... (après la route creer_tp)
 
 @app.route('/ajouter_professeur', methods=['GET', 'POST'])
 def ajouter_professeur():
