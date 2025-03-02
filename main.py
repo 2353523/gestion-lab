@@ -183,6 +183,189 @@ def creer_tp():
                          matieres=matieres,
                          laboratoires=laboratoires)
 
+@app.route('/editer_tp/<int:id>', methods=['GET', 'POST'])
+def editer_tp(id):
+    cur = mysql.connection.cursor()
+    try:
+        # Récupérer le TP existant
+        cur.execute("""
+            SELECT * FROM tp 
+            WHERE id_tp = %s
+        """, (id,))
+        tp = cur.fetchone()
+
+        if not tp:
+            flash("TP introuvable", "danger")
+            return redirect(url_for('index'))
+
+        if request.method == 'POST':
+            data = {
+                'nom_tp': request.form['nom_tp'].strip(),
+                'id_prof': request.form.get('id_prof', '').strip(),
+                'id_matiere': request.form.get('id_matiere', '').strip(),
+                'id_laboratoire': request.form.get('id_laboratoire', '').strip() or None,
+                'date_tp': request.form['date_tp'].strip(),
+                'heure_debut': request.form['heure_debut'].strip(),
+                'heure_fin': request.form['heure_fin'].strip(),
+                'annee_scolaire': request.form['annee_scolaire'].strip()
+            }
+
+            # Validation (identique à creer_tp)
+            if not all([data['nom_tp'], data['id_prof'], data['id_matiere'], 
+                      data['date_tp'], data['heure_debut'], data['heure_fin']]):
+                flash("Tous les champs obligatoires (*) doivent être remplis", "danger")
+                return redirect(url_for('editer_tp', id=id))
+
+            try:
+                heure_debut = datetime.strptime(f"{data['date_tp']} {data['heure_debut']}", "%Y-%m-%d %H:%M")
+                heure_fin = datetime.strptime(f"{data['date_tp']} {data['heure_fin']}", "%Y-%m-%d %H:%M")
+                
+                if heure_debut >= heure_fin:
+                    flash("L'heure de fin doit être après l'heure de début", "danger")
+                    return redirect(url_for('editer_tp', id=id))
+
+            except ValueError as e:
+                flash(f"Format de date/heure invalide : {str(e)}", "danger")
+                return redirect(url_for('editer_tp', id=id))
+
+            try:
+                cur.execute("""
+                    UPDATE tp SET
+                        nom_tp = %s,
+                        heure_debut = %s,
+                        heure_fin = %s,
+                        annee_scolaire = %s,
+                        id_laboratoire = %s,
+                        id_matiere = %s,
+                        id_prof = %s
+                    WHERE id_tp = %s
+                """, (
+                    data['nom_tp'], 
+                    heure_debut, 
+                    heure_fin, 
+                    data['annee_scolaire'],
+                    data['id_laboratoire'], 
+                    data['id_matiere'], 
+                    data['id_prof'], 
+                    id
+                ))
+                mysql.connection.commit()
+                flash("TP modifié avec succès!", "success")
+                return redirect(url_for('index'))
+
+            except Exception as e:
+                mysql.connection.rollback()
+                flash(f"Erreur MySQL: {str(e)}", "danger")
+
+        # Récupérer les listes pour les dropdowns
+        cur.execute("SELECT id_prof, prenom, nom FROM professeur")
+        professeurs = cur.fetchall()
+        cur.execute("SELECT id_matiere, nom_matiere FROM matiere")
+        matieres = cur.fetchall()
+        cur.execute("SELECT id_laboratoire, nom_laboratoire FROM laboratoire")
+        laboratoires = cur.fetchall()
+
+        # Convertir les datetime en strings pour le formulaire
+        tp['heure_debut'] = tp['heure_debut'].strftime("%Y-%m-%dT%H:%M")
+        tp['heure_fin'] = tp['heure_fin'].strftime("%Y-%m-%dT%H:%M")
+
+        return render_template('editer_tp.html',
+                            tp=tp,
+                            professeurs=professeurs,
+                            matieres=matieres,
+                            laboratoires=laboratoires)
+
+    except Exception as e:
+        flash(f"Erreur système: {str(e)}", "danger")
+        return redirect(url_for('index'))
+    finally:
+        cur.close()
+
+@app.route('/creer_recu/<int:id_tp>', methods=['GET', 'POST'])
+def creer_recu(id_tp):
+    cur = mysql.connection.cursor()
+    try:
+        # Récupérer les informations du TP
+        cur.execute("""
+            SELECT 
+                tp.id_tp,
+                tp.nom_tp,
+                tp.heure_debut,
+                tp.heure_fin,
+                CONCAT(p.prenom, ' ', p.nom) AS professeur,
+                m.nom_matiere AS matiere,
+                l.nom_laboratoire
+            FROM tp
+            JOIN professeur p ON tp.id_prof = p.id_prof
+            JOIN matiere m ON tp.id_matiere = m.id_matiere
+            LEFT JOIN laboratoire l ON tp.id_laboratoire = l.id_laboratoire
+            WHERE tp.id_tp = %s
+        """, (id_tp,))
+        
+        tp_data = cur.fetchone()
+        if not tp_data:
+            flash("TP introuvable", "danger")
+            return redirect(url_for('index'))
+
+        # Récupérer les articles utilisés
+        cur.execute("""
+            SELECT 
+                a.nom_article,
+                a.unite_mesure,
+                h.quantite,
+                h.degradation,
+                h.date_utilisation
+            FROM historique_ h
+            JOIN article a ON h.id_article = a.id_article
+            WHERE h.id_tp = %s
+        """, (id_tp,))
+        articles = cur.fetchall()
+
+        if request.method == 'POST':
+            # Enregistrer le reçu dans la base
+            try:
+                # Insertion du reçu principal
+                cur.execute("""
+                    INSERT INTO recu (id_tp, id_prof, date_emission, degradation, observations)
+                    VALUES (%s, %s, NOW(), %s, %s)
+                """, (
+                    id_tp,
+                    tp_data['id_prof'],
+                    request.form.get('degradation', 0),
+                    request.form.get('observations', '')
+                ))
+                recu_id = cur.lastrowid
+
+                # Insertion des lignes du reçu
+                for article in articles:
+                    cur.execute("""
+                        INSERT INTO ligne_recu (id_article, id_recu, quantite)
+                        VALUES (%s, %s, %s)
+                    """, (
+                        article['id_article'],
+                        recu_id,
+                        article['quantite']
+                    ))
+
+                mysql.connection.commit()
+                flash("Reçu généré avec succès", "success")
+                return redirect(url_for('index'))
+
+            except Exception as e:
+                mysql.connection.rollback()
+                flash(f"Erreur lors de la création du reçu : {str(e)}", "danger")
+
+        return render_template('recu.html',
+                             tp=tp_data,
+                             articles=articles,
+                             maintenant=datetime.now())
+
+    except Exception as e:
+        flash(f"Erreur système : {str(e)}", "danger")
+        return redirect(url_for('index'))
+    finally:
+        cur.close()
+
 # CRUD Professeurs
 @app.route('/professeurs')
 def liste_professeurs():

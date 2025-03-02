@@ -2,8 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Créer TP</title>
+    <title>Éditer TP</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -19,7 +18,6 @@
     </style>
 </head>
 <body>
-    <!-- Barre de navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
         <div class="container">
             <a class="navbar-brand" href="{{ url_for('index') }}">
@@ -88,84 +86,85 @@
             <div class="col-lg-8">
                 <div class="card form-card border-0">
                     <div class="card-header bg-primary text-white rounded-top-3">
-                        <h2 class="h4 mb-0"><i class="fas fa-flask me-2"></i>Nouveau TP</h2>
+                        <h2 class="h4 mb-0"><i class="fas fa-edit me-2"></i>Éditer TP : {{ tp.nom_tp }}</h2>
                     </div>
                     
                     <div class="card-body p-4">
-                        {% with messages = get_flashed_messages(with_categories=true) %}
-                            <!-- Messages flash (identique) -->
-                        {% endwith %}
-
                         <form method="POST" class="needs-validation" novalidate>
                             <div class="row g-4">
-                                <!-- Nom du TP -->
+                                <!-- Nom TP -->
                                 <div class="col-12">
-                                    <label for="nom_tp" class="form-label required-label">Nom du TP</label>
+                                    <label class="form-label required-label">Nom du TP</label>
                                     <input type="text" class="form-control form-control-lg" 
-                                           id="nom_tp" name="nom_tp" required
+                                           name="nom_tp" value="{{ tp.nom_tp }}" required
                                            placeholder="Ex: Chromatographie des pigments végétaux">
                                 </div>
 
                                 <!-- Sélection des entités -->
                                 <div class="col-md-6">
-                                    <label for="id_prof" class="form-label required-label">Professeur</label>
-                                    <select class="form-select form-select-lg" id="id_prof" name="id_prof" required>
-                                        <option value="" disabled selected>Choisir un professeur...</option>
+                                    <label class="form-label required-label">Professeur</label>
+                                    <select class="form-select form-select-lg" name="id_prof" required>
+                                        <option value="" disabled>Choisir un professeur...</option>
                                         {% for prof in professeurs %}
-                                        <option value="{{ prof.id_prof }}">{{ prof.prenom }} {{ prof.nom }}</option>
+                                        <option value="{{ prof.id_prof }}" {% if prof.id_prof == tp.id_prof %}selected{% endif %}>
+                                            {{ prof.prenom }} {{ prof.nom }}
+                                        </option>
                                         {% endfor %}
                                     </select>
                                 </div>
 
                                 <div class="col-md-6">
-                                    <label for="id_matiere" class="form-label required-label">Matière</label>
-                                    <select class="form-select form-select-lg" id="id_matiere" name="id_matiere" required>
-                                        <option value="" disabled selected>Choisir une matière...</option>
+                                    <label class="form-label required-label">Matière</label>
+                                    <select class="form-select form-select-lg" name="id_matiere" required>
+                                        <option value="" disabled>Choisir une matière...</option>
                                         {% for matiere in matieres %}
-                                        <option value="{{ matiere.id_matiere }}">{{ matiere.nom_matiere }}</option>
+                                        <option value="{{ matiere.id_matiere }}" {% if matiere.id_matiere == tp.id_matiere %}selected{% endif %}>
+                                            {{ matiere.nom_matiere }}
+                                        </option>
                                         {% endfor %}
                                     </select>
                                 </div>
 
                                 <div class="col-md-6">
-                                    <label for="id_laboratoire" class="form-label">Laboratoire</label>
-                                    <select class="form-select form-select-lg" id="id_laboratoire" name="id_laboratoire">
+                                    <label class="form-label">Laboratoire</label>
+                                    <select class="form-select form-select-lg" name="id_laboratoire">
                                         <option value="" selected>Aucun laboratoire</option>
                                         {% for lab in laboratoires %}
-                                        <option value="{{ lab.id_laboratoire }}">{{ lab.nom_laboratoire }}</option>
+                                        <option value="{{ lab.id_laboratoire }}" {% if lab.id_laboratoire == tp.id_laboratoire %}selected{% endif %}>
+                                            {{ lab.nom_laboratoire }}
+                                        </option>
                                         {% endfor %}
                                     </select>
                                 </div>
 
                                 <!-- Date et Heure -->
                                 <div class="col-md-6">
-                                    <label for="date_tp" class="form-label required-label">Date</label>
+                                    <label class="form-label required-label">Date</label>
                                     <input type="date" class="form-control form-control-lg" 
-                                           id="date_tp" name="date_tp" required>
+                                           name="date_tp" value="{{ tp.heure_debut.split('T')[0] }}" required>
                                 </div>
 
                                 <div class="col-md-6">
                                     <div class="row g-2">
                                         <div class="col-6">
-                                            <label for="heure_debut" class="form-label required-label">Heure début</label>
+                                            <label class="form-label required-label">Heure début</label>
                                             <input type="time" class="form-control form-control-lg" 
-                                                   id="heure_debut" name="heure_debut" required>
+                                                   name="heure_debut" value="{{ tp.heure_debut.split('T')[1] }}" required>
                                         </div>
                                         <div class="col-6">
-                                            <label for="heure_fin" class="form-label required-label">Heure fin</label>
+                                            <label class="form-label required-label">Heure fin</label>
                                             <input type="time" class="form-control form-control-lg" 
-                                                   id="heure_fin" name="heure_fin" required>
+                                                   name="heure_fin" value="{{ tp.heure_fin.split('T')[1] }}" required>
                                         </div>
                                     </div>
                                 </div>
 
                                 <!-- Année Scolaire -->
                                 <div class="col-md-6">
-                                    <label for="annee_scolaire" class="form-label required-label">Année scolaire</label>
+                                    <label class="form-label required-label">Année scolaire</label>
                                     <input type="text" class="form-control form-control-lg" 
-                                           id="annee_scolaire" name="annee_scolaire" 
-                                           pattern="\d{4}-\d{4}"
-                                           placeholder="2023-2024"
+                                           name="annee_scolaire" value="{{ tp.annee_scolaire }}" 
+                                           pattern="\d{4}-\d{4}" placeholder="2023-2024"
                                            required>
                                 </div>
 
