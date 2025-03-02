@@ -355,7 +355,7 @@ def creer_recu(id_tp):
                 mysql.connection.rollback()
                 flash(f"Erreur lors de la création du reçu : {str(e)}", "danger")
 
-        return render_template('recu.html',
+        return render_template('creer_recu.html',
                              tp=tp_data,
                              articles=articles,
                              maintenant=datetime.now())
