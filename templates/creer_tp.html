@@ -20,10 +20,11 @@
 </head>
 <body>
     <!-- Barre de navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
         <div class="container">
-            <a class="navbar-brand" href="{{ url_for('index') }}">
-                <i class="fas fa-flask"></i> Gestion Lab
+            <a class="navbar-brand d-flex align-items-center" href="{{ url_for('index') }}">
+                <i class="fas fa-flask fs-4 me-2"></i>
+                <span class="fw-bold">Gestion Lab</span>
             </a>
             
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -35,22 +36,22 @@
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('index') }}">
-                            <i class="fas fa-calendar-day"></i> TP du Jour
+                            <i class="fas fa-calendar-day me-2"></i>TP du Jour
                         </a>
                     </li>
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="gestionDropdown" data-bs-toggle="dropdown">
-                            <i class="fas fa-cogs"></i> Gestion
+                        <a class="nav-link dropdown-toggle active" href="#" id="gestionDropdown" data-bs-toggle="dropdown">
+                            <i class="fas fa-cogs me-2"></i>Gestion
                         </a>
-                        <ul class="dropdown-menu">
+                        <ul class="dropdown-menu dropdown-menu-dark">
                             <li><a class="dropdown-item" href="{{ url_for('liste_professeurs') }}">
-                                <i class="fas fa-chalkboard-teacher"></i> Professeurs
+                                <i class="fas fa-chalkboard-teacher me-2"></i>Professeurs
                             </a></li>
                             <li><a class="dropdown-item" href="{{ url_for('liste_matieres') }}">
-                                <i class="fas fa-book"></i> Matières
+                                <i class="fas fa-book me-2"></i>Matières
                             </a></li>
                             <li><a class="dropdown-item" href="{{ url_for('liste_laboratoires') }}">
-                                <i class="fas fa-microscope"></i> Laboratoires
+                                <i class="fas fa-microscope me-2"></i>Laboratoires
                             </a></li>
                         </ul>
                     </li>
@@ -60,21 +61,21 @@
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="createDropdown" data-bs-toggle="dropdown">
-                            <i class="fas fa-plus-circle"></i> Nouveau
+                            <i class="fas fa-plus-circle me-2"></i>Nouveau
                         </a>
-                        <ul class="dropdown-menu dropdown-menu-end">
+                        <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
                             <li><a class="dropdown-item" href="{{ url_for('creer_tp') }}">
                                 <i class="fas fa-flask me-2"></i>Nouveau TP
                             </a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="{{ url_for('creer_professeur') }}">
-                                <i class="fas fa-user-plus me-2"></i>Nouveau Professeur
+                                <i class="fas fa-user-plus me-2"></i>Professeur
                             </a></li>
                             <li><a class="dropdown-item" href="{{ url_for('creer_matiere') }}">
-                                <i class="fas fa-book-medical me-2"></i>Nouvelle Matière
+                                <i class="fas fa-book-medical me-2"></i>Matière
                             </a></li>
                             <li><a class="dropdown-item" href="{{ url_for('creer_laboratoire') }}">
-                                <i class="fas fa-vial me-2"></i>Nouveau Laboratoire
+                                <i class="fas fa-vial me-2"></i>Laboratoire
                             </a></li>
                         </ul>
                     </li>
@@ -129,7 +130,7 @@
 
                                 <div class="col-md-6">
                                     <label for="id_laboratoire" class="form-label">Laboratoire</label>
-                                    <select class="form-select form-select-lg" id="id_laboratoire" name="id_laboratoire">
+                                    <select class="form-select form-select-lg" id="id_laboratoire" name="id_laboratoire" required>
                                         <option value="" selected>Aucun laboratoire</option>
                                         {% for lab in laboratoires %}
                                         <option value="{{ lab.id_laboratoire }}">{{ lab.nom_laboratoire }}</option>
@@ -144,19 +145,17 @@
                                            id="date_tp" name="date_tp" required>
                                 </div>
 
+                                <!-- Remplacer les champs heure_debut/heure_fin par -->
                                 <div class="col-md-6">
-                                    <div class="row g-2">
-                                        <div class="col-6">
-                                            <label for="heure_debut" class="form-label required-label">Heure début</label>
-                                            <input type="time" class="form-control form-control-lg" 
-                                                   id="heure_debut" name="heure_debut" required>
-                                        </div>
-                                        <div class="col-6">
-                                            <label for="heure_fin" class="form-label required-label">Heure fin</label>
-                                            <input type="time" class="form-control form-control-lg" 
-                                                   id="heure_fin" name="heure_fin" required>
-                                        </div>
-                                    </div>
+                                    <label for="periode" class="form-label required-label">Créneau horaire</label>
+                                    <select class="form-select form-select-lg" id="periode" name="periode" required>
+                                        <option value="" disabled selected>Choisir un créneau...</option>
+                                        <option value="P1">P1 (8h - 9h30)</option>
+                                        <option value="P2">P2 (9h45 - 11h15)</option>
+                                        <option value="P3">P3 (11h30 - 13h)</option>
+                                        <option value="P4">P4 (15h10 - 16h40)</option>
+                                        <option value="P5">P5 (17h - 18h30)</option>
+                                    </select>
                                 </div>
 
                                 <!-- Année Scolaire -->

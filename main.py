@@ -4,7 +4,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_mysqldb import MySQL
 
 app = Flask(__name__)
-app.secret_key = 'clé_secrète_pour_production'  # Changez cette valeur en production!
+app.secret_key = 'clé_secrète_pour_production'  
 
 # Configuration MySQL
 app.config['MYSQL_HOST'] = 'localhost'
@@ -98,7 +98,7 @@ def index():
                          },
                          date_actuelle=datetime.now().strftime('%d/%m/%Y'))
 
-@app.route('/supprimer_tp/<int:id>', methods=['POST'])  # 👈 Nouvelle route
+@app.route('/supprimer_tp/<int:id>', methods=['POST']) 
 def supprimer_tp(id):
     cur = mysql.connection.cursor()
     try:
@@ -115,68 +115,78 @@ def supprimer_tp(id):
 
 @app.route('/creer_tp', methods=['GET', 'POST'])
 def creer_tp():
-    cur = mysql.connection.cursor()
-    
-    try:
-        cur.execute("SELECT id_prof, prenom, nom FROM professeur")
-        professeurs = cur.fetchall()
-        cur.execute("SELECT id_matiere, nom_matiere FROM matiere")
-        matieres = cur.fetchall()
-        cur.execute("SELECT id_laboratoire, nom_laboratoire FROM laboratoire")
-        laboratoires = cur.fetchall()
+    # Dictionnaire des créneaux horaires
+    CRENEAUX = {
+        'P1': ('08:00', '09:30'),
+        'P2': ('09:45', '11:15'),
+        'P3': ('11:30', '13:00'),
+        'P4': ('15:10', '16:40'),
+        'P5': ('17:00', '18:30')
+    }
 
-        if request.method == 'POST':
+    if request.method == 'POST':
+        try:
             data = {
                 'nom_tp': request.form['nom_tp'].strip(),
                 'id_prof': request.form.get('id_prof', '').strip(),
                 'id_matiere': request.form.get('id_matiere', '').strip(),
-                'id_laboratoire': request.form.get('id_laboratoire', '').strip() or None,
+                'id_laboratoire': request.form.get('id_laboratoire', '').strip(),
                 'date_tp': request.form['date_tp'].strip(),
-                'heure_debut': request.form['heure_debut'].strip(),
-                'heure_fin': request.form['heure_fin'].strip(),
+                'periode': request.form.get('periode', '').strip(),
                 'annee_scolaire': request.form['annee_scolaire'].strip()
             }
 
-            # Validation
+            # Validation basique
             if not all([data['nom_tp'], data['id_prof'], data['id_matiere'], 
-                      data['date_tp'], data['heure_debut'], data['heure_fin']]):
+                      data['date_tp'], data['periode']]):
                 flash("Tous les champs obligatoires (*) doivent être remplis", "danger")
                 return redirect(url_for('creer_tp'))
 
-            try:
-                heure_debut = datetime.strptime(f"{data['date_tp']} {data['heure_debut']}", "%Y-%m-%d %H:%M")
-                heure_fin = datetime.strptime(f"{data['date_tp']} {data['heure_fin']}", "%Y-%m-%d %H:%M")
-                
-                if heure_debut >= heure_fin:
-                    flash("L'heure de fin doit être après l'heure de début", "danger")
-                    return redirect(url_for('creer_tp'))
-
-            except ValueError as e:
-                flash(f"Format de date/heure invalide : {str(e)}", "danger")
+            # Vérification du créneau horaire
+            if data['periode'] not in CRENEAUX:
+                flash("Créneau horaire invalide", "danger")
                 return redirect(url_for('creer_tp'))
 
-            try:
-                cur.execute("""
-                    INSERT INTO tp (
-                        nom_tp, heure_debut, heure_fin, annee_scolaire,
-                        id_laboratoire, id_matiere, id_prof
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s)
-                """, (
-                    data['nom_tp'], heure_debut, heure_fin, data['annee_scolaire'],
-                    data['id_laboratoire'], data['id_matiere'], data['id_prof']
-                ))
-                mysql.connection.commit()
-                flash("TP créé avec succès!", "success")
-                return redirect(url_for('index'))
+            # Conversion des horaires
+            debut, fin = CRENEAUX[data['periode']]
+            heure_debut = datetime.strptime(f"{data['date_tp']} {debut}", "%Y-%m-%d %H:%M")
+            heure_fin = datetime.strptime(f"{data['date_tp']} {fin}", "%Y-%m-%d %H:%M")
 
-            except Exception as e:
-                mysql.connection.rollback()
-                flash(f"Erreur MySQL: {str(e)}", "danger")
+            # Vérification de la cohérence des dates
+            if heure_debut >= heure_fin:
+                flash("Erreur dans les horaires sélectionnés", "danger")
+                return redirect(url_for('creer_tp'))
 
-    except Exception as e:
-        flash(f"Erreur système: {str(e)}", "danger")
-    finally:
-        cur.close()
+            # Insertion en base
+            cur = mysql.connection.cursor()
+            cur.execute("""
+                INSERT INTO tp (
+                    nom_tp, heure_debut, heure_fin, annee_scolaire,
+                    id_laboratoire, id_matiere, id_prof
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (
+                data['nom_tp'], heure_debut, heure_fin, data['annee_scolaire'],
+                data['id_laboratoire'], data['id_matiere'], data['id_prof']
+            ))
+            mysql.connection.commit()
+            flash("TP créé avec succès!", "success")
+            return redirect(url_for('index'))
+
+        except ValueError as e:
+            flash(f"Format de date invalide : {str(e)}", "danger")
+        except Exception as e:
+            mysql.connection.rollback()
+            flash(f"Erreur MySQL: {str(e)}", "danger")
+
+    # Récupération des données pour les listes déroulantes
+    cur = mysql.connection.cursor()
+    cur.execute("SELECT id_prof, prenom, nom FROM professeur")
+    professeurs = cur.fetchall()
+    cur.execute("SELECT id_matiere, nom_matiere FROM matiere")
+    matieres = cur.fetchall()
+    cur.execute("SELECT id_laboratoire, nom_laboratoire FROM laboratoire")
+    laboratoires = cur.fetchall()
+    cur.close()
 
     return render_template('creer_tp.html',
                          professeurs=professeurs,
@@ -456,7 +466,7 @@ def supprimer_professeur(id):
     return redirect(url_for('liste_professeurs'))
 
 # CRUD Matières
-@app.route('/matieres')
+@app.route('/matieres/liste')
 def liste_matieres():
     cur = mysql.connection.cursor()
     cur.execute("SELECT * FROM matiere ORDER BY nom_matiere")
@@ -475,15 +485,29 @@ def creer_matiere():
 
         cur = mysql.connection.cursor()
         try:
+            # Vérifier si la matière existe déjà (insensible à la casse et aux espaces)
+            cur.execute("""
+                SELECT id_matiere 
+                FROM matiere 
+                WHERE LOWER(TRIM(nom_matiere)) = LOWER(TRIM(%s))
+            """, (nom_matiere,))
+            
+            if cur.fetchone():
+                flash("Cette matière existe déjà", "danger")
+                return redirect(url_for('creer_matiere'))
+
+            # Créer la matière si elle n'existe pas
             cur.execute("INSERT INTO matiere (nom_matiere) VALUES (%s)", (nom_matiere,))
             mysql.connection.commit()
             flash("Matière créée avec succès", "success")
             return redirect(url_for('liste_matieres'))
+            
         except Exception as e:
             mysql.connection.rollback()
             flash(f"Erreur: {str(e)}", "danger")
         finally:
             cur.close()
+            
     return render_template('matieres/creer.html')
 
 @app.route('/matieres/editer/<int:id>', methods=['GET', 'POST'])
@@ -497,11 +521,30 @@ def editer_matiere(id):
                 flash("Le nom de la matière est obligatoire", "danger")
                 return redirect(url_for('editer_matiere', id=id))
 
-            cur.execute("UPDATE matiere SET nom_matiere=%s WHERE id_matiere=%s", (nom_matiere, id))
+            # Vérifier les doublons en excluant l'ID courant
+            cur.execute("""
+                SELECT id_matiere 
+                FROM matiere 
+                WHERE LOWER(TRIM(nom_matiere)) = LOWER(TRIM(%s))
+                AND id_matiere != %s
+            """, (nom_matiere, id))
+            
+            if cur.fetchone():
+                flash("Cette matière existe déjà", "danger")
+                return redirect(url_for('editer_matiere', id=id))
+
+            # Mettre à jour si pas de doublon
+            cur.execute("""
+                UPDATE matiere 
+                SET nom_matiere = %s 
+                WHERE id_matiere = %s
+            """, (nom_matiere, id))
+            
             mysql.connection.commit()
             flash("Matière mise à jour", "success")
             return redirect(url_for('liste_matieres'))
 
+        # Récupération de la matière pour l'édition
         cur.execute("SELECT * FROM matiere WHERE id_matiere = %s", (id,))
         matiere = cur.fetchone()
         return render_template('matieres/editer.html', matiere=matiere)
