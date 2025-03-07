@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emploi du Temps</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #0d6efd;
+            --hover-bg: #f8f9fa;
+        }
+
+        .week-nav {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .calendar-wrapper {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .calendar-table {
+            table-layout: fixed;
+            min-width: 1200px;
+        }
+
+        .calendar-header {
+            background: var(--primary-color);
+            color: white;
+            font-weight: 500;
+        }
+
+        .calendar-header th {
+            vertical-align: middle;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .time-slot {
+            background: rgba(13, 110, 253, 0.05);
+            font-weight: 500;
+            color: var(--primary-color);
+        }
+
+        .time-cell {
+            height: 100px;
+            vertical-align: top;
+            position: relative;
+            border: 1px solid #dee2e6 !important;
+            transition: background 0.2s;
+        }
+
+        .time-cell:hover {
+            background: var(--hover-bg);
+        }
+
+        .tp-event {
+            background: #e7f1ff;
+            border-left: 4px solid var(--primary-color);
+            border-radius: 6px;
+            padding: 0.5rem;
+            margin: 2px;
+            font-size: 0.85em;
+            position: absolute;
+            width: calc(100% - 4px);
+            height: calc(100% - 4px);
+            overflow: hidden;
+        }
+
+        .tp-event:hover {
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+
+        .add-tp-btn {
+            position: absolute;
+            bottom: 4px;
+            right: 4px;
+            width: 28px;
+            height: 28px;
+            padding: 0;
+            opacity: 0;
+            transition: opacity 0.2s, transform 0.2s;
+        }
+
+        .time-cell:hover .add-tp-btn {
+            opacity: 0.7;
+        }
+
+        .add-tp-btn:hover {
+            opacity: 1 !important;
+            transform: scale(1.1);
+        }
+
+        @media (max-width: 768px) {
+            .calendar-table {
+                min-width: 100%;
+            }
+            
+            .calendar-header th {
+                font-size: 0.9rem;
+                padding: 0.5rem;
+            }
+            
+            .time-slot {
+                font-size: 0.8rem;
+            }
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center" href="{{ url_for('index') }}">
+                <i class="fas fa-flask fs-4 me-2"></i>
+                <span class="fw-bold">Gestion Lab</span>
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('index') }}">
+                            <i class="fas fa-calendar-day me-2"></i>TP du Jour
+                        </a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle active" href="#" id="gestionDropdown" data-bs-toggle="dropdown">
+                            <i class="fas fa-cogs me-2"></i>Gestion
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-dark">
+                            <li><a class="dropdown-item" href="{{ url_for('liste_professeurs') }}">
+                                <i class="fas fa-chalkboard-teacher me-2"></i>Professeurs
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('liste_matieres') }}">
+                                <i class="fas fa-book me-2"></i>Matières
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('liste_laboratoires') }}">
+                                <i class="fas fa-microscope me-2"></i>Laboratoires
+                            </a></li>
+                        </ul>
+                    </li>
+                </ul>
+
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="createDropdown" data-bs-toggle="dropdown">
+                            <i class="fas fa-plus-circle me-2"></i>Nouveau
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
+                            <li><a class="dropdown-item" href="{{ url_for('creer_tp') }}">
+                                <i class="fas fa-flask me-2"></i>Nouveau TP
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('creer_professeur') }}">
+                                <i class="fas fa-user-plus me-2"></i>Professeur
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('creer_matiere') }}">
+                                <i class="fas fa-book-medical me-2"></i>Matière
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('creer_laboratoire') }}">
+                                <i class="fas fa-vial me-2"></i>Laboratoire
+                            </a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container-fluid py-4">
+        <div class="week-nav mb-4">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">
+                <h2 class="h4 mb-0 text-center text-md-start">
+                    Semaine du {{ days[0].strftime('%d/%m') }} au {{ days[-1].strftime('%d/%m') }}
+                </h2>
+                
+                <div class="d-flex gap-2">
+                    <a href="{{ url_for('emploi', week_offset=week_offset-1) }}" 
+                       class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-chevron-left"></i>
+                    </a>
+                    <a href="{{ url_for('emploi', week_offset=0) }}" 
+                       class="btn btn-primary btn-sm px-3">
+                        Aujourd'hui
+                    </a>
+                    <a href="{{ url_for('emploi', week_offset=week_offset+1) }}" 
+                       class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="calendar-wrapper">
+            <div class="table-responsive">
+                <table class="table table-bordered mb-0 calendar-table">
+                    <thead>
+                        <tr class="calendar-header">
+                            <th style="width: 120px;" class="time-slot">Créneaux</th>
+                            {% for day in days %}
+                            <th>{{ day.strftime('%a %d/%m')|title }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for periode in CRENEAUX %}
+                        <tr>
+                            <td class="text-center time-slot">
+                                {{ CRENEAUX[periode][0] }}<br>➔<br>{{ CRENEAUX[periode][1] }}
+                            </td>
+                            {% for day in days %}
+                            {% set key = day.strftime('%Y-%m-%d') + '-' + periode %}
+                            <td class="time-cell position-relative">
+                                {% if key in tps %}
+                                <div class="tp-event">
+                                    <div class="d-flex flex-column h-100">
+                                        <div class="mb-1 d-flex justify-content-between align-items-start">
+                                            <strong>{{ tps[key].nom_tp }}</strong>
+                                            <button class="btn btn-link text-danger p-0" 
+                                                    data-bs-toggle="modal" 
+                                                    data-bs-target="#deleteModal"
+                                                    data-tp-id="{{ tps[key].id_tp }}"
+                                                    title="Supprimer le TP">
+                                                <i class="fas fa-times fa-sm"></i>
+                                            </button>
+                                        </div>
+                                        <div class="text-muted small mt-auto">
+                                            <div>{{ tps[key].prenom }} {{ tps[key].nom }}</div>
+                                            {% if tps[key].nom_laboratoire %}
+                                            <div class="text-primary">
+                                                <i class="fas fa-map-marker-alt me-1"></i>
+                                                {{ tps[key].nom_laboratoire }}
+                                            </div>
+                                            {% endif %}
+                                            <div class="text-success mt-1">
+                                                <i class="fas fa-book me-1"></i>
+                                                {{ tps[key].nom_matiere }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% else %}
+                                <a href="{{ url_for('creer_tp') }}?date={{ day }}&periode={{ periode }}" 
+                                   class="btn btn-primary btn-sm add-tp-btn"
+                                   title="Ajouter TP">
+                                    <i class="fas fa-plus"></i>
+                                </a>
+                                {% endif %}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Modal de confirmation de suppression -->
+        <div class="modal fade" id="deleteModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Confirmer la suppression</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        Êtes-vous sûr de vouloir supprimer ce TP définitivement ?
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <form id="deleteForm" method="POST">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-trash me-2"></i>Supprimer
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Gestion de la suppression
+        document.getElementById('deleteModal').addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            const tpId = button.getAttribute('data-tp-id');
+            const form = document.getElementById('deleteForm');
+            form.action = `/supprimer_tp/${tpId}?redirect_week={{ week_offset }}`;
+        });
+    </script>
+</body>
+</html>

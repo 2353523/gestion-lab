@@ -139,23 +139,29 @@
                                 </div>
 
                                 <!-- Date et Heure -->
+                                <!-- Remplacer le bloc Date et Heure par -->
+                                <!-- Date et Créneaux -->
                                 <div class="col-md-6">
                                     <label class="form-label required-label">Date</label>
                                     <input type="date" class="form-control form-control-lg" 
-                                           name="date_tp" value="{{ tp.heure_debut.split('T')[0] }}" required>
+                                        name="date_tp" value="{{ tp.heure_debut.strftime('%Y-%m-%d') }}" required>
                                 </div>
 
                                 <div class="col-md-6">
-                                    <div class="row g-2">
-                                        <div class="col-6">
-                                            <label class="form-label required-label">Heure début</label>
-                                            <input type="time" class="form-control form-control-lg" 
-                                                   name="heure_debut" value="{{ tp.heure_debut.split('T')[1] }}" required>
-                                        </div>
-                                        <div class="col-6">
-                                            <label class="form-label required-label">Heure fin</label>
-                                            <input type="time" class="form-control form-control-lg" 
-                                                   name="heure_fin" value="{{ tp.heure_fin.split('T')[1] }}" required>
+                                    <label class="form-label required-label">Créneaux horaires</label>
+                                    <div class="card">
+                                        <div class="card-body">
+                                            {% for periode in ['P1', 'P2', 'P3', 'P4', 'P5'] %}
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" 
+                                                    name="periodes" value="{{ periode }}" 
+                                                    id="periode{{ loop.index }}"
+                                                    {% if periode in periodes_selectionnes %}checked{% endif %}>
+                                                <label class="form-check-label" for="periode{{ loop.index }}">
+                                                    {{ periode }} ({{ CRENEAUX[periode][0]|replace(":00", "h") }} - {{ CRENEAUX[periode][1]|replace(":00", "h") }})
+                                                </label>
+                                            </div>
+                                            {% endfor %}
                                         </div>
                                     </div>
                                 </div>

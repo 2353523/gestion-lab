@@ -1,7 +1,8 @@
 import os
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_mysqldb import MySQL
+from dateutil.relativedelta import relativedelta
 
 app = Flask(__name__)
 app.secret_key = 'clé_secrète_pour_production'  
@@ -14,6 +15,11 @@ app.config['MYSQL_DB'] = 'gestion_lab'
 app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
 
 mysql = MySQL(app)
+
+@app.context_processor
+def inject_datetime():
+    return dict(datetime=datetime, timedelta=timedelta)
+
 
 def get_tp_status(start_time, end_time):
     now = datetime.now().time()
@@ -98,8 +104,10 @@ def index():
                          },
                          date_actuelle=datetime.now().strftime('%d/%m/%Y'))
 
-@app.route('/supprimer_tp/<int:id>', methods=['POST']) 
+@app.route('/supprimer_tp/<int:id>', methods=['POST'])
 def supprimer_tp(id):
+    redirect_week = request.args.get('redirect_week', 0, type=int)
+    
     cur = mysql.connection.cursor()
     try:
         cur.execute("DELETE FROM tp WHERE id_tp = %s", (id,))
@@ -110,12 +118,12 @@ def supprimer_tp(id):
         flash(f"Erreur: {str(e)}", "danger")
     finally:
         cur.close()
-    return redirect(url_for('index'))
+    
+    return redirect(url_for('emploi', week_offset=redirect_week))
 
 
 @app.route('/creer_tp', methods=['GET', 'POST'])
 def creer_tp():
-    # Dictionnaire des créneaux horaires
     CRENEAUX = {
         'P1': ('08:00', '09:30'),
         'P2': ('09:45', '11:15'),
@@ -123,6 +131,20 @@ def creer_tp():
         'P4': ('15:10', '16:40'),
         'P5': ('17:00', '18:30')
     }
+
+    # Récupération des paramètres initiaux
+    default_date = request.args.get('date', datetime.now().strftime('%Y-%m-%d'))
+    default_periode = request.args.get('periode', None)
+
+    # Récupération des données pour les listes déroulantes
+    cur = mysql.connection.cursor()
+    cur.execute("SELECT id_prof, prenom, nom FROM professeur")
+    professeurs = cur.fetchall()
+    cur.execute("SELECT id_matiere, nom_matiere FROM matiere")
+    matieres = cur.fetchall()
+    cur.execute("SELECT id_laboratoire, nom_laboratoire FROM laboratoire")
+    laboratoires = cur.fetchall()
+    cur.close()
 
     if request.method == 'POST':
         try:
@@ -132,30 +154,56 @@ def creer_tp():
                 'id_matiere': request.form.get('id_matiere', '').strip(),
                 'id_laboratoire': request.form.get('id_laboratoire', '').strip(),
                 'date_tp': request.form['date_tp'].strip(),
-                'periode': request.form.get('periode', '').strip(),
+                'periodes': request.form.getlist('periodes'),
                 'annee_scolaire': request.form['annee_scolaire'].strip()
             }
 
-            # Validation basique
-            if not all([data['nom_tp'], data['id_prof'], data['id_matiere'], 
-                      data['date_tp'], data['periode']]):
+            # Validation
+            if not all([data['nom_tp'], data['id_prof'], data['id_matiere'], data['date_tp']]):
                 flash("Tous les champs obligatoires (*) doivent être remplis", "danger")
-                return redirect(url_for('creer_tp'))
+                return render_template('creer_tp.html',
+                                    professeurs=professeurs,
+                                    matieres=matieres,
+                                    CRENEAUX=CRENEAUX,
+                                    laboratoires=laboratoires)
 
-            # Vérification du créneau horaire
-            if data['periode'] not in CRENEAUX:
-                flash("Créneau horaire invalide", "danger")
-                return redirect(url_for('creer_tp'))
+            if not data['periodes']:
+                flash("Veuillez sélectionner au moins un créneau horaire", "danger")
+                return render_template('creer_tp.html',
+                                    professeurs=professeurs,
+                                    matieres=matieres,
+                                    CRENEAUX=CRENEAUX,
+                                    laboratoires=laboratoires)
 
-            # Conversion des horaires
-            debut, fin = CRENEAUX[data['periode']]
+            # Calcul des horaires combinés
+            heures = [CRENEAUX[p] for p in data['periodes'] if p in CRENEAUX]
+            if not heures:
+                flash("Créneau(x) horaire(s) invalide(s)", "danger")
+                return render_template('creer_tp.html',
+                                    professeurs=professeurs,
+                                    matieres=matieres,
+                                    CRENEAUX=CRENEAUX,
+                                    laboratoires=laboratoires)
+
+            # Tri des créneaux par ordre chronologique
+            heures.sort(key=lambda x: x[0])
+            
+            # Début = première période, Fin = dernière période
+            debut = heures[0][0]
+            fin = heures[-1][1]
+
+            # Conversion en datetime
             heure_debut = datetime.strptime(f"{data['date_tp']} {debut}", "%Y-%m-%d %H:%M")
             heure_fin = datetime.strptime(f"{data['date_tp']} {fin}", "%Y-%m-%d %H:%M")
 
-            # Vérification de la cohérence des dates
+            # Vérification de la cohérence
             if heure_debut >= heure_fin:
-                flash("Erreur dans les horaires sélectionnés", "danger")
-                return redirect(url_for('creer_tp'))
+                flash("Combinaison de créneaux invalide", "danger")
+                return render_template('creer_tp.html',
+                                    professeurs=professeurs,
+                                    matieres=matieres,
+                                    CRENEAUX=CRENEAUX,
+                                    laboratoires=laboratoires)
 
             # Insertion en base
             cur = mysql.connection.cursor()
@@ -174,39 +222,57 @@ def creer_tp():
 
         except ValueError as e:
             flash(f"Format de date invalide : {str(e)}", "danger")
+            return render_template('creer_tp.html',
+                                professeurs=professeurs,
+                                matieres=matieres,
+                                CRENEAUX=CRENEAUX,
+                                laboratoires=laboratoires)
         except Exception as e:
             mysql.connection.rollback()
             flash(f"Erreur MySQL: {str(e)}", "danger")
-
-    # Récupération des données pour les listes déroulantes
-    cur = mysql.connection.cursor()
-    cur.execute("SELECT id_prof, prenom, nom FROM professeur")
-    professeurs = cur.fetchall()
-    cur.execute("SELECT id_matiere, nom_matiere FROM matiere")
-    matieres = cur.fetchall()
-    cur.execute("SELECT id_laboratoire, nom_laboratoire FROM laboratoire")
-    laboratoires = cur.fetchall()
-    cur.close()
+            return render_template('creer_tp.html',
+                                professeurs=professeurs,
+                                matieres=matieres,
+                                CRENEAUX=CRENEAUX,
+                                laboratoires=laboratoires)
 
     return render_template('creer_tp.html',
                          professeurs=professeurs,
                          matieres=matieres,
-                         laboratoires=laboratoires)
+                         laboratoires=laboratoires,
+                         CRENEAUX=CRENEAUX,
+                         default_date=default_date,
+                         default_periodes=[default_periode] if default_periode else [])
 
 @app.route('/editer_tp/<int:id>', methods=['GET', 'POST'])
 def editer_tp(id):
+    CRENEAUX = {
+        'P1': ('08:00', '09:30'),
+        'P2': ('09:45', '11:15'),
+        'P3': ('11:30', '13:00'),
+        'P4': ('15:10', '16:40'),
+        'P5': ('17:00', '18:30')
+    }
+
     cur = mysql.connection.cursor()
     try:
         # Récupérer le TP existant
-        cur.execute("""
-            SELECT * FROM tp 
-            WHERE id_tp = %s
-        """, (id,))
+        cur.execute("SELECT * FROM tp WHERE id_tp = %s", (id,))
         tp = cur.fetchone()
 
         if not tp:
             flash("TP introuvable", "danger")
             return redirect(url_for('index'))
+
+        # Déterminer les créneaux existants
+        periodes_selectionnes = []
+        debut_existant = tp['heure_debut'].strftime("%H:%M")
+        fin_existante = tp['heure_fin'].strftime("%H:%M")
+        
+        for periode, (debut, fin) in CRENEAUX.items():
+            if (datetime.strptime(debut, "%H:%M") >= datetime.strptime(debut_existant, "%H:%M") and
+                datetime.strptime(fin, "%H:%M") <= datetime.strptime(fin_existante, "%H:%M")):
+                periodes_selectionnes.append(periode)
 
         if request.method == 'POST':
             data = {
@@ -215,30 +281,39 @@ def editer_tp(id):
                 'id_matiere': request.form.get('id_matiere', '').strip(),
                 'id_laboratoire': request.form.get('id_laboratoire', '').strip() or None,
                 'date_tp': request.form['date_tp'].strip(),
-                'heure_debut': request.form['heure_debut'].strip(),
-                'heure_fin': request.form['heure_fin'].strip(),
+                'periodes': request.form.getlist('periodes'),
                 'annee_scolaire': request.form['annee_scolaire'].strip()
             }
 
-            # Validation (identique à creer_tp)
-            if not all([data['nom_tp'], data['id_prof'], data['id_matiere'], 
-                      data['date_tp'], data['heure_debut'], data['heure_fin']]):
+            # Validation
+            if not all([data['nom_tp'], data['id_prof'], data['id_matiere'], data['date_tp']]):
                 flash("Tous les champs obligatoires (*) doivent être remplis", "danger")
                 return redirect(url_for('editer_tp', id=id))
 
-            try:
-                heure_debut = datetime.strptime(f"{data['date_tp']} {data['heure_debut']}", "%Y-%m-%d %H:%M")
-                heure_fin = datetime.strptime(f"{data['date_tp']} {data['heure_fin']}", "%Y-%m-%d %H:%M")
-                
-                if heure_debut >= heure_fin:
-                    flash("L'heure de fin doit être après l'heure de début", "danger")
-                    return redirect(url_for('editer_tp', id=id))
-
-            except ValueError as e:
-                flash(f"Format de date/heure invalide : {str(e)}", "danger")
+            if not data['periodes']:
+                flash("Veuillez sélectionner au moins un créneau horaire", "danger")
                 return redirect(url_for('editer_tp', id=id))
 
+            # Calcul des horaires combinés
+            heures = [CRENEAUX[p] for p in data['periodes'] if p in CRENEAUX]
+            if not heures:
+                flash("Créneau(x) horaire(s) invalide(s)", "danger")
+                return redirect(url_for('editer_tp', id=id))
+
+            # Tri des créneaux
+            heures.sort(key=lambda x: x[0])
+            debut = heures[0][0]
+            fin = heures[-1][1]
+
             try:
+                heure_debut = datetime.strptime(f"{data['date_tp']} {debut}", "%Y-%m-%d %H:%M")
+                heure_fin = datetime.strptime(f"{data['date_tp']} {fin}", "%Y-%m-%d %H:%M")
+                
+                if heure_debut >= heure_fin:
+                    flash("Combinaison de créneaux invalide", "danger")
+                    return redirect(url_for('editer_tp', id=id))
+
+                # Mise à jour
                 cur.execute("""
                     UPDATE tp SET
                         nom_tp = %s,
@@ -263,11 +338,15 @@ def editer_tp(id):
                 flash("TP modifié avec succès!", "success")
                 return redirect(url_for('index'))
 
+            except ValueError as e:
+                flash(f"Format de date invalide : {str(e)}", "danger")
+                return redirect(url_for('editer_tp', id=id))
             except Exception as e:
                 mysql.connection.rollback()
                 flash(f"Erreur MySQL: {str(e)}", "danger")
+                return redirect(url_for('editer_tp', id=id))
 
-        # Récupérer les listes pour les dropdowns
+        # Récupération des données pour le template
         cur.execute("SELECT id_prof, prenom, nom FROM professeur")
         professeurs = cur.fetchall()
         cur.execute("SELECT id_matiere, nom_matiere FROM matiere")
@@ -275,12 +354,10 @@ def editer_tp(id):
         cur.execute("SELECT id_laboratoire, nom_laboratoire FROM laboratoire")
         laboratoires = cur.fetchall()
 
-        # Convertir les datetime en strings pour le formulaire
-        tp['heure_debut'] = tp['heure_debut'].strftime("%Y-%m-%dT%H:%M")
-        tp['heure_fin'] = tp['heure_fin'].strftime("%Y-%m-%dT%H:%M")
-
         return render_template('editer_tp.html',
                             tp=tp,
+                            CRENEAUX=CRENEAUX,
+                            periodes_selectionnes=periodes_selectionnes,
                             professeurs=professeurs,
                             matieres=matieres,
                             laboratoires=laboratoires)
@@ -654,6 +731,75 @@ def supprimer_laboratoire(id):
     finally:
         cur.close()
     return redirect(url_for('liste_laboratoires'))
+
+@app.route('/emploi')
+def emploi():
+    CRENEAUX = {
+        'P1': ('08:00', '09:30'),
+        'P2': ('09:45', '11:15'),
+        'P3': ('11:30', '13:00'),
+        'P4': ('15:10', '16:40'),
+        'P5': ('17:00', '18:30')
+    }
+
+    try:
+        week_offset = int(request.args.get('week_offset', 0))
+        today = datetime.now().date()
+        start_of_week = today + timedelta(weeks=week_offset) - timedelta(days=today.weekday())
+        days_of_week = [start_of_week + timedelta(days=i) for i in range(7)]
+        
+        cur = mysql.connection.cursor()
+        cur.execute("""
+            SELECT 
+                tp.id_tp,
+                tp.nom_tp,
+                tp.heure_debut,
+                tp.heure_fin,
+                l.nom_laboratoire,
+                p.prenom,
+                p.nom,
+                m.nom_matiere
+            FROM tp
+            JOIN professeur p ON tp.id_prof = p.id_prof
+            LEFT JOIN laboratoire l ON tp.id_laboratoire = l.id_laboratoire
+            JOIN matiere m ON tp.id_matiere = m.id_matiere
+            WHERE YEARWEEK(tp.heure_debut) = YEARWEEK(%s)
+            ORDER BY tp.heure_debut
+        """, (start_of_week,))
+        
+        tps = {}
+        for tp in cur.fetchall():
+            day = tp['heure_debut'].date()
+            period = get_period(tp['heure_debut'].time())
+            key = f"{day}-{period}"
+            tps[key] = tp
+
+        return render_template('emplois/emploi.html',
+                            days=days_of_week,
+                            tps=tps,
+                            week_offset=week_offset,
+                            CRENEAUX=CRENEAUX)
+
+    except Exception as e:
+        flash(f"Erreur : {str(e)}", "danger")
+        return redirect(url_for('index'))
+    finally:
+        if 'cur' in locals():
+            cur.close()
+
+def get_period(time):
+    periods = {
+        'P1': ('08:00', '09:30'),
+        'P2': ('09:45', '11:15'),
+        'P3': ('11:30', '13:00'),
+        'P4': ('15:10', '16:40'),
+        'P5': ('17:00', '18:30')
+    }
+    time_str = time.strftime('%H:%M')
+    for period, (start, end) in periods.items():
+        if start <= time_str <= end:
+            return period
+    return None
 
 if __name__ == '__main__':
     app.run(debug=True)

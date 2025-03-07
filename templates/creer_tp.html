@@ -16,6 +16,16 @@
             color: #dc3545;
             margin-left: 4px;
         }
+        .form-check {
+        margin: 8px 0;
+        }
+        .form-check-label {
+            margin-left: 8px;
+        }
+        .card {
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+        }
     </style>
 </head>
 <body>
@@ -142,20 +152,28 @@
                                 <div class="col-md-6">
                                     <label for="date_tp" class="form-label required-label">Date</label>
                                     <input type="date" class="form-control form-control-lg" 
-                                           id="date_tp" name="date_tp" required>
+                                            id="date_tp" name="date_tp" 
+                                            value="{{ default_date }}" required>
                                 </div>
 
-                                <!-- Remplacer les champs heure_debut/heure_fin par -->
+                               <!-- Remplacer le select par une liste de checkboxes -->
                                 <div class="col-md-6">
-                                    <label for="periode" class="form-label required-label">Créneau horaire</label>
-                                    <select class="form-select form-select-lg" id="periode" name="periode" required>
-                                        <option value="" disabled selected>Choisir un créneau...</option>
-                                        <option value="P1">P1 (8h - 9h30)</option>
-                                        <option value="P2">P2 (9h45 - 11h15)</option>
-                                        <option value="P3">P3 (11h30 - 13h)</option>
-                                        <option value="P4">P4 (15h10 - 16h40)</option>
-                                        <option value="P5">P5 (17h - 18h30)</option>
-                                    </select>
+                                    <label class="form-label required-label">Créneaux horaires</label>
+                                    <div class="card">
+                                        <div class="card-body">
+                                            {% for periode, heures in CRENEAUX.items() %}
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" 
+                                                    name="periodes" value="{{ periode }}" 
+                                                    id="periode{{ loop.index }}"
+                                                    {% if periode in default_periodes %}checked{% endif %}>
+                                                <label class="form-check-label" for="periode{{ loop.index }}">
+                                                    {{ periode }} ({{ heures[0] }} - {{ heures[1] }})
+                                                </label>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <!-- Année Scolaire -->

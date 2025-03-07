@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Éditer Emploi</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .form-card {
+            border-radius: 15px;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        }
+        .creneau-card {
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center" href="{{ url_for('index') }}">
+                <i class="fas fa-flask fs-4 me-2"></i>
+                <span class="fw-bold">Gestion Lab</span>
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <!-- Menu de gauche -->
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{{ url_for('index') }}">
+                            <i class="fas fa-calendar-day me-2"></i>TP du Jour
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('emploi') }}">
+                            <i class="fas fa-calendar-alt me-2"></i>Emploi du temps
+                        </a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle active" href="#" id="gestionDropdown" data-bs-toggle="dropdown">
+                            <i class="fas fa-cogs me-2"></i>Gestion
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-dark">
+                            <li><a class="dropdown-item" href="{{ url_for('liste_professeurs') }}">
+                                <i class="fas fa-chalkboard-teacher me-2"></i>Professeurs
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('liste_matieres') }}">
+                                <i class="fas fa-book me-2"></i>Matières
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('liste_laboratoires') }}">
+                                <i class="fas fa-microscope me-2"></i>Laboratoires
+                            </a></li>
+                        </ul>
+                    </li>
+                </ul>
+
+                <!-- Menu de création à droite -->
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="createDropdown" data-bs-toggle="dropdown">
+                            <i class="fas fa-plus-circle me-2"></i>Nouveau
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
+                            <li><a class="dropdown-item" href="{{ url_for('creer_tp') }}">
+                                <i class="fas fa-flask me-2"></i>Nouveau TP
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('creer_professeur') }}">
+                                <i class="fas fa-user-plus me-2"></i>Professeur
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('creer_matiere') }}">
+                                <i class="fas fa-book-medical me-2"></i>Matière
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('creer_laboratoire') }}">
+                                <i class="fas fa-vial me-2"></i>Laboratoire
+                            </a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card form-card border-0">
+                    <div class="card-header bg-primary text-white rounded-top-3">
+                        <h2 class="h4 mb-0">
+                            <i class="fas fa-edit me-2"></i>
+                            {% if emploi %}Modifier{% else %}Nouveau{% endif %} Créneau
+                        </h2>
+                    </div>
+                    
+                    <div class="card-body p-4">
+                        <form method="POST">
+                            <div class="mb-4">
+                                <label class="form-label">TP</label>
+                                <select class="form-select" name="id_tp" required>
+                                    <option value="">Choisir un TP...</option>
+                                    {% for tp in tps %}
+                                    <option value="{{ tp.id_tp }}" 
+                                        {% if emploi and tp.id_tp == emploi.id_tp %}selected{% endif %}>
+                                        {{ tp.nom_tp }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label">Jour</label>
+                                <select class="form-select" name="jour" required>
+                                    <option value="">Choisir un jour...</option>
+                                    {% for jour in jours %}
+                                    <option value="{{ jour[0] }}" 
+                                        {% if emploi and jour[0] == emploi.jour %}selected{% endif %}>
+                                        {{ jour[1] }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label">Créneaux</label>
+                                <div class="creneau-card">
+                                    {% for creneau in creneaux %}
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" 
+                                               name="creneaux" value="{{ creneau }}"
+                                               id="creneau{{ loop.index }}"
+                                               {% if emploi and creneau in emploi.creneaux %}checked{% endif %}>
+                                        <label class="form-check-label" for="creneau{{ loop.index }}">
+                                            {{ creneau }}
+                                        </label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fas fa-save me-2"></i>Enregistrer
+                                </button>
+                                <a href="{{ url_for('emploi') }}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-times me-2"></i>Annuler
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
