@@ -1,11 +1,30 @@
 import os
 from datetime import datetime, time, timedelta
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, session, abort
 from flask_mysqldb import MySQL
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask import session
 from dateutil.relativedelta import relativedelta
+from flask_session import Session 
+from flask_wtf.csrf import CSRFProtect
+
+
 
 app = Flask(__name__)
-app.secret_key = 'clé_secrète_pour_production'  
+csrf = CSRFProtect(app)
+app.secret_key = os.environ.get('SECRET_KEY') or 'une_phrase_secrete_complexe_ici'  # Ex: 'azerty1234!@#$567890' 
+# Configuration de session (ajoutez ceci après app.secret_key)
+app.config.update(
+    SESSION_TYPE='filesystem',
+    SESSION_FILE_DIR='/tmp/flask_sessions',  # Créez ce dossier
+    SESSION_COOKIE_NAME='lab_session',
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SECURE=False,  # True en production
+    PERMANENT_SESSION_LIFETIME=timedelta(hours=2)
+)
+Session(app)
+# Remplacez la fonction verify_access existante par :
+
 
 # Configuration MySQL
 app.config['MYSQL_HOST'] = 'localhost'
@@ -16,11 +35,6 @@ app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
 
 mysql = MySQL(app)
 
-@app.context_processor
-def inject_datetime():
-    return dict(datetime=datetime, timedelta=timedelta)
-
-
 def get_tp_status(start_time, end_time):
     now = datetime.now().time()
     if now < start_time:
@@ -30,8 +44,161 @@ def get_tp_status(start_time, end_time):
     else:
         return 'Terminé'
 
+def create_default_users():
+    with app.app_context():
+        cur = mysql.connection.cursor()
+        try:
+            # Création admin
+            cur.execute("SELECT * FROM utilisateur WHERE username = 'admin'")
+            if not cur.fetchone():
+                hashed_pw = generate_password_hash('admin123')
+                cur.execute("INSERT INTO utilisateur (username, password, role) VALUES (%s, %s, %s)",
+                          ('admin', hashed_pw, 'admin'))
+            
+            # Création user
+            cur.execute("SELECT * FROM utilisateur WHERE username = 'user'")
+            if not cur.fetchone():
+                hashed_pw = generate_password_hash('user123')
+                cur.execute("INSERT INTO utilisateur (username, password, role) VALUES (%s, %s, %s)",
+                          ('user', hashed_pw, 'user'))
+            
+            mysql.connection.commit()
+        except Exception as e:
+            print(f"Erreur création utilisateurs: {str(e)}")
+        finally:
+            cur.close()
+
+# Créer les utilisateurs au démarrage
+def create_default_users():
+    with app.app_context():
+        cur = mysql.connection.cursor()
+        try:
+            # Vérifier si la table existe
+            cur.execute("SHOW TABLES LIKE 'utilisateur'")
+            if not cur.fetchone():
+                cur.execute("""
+                    CREATE TABLE utilisateur (
+                        id INT PRIMARY KEY AUTO_INCREMENT,
+                        username VARCHAR(50) UNIQUE NOT NULL,
+                        password VARCHAR(255) NOT NULL,
+                        role ENUM('admin', 'user') NOT NULL DEFAULT 'user'
+                    )
+                """)
+                print("Table utilisateur créée")
+
+            # Créer admin
+            cur.execute("SELECT * FROM utilisateur WHERE username = 'admin'")
+            if not cur.fetchone():
+                hashed_pw = generate_password_hash('admin123')
+                cur.execute("INSERT INTO utilisateur (username, password, role) VALUES (%s, %s, 'admin')",
+                          ('admin', hashed_pw))
+                print("Admin créé")
+
+            # Créer user
+            cur.execute("SELECT * FROM utilisateur WHERE username = 'user'")
+            if not cur.fetchone():
+                hashed_pw = generate_password_hash('user123')
+                cur.execute("INSERT INTO utilisateur (username, password) VALUES (%s, %s)",
+                          ('user', hashed_pw))
+                print("User créé")
+
+            mysql.connection.commit()
+        except Exception as e:
+            print(f"ERREUR CRITIQUE : {str(e)}")
+            raise  # Propager l'erreur pour la voir dans les logs
+        finally:
+            cur.close()
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        try:
+            username = request.form['username']
+            password = request.form['password']
+            print(f"Tentative de connexion : {username}")  # Debug
+            
+            cur = mysql.connection.cursor()
+            cur.execute("SELECT * FROM utilisateur WHERE username = %s", (username,))
+            user = cur.fetchone()
+            cur.close()
+            
+            if user:
+                print(f"Utilisateur trouvé : {user['username']}")  # Debug
+# Dans la route /login, corrigez l'indentation comme ceci :
+            if check_password_hash(user['password'], password):
+                session.clear()
+                session['user_id'] = user['id']  # <-- Aligner cette ligne avec les précédentes
+                session['username'] = user['username']
+                session['role'] = user['role']
+                session['show_welcome'] = True
+                session.modified = True
+                print(f"Session après login: {dict(session)}")
+                return redirect(url_for('index'))
+            
+            flash('Identifiants incorrects', 'danger')
+            return redirect(url_for('login'))
+        
+        except Exception as e:
+            print(f"Erreur de connexion : {str(e)}")  # Debug
+            flash('Erreur système', 'danger')
+    
+    return render_template('login.html')
+@app.before_request
+def verify_access():
+    # Liste de toutes les routes protégées
+    protected_routes = [
+        'index', 'liste_professeurs', 'creer_tp', 'editer_tp', 
+        'supprimer_tp', 'creer_recu', 'liste_matieres', 'creer_matiere',
+        'editer_matiere', 'supprimer_matiere', 'liste_laboratoires',
+        'creer_laboratoire', 'editer_laboratoire', 'supprimer_laboratoire'
+    ]
+    
+    if request.endpoint in protected_routes and not session.get('user_id'):
+        return redirect(url_for('login'))
+    
+    # Vérification droits admin
+    admin_only_routes = [
+        'creer_professeur', 'supprimer_professeur',
+        'creer_matiere', 'supprimer_matiere',
+        'creer_laboratoire', 'supprimer_laboratoire'
+    ]
+    
+    if request.endpoint in admin_only_routes and session.get('role') != 'admin':
+        abort(403, description="Accès réservé aux administrateurs")
+@app.route('/logout', methods=['GET', 'POST'])
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
+@app.before_request
+def verify_access():
+    excluded = ['login', 'static', 'logout']
+    
+    if request.endpoint in excluded:
+        return
+    
+    # Debug session
+    print(f"Session vérifiée: {dict(session)}")
+    
+    if 'user_id' not in session:
+        print("Redirection vers login - Session invalide")
+        return redirect(url_for('login'))
+    
+    # Garder la session active
+    session.permanent = True
+    session.modified = True
+
+@app.errorhandler(403)
+def forbidden(e):
+    return render_template('403.html', description=e.description), 403
+
 @app.route('/')
 def index():
+
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    show_welcome = session.pop('show_welcome', False)  # <-- Récupérer et supprimer le flag
+
     try:
         cur = mysql.connection.cursor()
         
@@ -95,6 +262,7 @@ def index():
         cur.close()
     
     return render_template('index.html',
+                            show_welcome=show_welcome,
                          tps_jour=tps_jour,
                          alertes_stock=alertes_stock,
                          stats={
