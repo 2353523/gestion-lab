@@ -29,7 +29,6 @@
             </button>
 
             <div class="collapse navbar-collapse" id="navbarNav">
-                <!-- Menu de gauche -->
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('index') }}">
@@ -41,10 +40,10 @@
                             <i class="fas fa-cogs me-2"></i>Gestion
                         </a>
                         <ul class="dropdown-menu dropdown-menu-dark">
-                            <li><a class="dropdown-item active" href="{{ url_for('liste_professeurs') }}">
+                            <li><a class="dropdown-item" href="{{ url_for('liste_professeurs') }}">
                                 <i class="fas fa-chalkboard-teacher me-2"></i>Professeurs
                             </a></li>
-                            <li><a class="dropdown-item " href="{{ url_for('liste_matieres') }}">
+                            <li><a class="dropdown-item" href="{{ url_for('liste_matieres') }}">
                                 <i class="fas fa-book me-2"></i>Matières
                             </a></li>
                             <li><a class="dropdown-item" href="{{ url_for('liste_laboratoires') }}">
@@ -54,16 +53,17 @@
                     </li>
                 </ul>
 
-                <!-- Menu de création à droite -->
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="createDropdown" data-bs-toggle="dropdown">
                             <i class="fas fa-plus-circle me-2"></i>Nouveau
                         </a>
+                       
                         <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
                             <li><a class="dropdown-item" href="{{ url_for('creer_tp') }}">
                                 <i class="fas fa-flask me-2"></i>Nouveau TP
                             </a></li>
+                            {% if session.role == 'admin' %}
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="{{ url_for('creer_professeur') }}">
                                 <i class="fas fa-user-plus me-2"></i>Professeur
@@ -74,13 +74,15 @@
                             <li><a class="dropdown-item" href="{{ url_for('creer_laboratoire') }}">
                                 <i class="fas fa-vial me-2"></i>Laboratoire
                             </a></li>
+                            {% endif %}
+
                         </ul>
                     </li>
                 </ul>
             </div>
         </div>
     </nav>
-
+    
     <main class="container py-4">
         <div class="card shadow-lg">
             <div class="card-header text-white">

@@ -156,10 +156,12 @@
                         <a class="nav-link dropdown-toggle" href="#" id="createDropdown" data-bs-toggle="dropdown">
                             <i class="fas fa-plus-circle me-2"></i>Nouveau
                         </a>
+                       
                         <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
                             <li><a class="dropdown-item" href="{{ url_for('creer_tp') }}">
                                 <i class="fas fa-flask me-2"></i>Nouveau TP
                             </a></li>
+                            {% if session.role == 'admin' %}
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="{{ url_for('creer_professeur') }}">
                                 <i class="fas fa-user-plus me-2"></i>Professeur
@@ -170,6 +172,8 @@
                             <li><a class="dropdown-item" href="{{ url_for('creer_laboratoire') }}">
                                 <i class="fas fa-vial me-2"></i>Laboratoire
                             </a></li>
+                            {% endif %}
+
                         </ul>
                     </li>
                 </ul>
