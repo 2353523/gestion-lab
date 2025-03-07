@@ -264,7 +264,7 @@
                                                title="Modifier">
                                                 <i class="fas fa-edit"></i>
                                             </a>
-                                            <form method="POST" action="{{ url_for('supprimer_tp', id=tp.id_tp) }}">
+                                            <form method="POST" action="{{ url_for('supprimer_tp', id=tp.id_tp) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                                 <button type="submit" 
                                                         class="btn btn-danger btn-action"
                                                         title="Supprimer"
