@@ -91,7 +91,7 @@
                     </div>
                     
                     <div class="card-body p-4">
-                        <form method="POST" class="needs-validation" novalidate>
+                        <form method="POST" class="needs-validation" novalidate><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <div class="row g-4">
                                 <!-- Nom TP -->
                                 <div class="col-12">
