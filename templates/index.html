@@ -197,6 +197,7 @@
                                 <i class="fas fa-flask me-2"></i>Nouveau TP
                             </a></li>
                             <li><hr class="dropdown-divider"></li>
+                            {% if session.role == 'admin' %}
                             <li><a class="dropdown-item" href="{{ url_for('creer_professeur') }}">
                                 <i class="fas fa-user-plus me-2"></i>Professeur
                             </a></li>
@@ -206,6 +207,7 @@
                             <li><a class="dropdown-item" href="{{ url_for('creer_laboratoire') }}">
                                 <i class="fas fa-vial me-2"></i>Laboratoire
                             </a></li>
+                            {% endif %}
                         </ul>
                     </li>
                 </ul>

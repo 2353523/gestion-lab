@@ -20,6 +20,23 @@
 <body class="bg-light">
     <!-- Barre de navigation identique -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+        {% if session.user_id %}
+        <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                <i class="fas fa-user-shield"></i> {{ session.username }}
+                <span class="badge bg-{{ 'danger' if session.role == 'admin' else 'primary' }}">
+                    {{ session.role }}
+                </span>
+            </a>
+            <ul class="dropdown-menu">
+
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}">
+                    <i class="fas fa-power-off"></i> Déconnexion
+                </a></li>
+            </ul>
+        </li>
+        {% endif %}
         <div class="container">
             <a class="navbar-brand d-flex align-items-center" href="{{ url_for('index') }}">
                 <i class="fas fa-flask fs-4 me-2"></i>
@@ -31,15 +48,21 @@
             </button>
 
             <div class="collapse navbar-collapse" id="navbarNav">
+                <!-- Menu de gauche -->
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('index') }}">
+                        <a class="nav-link active" href="{{ url_for('index') }}">
                             <i class="fas fa-calendar-day me-2"></i>TP du Jour
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('emploi') }}">
+                            <i class="fas fa-calendar-alt me-2"></i>Emploi du temps
                         </a>
                     </li>
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle active" href="#" id="gestionDropdown" data-bs-toggle="dropdown">
-                            <i class="fas fa-cogs me-2"></i>Gestion
+                            <i class="fas fa-cogs me-2"></i>Gestio-n
                         </a>
                         <ul class="dropdown-menu dropdown-menu-dark">
                             <li><a class="dropdown-item" href="{{ url_for('liste_professeurs') }}">
@@ -55,18 +78,18 @@
                     </li>
                 </ul>
 
+                <!-- Menu de création à droite -->
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="createDropdown" data-bs-toggle="dropdown">
                             <i class="fas fa-plus-circle me-2"></i>Nouveau
                         </a>
-                       
                         <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
                             <li><a class="dropdown-item" href="{{ url_for('creer_tp') }}">
                                 <i class="fas fa-flask me-2"></i>Nouveau TP
                             </a></li>
-                            {% if session.role == 'admin' %}
                             <li><hr class="dropdown-divider"></li>
+                            {% if session.role == 'admin' %}
                             <li><a class="dropdown-item" href="{{ url_for('creer_professeur') }}">
                                 <i class="fas fa-user-plus me-2"></i>Professeur
                             </a></li>
@@ -77,13 +100,13 @@
                                 <i class="fas fa-vial me-2"></i>Laboratoire
                             </a></li>
                             {% endif %}
-
                         </ul>
                     </li>
                 </ul>
             </div>
         </div>
-    </nav>    
+    </nav>
+   
     <main class="container py-4">
         <div class="card shadow-lg">
             <div class="card-header text-white">

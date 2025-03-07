@@ -22,6 +22,23 @@
 <body class="bg-light">
     <!-- Barre de navigation identique aux autres pages -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+        {% if session.user_id %}
+        <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                <i class="fas fa-user-shield"></i> {{ session.username }}
+                <span class="badge bg-{{ 'danger' if session.role == 'admin' else 'primary' }}">
+                    {{ session.role }}
+                </span>
+            </a>
+            <ul class="dropdown-menu">
+
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}">
+                    <i class="fas fa-power-off"></i> Déconnexion
+                </a></li>
+            </ul>
+        </li>
+        {% endif %}
         <div class="container">
             <a class="navbar-brand d-flex align-items-center" href="{{ url_for('index') }}">
                 <i class="fas fa-flask fs-4 me-2"></i>
@@ -36,16 +53,21 @@
                 <!-- Menu de gauche -->
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('index') }}">
+                        <a class="nav-link active" href="{{ url_for('index') }}">
                             <i class="fas fa-calendar-day me-2"></i>TP du Jour
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('emploi') }}">
+                            <i class="fas fa-calendar-alt me-2"></i>Emploi du temps
+                        </a>
+                    </li>
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="gestionDropdown" data-bs-toggle="dropdown">
-                            <i class="fas fa-cogs me-2"></i>Gestion
+                        <a class="nav-link dropdown-toggle active" href="#" id="gestionDropdown" data-bs-toggle="dropdown">
+                            <i class="fas fa-cogs me-2"></i>Gestio-n
                         </a>
                         <ul class="dropdown-menu dropdown-menu-dark">
-                            <li><a class="dropdown-item active" href="{{ url_for('liste_professeurs') }}">
+                            <li><a class="dropdown-item" href="{{ url_for('liste_professeurs') }}">
                                 <i class="fas fa-chalkboard-teacher me-2"></i>Professeurs
                             </a></li>
                             <li><a class="dropdown-item" href="{{ url_for('liste_matieres') }}">
@@ -69,6 +91,7 @@
                                 <i class="fas fa-flask me-2"></i>Nouveau TP
                             </a></li>
                             <li><hr class="dropdown-divider"></li>
+                            {% if session.role == 'admin' %}
                             <li><a class="dropdown-item" href="{{ url_for('creer_professeur') }}">
                                 <i class="fas fa-user-plus me-2"></i>Professeur
                             </a></li>
@@ -78,6 +101,7 @@
                             <li><a class="dropdown-item" href="{{ url_for('creer_laboratoire') }}">
                                 <i class="fas fa-vial me-2"></i>Laboratoire
                             </a></li>
+                            {% endif %}
                         </ul>
                     </li>
                 </ul>
@@ -94,6 +118,7 @@
                             <i class="fas fa-info-circle me-3"></i>
                             <div>{{ message }}</div>
                         </div>
+
                         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
                 {% endfor %}
@@ -106,9 +131,11 @@
                     <h3 class="mb-0">
                         <i class="fas fa-microscope me-2"></i>Liste des Laboratoires
                     </h3>
+                    {% if session.role == 'admin' %}
                     <a href="{{ url_for('creer_laboratoire') }}" class="btn btn-success">
                         <i class="fas fa-plus me-2"></i>Nouveau
                     </a>
+                    {% endif %}
                 </div>
             </div>
             
@@ -128,21 +155,27 @@
                                 <tr>
                                     <td class="fw-semibold">{{ lab.nom_laboratoire }}</td>
                                     <td>{{ lab.capacite }} places</td>
+
                                     <td class="text-end">
                                         <div class="d-flex gap-2 justify-content-end">
+                                            {% if session.role == 'admin' %}
                                             <a href="{{ url_for('editer_laboratoire', id=lab.id_laboratoire) }}" 
                                                class="btn btn-warning btn-action"
                                                title="Modifier">
                                                 <i class="fas fa-edit"></i>
                                             </a>
+                                            {% endif %}
+
                                             <form method="POST" 
                                                   action="{{ url_for('supprimer_laboratoire', id=lab.id_laboratoire) }}">
+                                                  {% if session.role == 'admin' %}
                                                 <button type="submit" 
                                                         class="btn btn-danger btn-action"
                                                         title="Supprimer"
                                                         onclick="return confirm('Supprimer ce laboratoire définitivement ?')">
                                                     <i class="fas fa-trash"></i>
                                                 </button>
+                                                {% endif %}
                                             </form>
                                         </div>
                                     </td>
