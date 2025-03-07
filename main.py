@@ -912,19 +912,10 @@ def supprimer_laboratoire(id):
 
 @app.route('/emploi')
 def emploi():
-    CRENEAUX = {
-        'P1': ('08:00', '09:30'),
-        'P2': ('09:45', '11:15'),
-        'P3': ('11:30', '13:00'),
-        'P4': ('15:10', '16:40'),
-        'P5': ('17:00', '18:30')
-    }
-
     try:
         week_offset = int(request.args.get('week_offset', 0))
         today = datetime.now().date()
         start_of_week = today + timedelta(weeks=week_offset) - timedelta(days=today.weekday())
-        days_of_week = [start_of_week + timedelta(days=i) for i in range(7)]
         
         cur = mysql.connection.cursor()
         cur.execute("""
@@ -941,41 +932,43 @@ def emploi():
             JOIN professeur p ON tp.id_prof = p.id_prof
             LEFT JOIN laboratoire l ON tp.id_laboratoire = l.id_laboratoire
             JOIN matiere m ON tp.id_matiere = m.id_matiere
-            WHERE YEARWEEK(tp.heure_debut) = YEARWEEK(%s)
-            ORDER BY tp.heure_debut
-        """, (start_of_week,))
+            WHERE DATE(tp.heure_debut) BETWEEN %s AND %s
+            ORDER BY tp.heure_debit
+        """, (start_of_week, start_of_week + timedelta(days=6)))
         
         tps = {}
         for tp in cur.fetchall():
-            day = tp['heure_debut'].date()
             period = get_period(tp['heure_debut'].time())
-            key = f"{day}-{period}"
-            tps[key] = tp
+            if period:
+                day = tp['heure_debut'].date()
+                key = f"{day}-{period}"
+                tps[key] = tp
 
         return render_template('emplois/emploi.html',
-                            days=days_of_week,
+                            start_of_week=start_of_week,
                             tps=tps,
-                            week_offset=week_offset,
-                            CRENEAUX=CRENEAUX)
+                            week_offset=week_offset)
 
     except Exception as e:
-        flash(f"Erreur : {str(e)}", "danger")
+        flash(f"Erreur système: {str(e)}", "danger")
         return redirect(url_for('index'))
     finally:
         if 'cur' in locals():
             cur.close()
 
-def get_period(time):
+from datetime import time
+
+def get_period(t):
     periods = {
-        'P1': ('08:00', '09:30'),
-        'P2': ('09:45', '11:15'),
-        'P3': ('11:30', '13:00'),
-        'P4': ('15:10', '16:40'),
-        'P5': ('17:00', '18:30')
+        'P1': (time(8, 0), time(9, 30)),
+        'P2': (time(9, 45), time(11, 15)),
+        'P3': (time(11, 30), time(13, 0)),
+        'P4': (time(15, 10), time(16, 40)),
+        'P5': (time(17, 0), time(18, 30))
     }
-    time_str = time.strftime('%H:%M')
+    
     for period, (start, end) in periods.items():
-        if start <= time_str <= end:
+        if start <= t <= end:
             return period
     return None
 
