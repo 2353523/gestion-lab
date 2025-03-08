@@ -15,27 +15,19 @@
             color: #dc3545;
             margin-left: 4px;
         }
+        .form-check-label {
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .form-check-input:checked + .form-check-label {
+            font-weight: 500;
+            color: #0d6efd;
+        }
     </style>
 </head>
-<body>
+<body class="bg-light">
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
-        {% if session.user_id %}
-        <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
-                <i class="fas fa-user-shield"></i> {{ session.username }}
-                <span class="badge bg-{{ 'danger' if session.role == 'admin' else 'primary' }}">
-                    {{ session.role }}
-                </span>
-            </a>
-            <ul class="dropdown-menu">
-
-                <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}">
-                    <i class="fas fa-power-off"></i> Déconnexion
-                </a></li>
-            </ul>
-        </li>
-        {% endif %}
+        
         <div class="container">
             <a class="navbar-brand d-flex align-items-center" href="{{ url_for('index') }}">
                 <i class="fas fa-flask fs-4 me-2"></i>
@@ -47,7 +39,6 @@
             </button>
 
             <div class="collapse navbar-collapse" id="navbarNav">
-                <!-- Menu de gauche -->
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
                         <a class="nav-link active" href="{{ url_for('index') }}">
@@ -61,7 +52,7 @@
                     </li>
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle active" href="#" id="gestionDropdown" data-bs-toggle="dropdown">
-                            <i class="fas fa-cogs me-2"></i>Gestio-n
+                            <i class="fas fa-cogs me-2"></i>Gestion
                         </a>
                         <ul class="dropdown-menu dropdown-menu-dark">
                             <li><a class="dropdown-item" href="{{ url_for('liste_professeurs') }}">
@@ -76,47 +67,60 @@
                         </ul>
                     </li>
                 </ul>
-
-                <!-- Menu de création à droite -->
                 <ul class="navbar-nav ms-auto">
+                    {% if session.user_id %}
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="createDropdown" data-bs-toggle="dropdown">
-                            <i class="fas fa-plus-circle me-2"></i>Nouveau
+                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-circle me-2"></i>{{ session.username }}
+                            <span class="badge bg-{{ 'danger' if session.role == 'admin' else 'primary' }} ms-1">
+                                {{ session.role }}
+                            </span>
                         </a>
-                        <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
-                            <li><a class="dropdown-item" href="{{ url_for('creer_tp') }}">
-                                <i class="fas fa-flask me-2"></i>Nouveau TP
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="#">
+                                <i class="fas fa-cog me-2"></i>Paramètres
                             </a></li>
                             <li><hr class="dropdown-divider"></li>
-                            {% if session.role == 'admin' %}
-                            <li><a class="dropdown-item" href="{{ url_for('creer_professeur') }}">
-                                <i class="fas fa-user-plus me-2"></i>Professeur
+                            <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}">
+                                <i class="fas fa-sign-out-alt me-2"></i>Déconnexion
                             </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('creer_matiere') }}">
-                                <i class="fas fa-book-medical me-2"></i>Matière
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('creer_laboratoire') }}">
-                                <i class="fas fa-vial me-2"></i>Laboratoire
-                            </a></li>
-                            {% endif %}
                         </ul>
                     </li>
+                    {% endif %}
                 </ul>
+
+               
             </div>
         </div>
     </nav>
 
-    
     <main class="container py-5">
         <div class="row justify-content-center">
             <div class="col-lg-8">
                 <div class="card form-card border-0">
                     <div class="card-header bg-primary text-white rounded-top-3">
-                        <h2 class="h4 mb-0"><i class="fas fa-edit me-2"></i>Éditer TP : {{ tp.nom_tp }}</h2>
+                        <h2 class="h4 mb-0">
+                            <i class="fas fa-edit me-2"></i>
+                            {{ 'Modifier' if tp else 'Créer' }} TP
+                        </h2>
                     </div>
                     
                     <div class="card-body p-4">
-                        <form method="POST" class="needs-validation" novalidate><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        {% with messages = get_flashed_messages(with_categories=true) %}
+                            {% if messages %}
+                                {% for category, message in messages %}
+                                <div class="alert alert-{{ category }} alert-dismissible fade show">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                </div>
+                                {% endfor %}
+                            {% endif %}
+                        {% endwith %}
+
+                        <form method="POST" class="needs-validation" novalidate>
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="redirect_week" value="{{ redirect_week }}">
+
                             <div class="row g-4">
                                 <!-- Nom TP -->
                                 <div class="col-12">
@@ -132,7 +136,8 @@
                                     <select class="form-select form-select-lg" name="id_prof" required>
                                         <option value="" disabled>Choisir un professeur...</option>
                                         {% for prof in professeurs %}
-                                        <option value="{{ prof.id_prof }}" {% if prof.id_prof == tp.id_prof %}selected{% endif %}>
+                                        <option value="{{ prof.id_prof }}" 
+                                            {{ 'selected' if prof.id_prof == tp.id_prof|int }}>
                                             {{ prof.prenom }} {{ prof.nom }}
                                         </option>
                                         {% endfor %}
@@ -144,7 +149,8 @@
                                     <select class="form-select form-select-lg" name="id_matiere" required>
                                         <option value="" disabled>Choisir une matière...</option>
                                         {% for matiere in matieres %}
-                                        <option value="{{ matiere.id_matiere }}" {% if matiere.id_matiere == tp.id_matiere %}selected{% endif %}>
+                                        <option value="{{ matiere.id_matiere }}" 
+                                            {{ 'selected' if matiere.id_matiere == tp.id_matiere|int }}>
                                             {{ matiere.nom_matiere }}
                                         </option>
                                         {% endfor %}
@@ -154,36 +160,46 @@
                                 <div class="col-md-6">
                                     <label class="form-label">Laboratoire</label>
                                     <select class="form-select form-select-lg" name="id_laboratoire">
-                                        <option value="" selected>Aucun laboratoire</option>
+                                        <option value="">Aucun laboratoire</option>
                                         {% for lab in laboratoires %}
-                                        <option value="{{ lab.id_laboratoire }}" {% if lab.id_laboratoire == tp.id_laboratoire %}selected{% endif %}>
+                                        <option value="{{ lab.id_laboratoire }}" 
+                                            {{ 'selected' if lab.id_laboratoire == tp.id_laboratoire|int }}>
                                             {{ lab.nom_laboratoire }}
                                         </option>
                                         {% endfor %}
                                     </select>
                                 </div>
 
-                                <!-- Date et Heure -->
-                                <!-- Remplacer le bloc Date et Heure par -->
-                                <!-- Date et Créneaux -->
+                                <!-- Date -->
                                 <div class="col-md-6">
                                     <label class="form-label required-label">Date</label>
                                     <input type="date" class="form-control form-control-lg" 
-                                        name="date_tp" value="{{ tp.heure_debut.strftime('%Y-%m-%d') }}" required>
+                                           name="date_tp" 
+                                           value="{{ tp.heure_debut.strftime('%Y-%m-%d') }}" 
+                                           required>
                                 </div>
 
-                                <div class="col-md-6">
+                                <!-- Créneaux horaires -->
+                                <div class="col-12">
                                     <label class="form-label required-label">Créneaux horaires</label>
                                     <div class="card">
                                         <div class="card-body">
-                                            {% for periode in ['P1', 'P2', 'P3', 'P4', 'P5'] %}
+                                            {% for periode, heures in CRENEAUX.items() %}
                                             <div class="form-check">
                                                 <input class="form-check-input" type="checkbox" 
-                                                    name="periodes" value="{{ periode }}" 
-                                                    id="periode{{ loop.index }}"
-                                                    {% if periode in periodes_selectionnes %}checked{% endif %}>
-                                                <label class="form-check-label" for="periode{{ loop.index }}">
-                                                    {{ periode }} ({{ CRENEAUX[periode][0]|replace(":00", "h") }} - {{ CRENEAUX[periode][1]|replace(":00", "h") }})
+                                                    name="periodes" 
+                                                    value="{{ periode }}" 
+                                                    id="{{ periode }}"
+                                                    {{ 'checked' if periode in periodes_selectionnes }}>
+                                                <label class="form-check-label {{ 'creneau-selectionne' if periode in periodes_selectionnes }}" 
+                                                       for="{{ periode }}">
+                                                    <span class="period-display">
+                                                        {{ periode }} 
+                                                        <small class="text-muted">({{ heures[0] }} - {{ heures[1] }})</small>
+                                                    </span>
+                                                    {% if periode in periodes_selectionnes %}
+                                                    <span class="badge bg-success ms-2">Sélectionné</span>
+                                                    {% endif %}
                                                 </label>
                                             </div>
                                             {% endfor %}
@@ -195,18 +211,21 @@
                                 <div class="col-md-6">
                                     <label class="form-label required-label">Année scolaire</label>
                                     <input type="text" class="form-control form-control-lg" 
-                                           name="annee_scolaire" value="{{ tp.annee_scolaire }}" 
-                                           pattern="\d{4}-\d{4}" placeholder="2023-2024"
+                                           name="annee_scolaire" 
+                                           value="{{ tp.annee_scolaire }}" 
+                                           pattern="\d{4}-\d{4}" 
+                                           placeholder="2023-2024"
                                            required>
                                 </div>
 
                                 <!-- Boutons -->
-                                <div class="col-12 mt-5">
+                                <div class="col-12 mt-4">
                                     <div class="d-grid gap-3 d-md-flex justify-content-md-end">
                                         <button type="submit" class="btn btn-success btn-lg px-5">
                                             <i class="fas fa-save me-2"></i>Enregistrer
                                         </button>
-                                        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-lg px-5">
+                                        <a href="{{ url_for('emploi', week_offset=redirect_week) }}" 
+                                           class="btn btn-outline-secondary btn-lg px-5">
                                             <i class="fas fa-times me-2"></i>Annuler
                                         </a>
                                     </div>
