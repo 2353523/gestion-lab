@@ -306,12 +306,10 @@ def creer_tp():
         'P5': ('17:00', '18:30')
     }
 
-    # Récupération des paramètres initiaux
-    from_emploi = 'date' in request.args  # Nouveau flag
-    default_date = request.args.get('date')  # Plus de valeur par défaut
+    from_emploi = 'date' in request.args
+    default_date = request.args.get('date')
     default_periode = request.args.get('periode', None)
 
-    # Récupération des données pour les listes déroulantes
     cur = mysql.connection.cursor()
     cur.execute("SELECT id_prof, prenom, nom FROM professeur")
     professeurs = cur.fetchall()
@@ -333,9 +331,8 @@ def creer_tp():
                 'annee_scolaire': request.form['annee_scolaire'].strip()
             }
 
-            # Validation spécifique selon l'origine
             if from_emploi and not data['date_tp']:
-                data['date_tp'] = default_date  # Force la date de l'emploi
+                data['date_tp'] = default_date
 
             if not all([data['nom_tp'], data['id_prof'], data['id_matiere'], data['date_tp']]):
                 flash("Tous les champs obligatoires (*) doivent être remplis", "danger")
@@ -357,7 +354,6 @@ def creer_tp():
                                     from_emploi=from_emploi,
                                     default_date=default_date)
 
-            # Insertion en base
             cur = mysql.connection.cursor()
             created_count = 0
             
@@ -366,6 +362,23 @@ def creer_tp():
                     debut, fin = CRENEAUX[periode]
                     heure_debut = datetime.strptime(f"{data['date_tp']} {debut}", "%Y-%m-%d %H:%M")
                     heure_fin = datetime.strptime(f"{data['date_tp']} {fin}", "%Y-%m-%d %H:%M")
+
+                    # Vérification créneau occupé
+                    cur.execute("""
+                        SELECT id_tp FROM tp 
+                        WHERE heure_debut = %s 
+                        AND heure_fin = %s
+                    """, (heure_debut, heure_fin))
+                    if cur.fetchone():
+                        flash(f"Le créneau {periode} ({debut}-{fin}) est déjà occupé !", "danger")
+                        mysql.connection.rollback()
+                        return render_template('creer_tp.html',
+                                            professeurs=professeurs,
+                                            matieres=matieres,
+                                            CRENEAUX=CRENEAUX,
+                                            laboratoires=laboratoires,
+                                            from_emploi=from_emploi,
+                                            default_date=default_date)
 
                     cur.execute("""
                         INSERT INTO tp (
@@ -421,13 +434,11 @@ def editer_tp(id):
         'P5': ('17:00', '18:30')
     }
 
-    # Récupération du paramètre de redirection
     redirect_week = request.args.get('redirect_week', 0, type=int)
     from_emploi = 'redirect_week' in request.args
     
     cur = mysql.connection.cursor()
     try:
-        # Récupération du TP existant avec jointures
         cur.execute("""
             SELECT 
                 tp.*,
@@ -451,7 +462,6 @@ def editer_tp(id):
             return redirect(url_for('emploi', week_offset=redirect_week))
 
         if request.method == 'POST':
-            # Récupération des données du formulaire
             data = {
                 'nom_tp': request.form['nom_tp'].strip(),
                 'id_prof': request.form['id_prof'].strip(),
@@ -463,11 +473,9 @@ def editer_tp(id):
                 'redirect_week': request.form.get('redirect_week', 0, type=int)
             }
 
-            # Validation spécifique
             if from_emploi and not data['date_tp']:
                 data['date_tp'] = tp['date_tp'].strftime('%Y-%m-%d')
 
-            # Validation des champs obligatoires
             if not all([data['nom_tp'], data['id_prof'], data['id_matiere'], data['date_tp']]):
                 flash("Tous les champs obligatoires doivent être remplis", "danger")
                 return render_edit_form(cur, tp, data, redirect_week, from_emploi)
@@ -477,17 +485,27 @@ def editer_tp(id):
                 return render_edit_form(cur, tp, data, redirect_week, from_emploi)
 
             try:
-                # Suppression de l'ancien TP
+                # Suppression ancien TP
                 cur.execute("DELETE FROM tp WHERE id_tp = %s", (id,))
                 
-                # Création des nouveaux TP
+                # Vérification et création des nouveaux TP
                 created_count = 0
                 for periode in data['periodes']:
                     if periode in CRENEAUX:
                         debut, fin = CRENEAUX[periode]
-                        
                         heure_debut = datetime.strptime(f"{data['date_tp']} {debut}", "%Y-%m-%d %H:%M")
                         heure_fin = datetime.strptime(f"{data['date_tp']} {fin}", "%Y-%m-%d %H:%M")
+
+                        # Vérification créneau occupé
+                        cur.execute("""
+                            SELECT id_tp FROM tp 
+                            WHERE heure_debut = %s 
+                            AND heure_fin = %s
+                        """, (heure_debut, heure_fin))
+                        if cur.fetchone():
+                            flash(f"Le créneau {periode} ({debut}-{fin}) est déjà occupé !", "danger")
+                            mysql.connection.rollback()
+                            return render_edit_form(cur, tp, data, redirect_week, from_emploi)
 
                         cur.execute("""
                             INSERT INTO tp (
@@ -512,7 +530,6 @@ def editer_tp(id):
                 flash(f"Erreur base de données : {str(e)}", "danger")
                 return render_edit_form(cur, tp, data, redirect_week, from_emploi)
 
-        # Préparation des données pour le formulaire GET
         return render_edit_form(cur, tp, None, redirect_week, from_emploi)
 
     except Exception as e:
