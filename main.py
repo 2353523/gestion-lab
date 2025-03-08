@@ -7,6 +7,9 @@ from flask import session
 from dateutil.relativedelta import relativedelta
 from flask_session import Session 
 from flask_wtf.csrf import CSRFProtect
+import mysql.connector as pymysql
+import mysql.connector
+from mysql.connector import Error
 
 
 
@@ -23,9 +26,6 @@ app.config.update(
     PERMANENT_SESSION_LIFETIME=timedelta(hours=2)
 )
 Session(app)
-# Remplacez la fonction verify_access existante par :
-
-
 # Configuration MySQL
 app.config['MYSQL_HOST'] = 'localhost'
 app.config['MYSQL_USER'] = 'root'
@@ -33,7 +33,9 @@ app.config['MYSQL_PASSWORD'] = ''
 app.config['MYSQL_DB'] = 'gestion_lab'
 app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
 
-mysql = MySQL(app)
+mysql = MySQL(app)  # <-- Déplacer cette ligne ICI
+
+
 
 def get_tp_status(start_time, end_time):
     now = datetime.now().time()
@@ -44,29 +46,7 @@ def get_tp_status(start_time, end_time):
     else:
         return 'Terminé'
 
-def create_default_users():
-    with app.app_context():
-        cur = mysql.connection.cursor()
-        try:
-            # Création admin
-            cur.execute("SELECT * FROM utilisateur WHERE username = 'admin'")
-            if not cur.fetchone():
-                hashed_pw = generate_password_hash('admin123')
-                cur.execute("INSERT INTO utilisateur (username, password, role) VALUES (%s, %s, %s)",
-                          ('admin', hashed_pw, 'admin'))
-            
-            # Création user
-            cur.execute("SELECT * FROM utilisateur WHERE username = 'user'")
-            if not cur.fetchone():
-                hashed_pw = generate_password_hash('user123')
-                cur.execute("INSERT INTO utilisateur (username, password, role) VALUES (%s, %s, %s)",
-                          ('user', hashed_pw, 'user'))
-            
-            mysql.connection.commit()
-        except Exception as e:
-            print(f"Erreur création utilisateurs: {str(e)}")
-        finally:
-            cur.close()
+
 
 # Créer les utilisateurs au démarrage
 def create_default_users():
@@ -109,13 +89,15 @@ def create_default_users():
         finally:
             cur.close()
 
+# Supprimez la première définition de create_default_users() (lignes 42 à 60)
+# Gardez seulement la deuxième définition (à partir de la ligne 62)
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         try:
             username = request.form['username']
             password = request.form['password']
-            print(f"Tentative de connexion : {username}")  # Debug
             
             cur = mysql.connection.cursor()
             cur.execute("SELECT * FROM utilisateur WHERE username = %s", (username,))
@@ -123,23 +105,24 @@ def login():
             cur.close()
             
             if user:
-                print(f"Utilisateur trouvé : {user['username']}")  # Debug
-# Dans la route /login, corrigez l'indentation comme ceci :
-            if check_password_hash(user['password'], password):
-                session.clear()
-                session['user_id'] = user['id']  # <-- Aligner cette ligne avec les précédentes
-                session['username'] = user['username']
-                session['role'] = user['role']
-                session['show_welcome'] = True
-                session.modified = True
-                print(f"Session après login: {dict(session)}")
-                return redirect(url_for('index'))
+                print(f"Utilisateur trouvé : {user['username']}")
+                if check_password_hash(user['password'], password):
+                    session.clear()
+                    session['user_id'] = user['id']
+                    session['username'] = user['username']
+                    session['role'] = user['role']
+                    session['show_welcome'] = True
+                    session.modified = True
+                    return redirect(url_for('index'))
+                else:
+                    flash('Mot de passe incorrect', 'danger')
+            else:
+                flash('Utilisateur inconnu', 'danger')
             
-            flash('Identifiants incorrects', 'danger')
             return redirect(url_for('login'))
         
         except Exception as e:
-            print(f"Erreur de connexion : {str(e)}")  # Debug
+            print(f"Erreur de connexion : {str(e)}")
             flash('Erreur système', 'danger')
     
     return render_template('login.html')
@@ -272,6 +255,123 @@ def index():
                          },
                          date_actuelle=datetime.now().strftime('%d/%m/%Y'))
 
+def get_db_connection():
+    """Établit une connexion sécurisée à la base de données"""
+    try:
+        return mysql.connector.connect(
+            host=app.config['MYSQL_HOST'],
+            user=app.config['MYSQL_USER'],
+            password=app.config['MYSQL_PASSWORD'],
+            database=app.config['MYSQL_DB']
+        )
+    except Error as e:
+        app.logger.error(f"Erreur de connexion MySQL: {str(e)}")
+        raise
+
+@app.route('/admin/format-db', methods=['POST'])
+def format_database():
+    """Réinitialisation complète de la base de données avec gestion des erreurs détaillée"""
+    
+    # Vérification des autorisations
+    if not session.get('role') == 'admin':
+        abort(403)
+    
+    # Validation de la confirmation
+    if request.form.get('confirmation', '').upper() != 'CONFIRMER':
+        flash('Confirmation invalide', 'danger')
+        return redirect(url_for('index'))
+
+    conn = None
+    cursor = None
+    try:
+        # Établissement de la connexion
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Désactivation des contraintes
+        cursor.execute("SET FOREIGN_KEY_CHECKS = 0")
+        conn.commit()
+
+        # Liste ordonnée des tables selon les dépendances
+        tables = [
+            'historique_',
+            'ligne_recu',
+            'recu',
+            'stock_laboratoire',
+            'article',
+            'type',
+            'categorie',
+            'stock_magasin',
+            'tp',
+            'matiere',
+            'professeur',
+            'laboratoire',
+            'utilisateur'
+        ]
+
+        # Vidage sécurisé des tables
+        for table in tables:
+            try:
+                cursor.execute(f"TRUNCATE TABLE `{table}`")  # Plus efficace que DELETE
+                app.logger.info(f"Table {table} vidée")
+            except Error as e:
+                conn.rollback()
+                app.logger.error(f"Échec sur table {table}: {str(e)}")
+                raise
+
+        # Réinsertion des données de base avec paramètres sécurisés
+        base_data = [
+            
+            ('professeur', ['prenom', 'nom', 'email', 'telephone'], [
+                ('meden', 'sidahmed', '23543@isme.esp.mr', '12333333'),
+                ('nn', '233', 'sidahmedmeden07@gmail.com', '22222222'),
+                ('d', 'dd', 'ss@isme.esp.mr', '22233333')
+            ]),
+            ('utilisateur', ['username', 'password', 'role'], [
+                ('admin', 'scrypt:32768:8:1$rkpkHCNutBHs3SVB$d12470ea3d4be77c06195f0947400d2107d28cc7ec2bff61f8b4c2e19740c875104d864d11509ab7760abb8d95fbf3903db237e9776494462f99f3440f4fa109', 'admin'),
+                ('user', 'scrypt:32768:8:1$aGYiKRgvvcZ0S3FN$b82fa992d132278f95637d8eccdde4d941b207bc8e546983a5a74e857137e00f96a04730e1210d93c6fc5ef76e7d4da43d9124cdc84e1ecdfb98ffb147b79f20', 'user')
+            ])
+        ]
+
+        for table, columns, data in base_data:
+            try:
+                placeholders = ', '.join(['%s'] * len(columns))
+                columns_str = ', '.join([f'`{col}`' for col in columns])
+                query = f"INSERT INTO `{table}` ({columns_str}) VALUES ({placeholders})"
+                
+                cursor.executemany(query, data)
+                app.logger.info(f"{len(data)} enregistrements insérés dans {table}")
+            except Error as e:
+                conn.rollback()
+                app.logger.error(f"Échec insertion dans {table}: {str(e)}")
+                raise
+
+        # Réactivation des contraintes
+        cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
+        conn.commit()
+
+        flash('Réinitialisation réussie', 'success')
+
+    except Error as e:
+        flash(f'Erreur base de données: {e.msg} (Code {e.errno})', 'danger')
+    except Exception as e:
+        app.logger.exception("Erreur inattendue")
+        flash('Une erreur critique est survenue', 'danger')
+    finally:
+        # Nettoyage des ressources
+        try:
+            if cursor:
+                cursor.close()
+        except Error as e:
+            app.logger.error(f"Erreur fermeture cursor: {str(e)}")
+        
+        try:
+            if conn:
+                conn.close()
+        except Error as e:
+            app.logger.error(f"Erreur fermeture connexion: {str(e)}")
+
+    return redirect(url_for('index'))
 @app.route('/supprimer_tp/<int:id>', methods=['POST'])
 def supprimer_tp(id):
     redirect_week = request.args.get('redirect_week', 0, type=int)
@@ -1020,4 +1120,6 @@ def emploi():
             cur.close()
 
 if __name__ == '__main__':
+    with app.app_context():
+        create_default_users()
     app.run(debug=True)
