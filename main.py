@@ -346,12 +346,24 @@ def creer_tp():
                     heure_debut = datetime.strptime(f"{data['date_tp']} {debut}", "%Y-%m-%d %H:%M")
                     heure_fin = datetime.strptime(f"{data['date_tp']} {fin}", "%Y-%m-%d %H:%M")
 
-                    # Vérification créneau occupé
+                    # Remplacer la requête SQL existante par :
                     cur.execute("""
-                        SELECT id_tp FROM tp 
-                        WHERE heure_debut = %s 
-                        AND heure_fin = %s
-                    """, (heure_debut, heure_fin))
+                        SELECT id_tp 
+                        FROM tp 
+                        WHERE (
+                            (heure_debut < %s AND heure_fin > %s) OR
+                            (heure_debut < %s AND heure_fin > %s) OR
+                            (heure_debut BETWEEN %s AND %s) OR
+                            (heure_fin BETWEEN %s AND %s)
+                        )
+                        AND id_prof = %s
+                    """, (
+                        heure_fin, heure_debut,
+                        heure_debut, heure_fin,
+                        heure_debut, heure_fin,
+                        heure_debut, heure_fin,
+                        data['id_prof']
+                    ))
                     if cur.fetchone():
                         flash(f"Le créneau {periode} ({debut}-{fin}) est déjà occupé !", "danger")
                         mysql.connection.rollback()
@@ -479,12 +491,24 @@ def editer_tp(id):
                         heure_debut = datetime.strptime(f"{data['date_tp']} {debut}", "%Y-%m-%d %H:%M")
                         heure_fin = datetime.strptime(f"{data['date_tp']} {fin}", "%Y-%m-%d %H:%M")
 
-                        # Vérification créneau occupé
                         cur.execute("""
-                            SELECT id_tp FROM tp 
-                            WHERE heure_debut = %s 
-                            AND heure_fin = %s
-                        """, (heure_debut, heure_fin))
+                                SELECT id_tp 
+                                FROM tp 
+                                WHERE (
+                                    (heure_debut < %s AND heure_fin > %s) OR
+                                    (heure_debut < %s AND heure_fin > %s) OR
+                                    (heure_debut BETWEEN %s AND %s) OR
+                                    (heure_fin BETWEEN %s AND %s)
+                                )
+                                AND id_prof = %s
+                                AND id_tp != %s  <!-- Exclusion du TP actuel -->
+                            """, (
+                                heure_fin, heure_debut,
+                                heure_debut, heure_fin,
+                                heure_debut, heure_fin,
+                                heure_debut, heure_fin,
+                                data['id_prof'], id
+                            ))
                         if cur.fetchone():
                             flash(f"Le créneau {periode} ({debut}-{fin}) est déjà occupé !", "danger")
                             mysql.connection.rollback()
@@ -955,12 +979,12 @@ def get_period(t):
 @app.route('/emploi')
 def emploi():
     try:
+        lab_id = request.args.get('lab_id', type=int)
         week_offset = int(request.args.get('week_offset', 0))
         today = datetime.today()
         start_date = today - timedelta(days=today.weekday()) + timedelta(weeks=week_offset)
         days = [start_date + timedelta(days=i) for i in range(7)]  # Lundi à dimanche
 
-        # Créneaux avec des objets time
         CRENEAUX = {
             'P1': (time(8, 0), time(9, 30)),
             'P2': (time(9, 45), time(11, 15)),
@@ -970,8 +994,13 @@ def emploi():
         }
 
         cur = mysql.connection.cursor()
-        # Modification de la requête avec YEARWEEK mode 1 (semaine commence le lundi)
-        cur.execute("""
+        
+        # Récupération de la liste des laboratoires
+        cur.execute("SELECT id_laboratoire, nom_laboratoire FROM laboratoire")
+        laboratoires = cur.fetchall()
+
+        # Requête modifiée pour filtrer par labo
+        query = """
             SELECT 
                 tp.id_tp,
                 tp.nom_tp,
@@ -981,32 +1010,40 @@ def emploi():
                 p.prenom,
                 p.nom,
                 m.nom_matiere,
+                l.id_laboratoire,
                 l.nom_laboratoire
             FROM tp
             JOIN professeur p ON tp.id_prof = p.id_prof
             JOIN matiere m ON tp.id_matiere = m.id_matiere
             LEFT JOIN laboratoire l ON tp.id_laboratoire = l.id_laboratoire
             WHERE YEARWEEK(tp.heure_debut, 1) = YEARWEEK(%s, 1)
-            ORDER BY tp.heure_debut
-        """, (start_date,))
+        """
+        params = [start_date]
+        
+        if lab_id:
+            query += " AND l.id_laboratoire = %s"
+            params.append(lab_id)
+            
+        query += " ORDER BY tp.heure_debut, l.id_laboratoire"
+        
+        cur.execute(query, tuple(params))
 
         tps = {}
         for tp in cur.fetchall():
-            # Conversion en time
             debut = tp['debut']
             if isinstance(debut, timedelta):
                 total_seconds = debut.total_seconds()
-                hours = int(total_seconds // 3600)
-                minutes = int((total_seconds % 3600) // 60)
-                debut = time(hours, minutes)
+                debut = time(int(total_seconds // 3600), int((total_seconds % 3600) // 60))
             
             periode = get_period(debut)
             
             if periode:
-                date_str = tp['date_tp'].strftime('%Y-%m-%d')
-                tps[f"{date_str}-{periode}"] = tp
+                lab_key = f"{tp['id_laboratoire']}-{tp['date_tp'].strftime('%Y-%m-%d')}-{periode}"
+                tps[lab_key] = tp
 
         return render_template('emplois/emploi.html',
+                            laboratoires=laboratoires,
+                            selected_lab=lab_id,
                             days=days,
                             CRENEAUX=CRENEAUX,
                             tps=tps,
@@ -1018,7 +1055,6 @@ def emploi():
     finally:
         if 'cur' in locals():
             cur.close()
-
 if __name__ == '__main__':
     with app.app_context():
         create_default_users()
