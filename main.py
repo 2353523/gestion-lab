@@ -255,123 +255,6 @@ def index():
                          },
                          date_actuelle=datetime.now().strftime('%d/%m/%Y'))
 
-def get_db_connection():
-    """Établit une connexion sécurisée à la base de données"""
-    try:
-        return mysql.connector.connect(
-            host=app.config['MYSQL_HOST'],
-            user=app.config['MYSQL_USER'],
-            password=app.config['MYSQL_PASSWORD'],
-            database=app.config['MYSQL_DB']
-        )
-    except Error as e:
-        app.logger.error(f"Erreur de connexion MySQL: {str(e)}")
-        raise
-
-@app.route('/admin/format-db', methods=['POST'])
-def format_database():
-    """Réinitialisation complète de la base de données avec gestion des erreurs détaillée"""
-    
-    # Vérification des autorisations
-    if not session.get('role') == 'admin':
-        abort(403)
-    
-    # Validation de la confirmation
-    if request.form.get('confirmation', '').upper() != 'CONFIRMER':
-        flash('Confirmation invalide', 'danger')
-        return redirect(url_for('index'))
-
-    conn = None
-    cursor = None
-    try:
-        # Établissement de la connexion
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-
-        # Désactivation des contraintes
-        cursor.execute("SET FOREIGN_KEY_CHECKS = 0")
-        conn.commit()
-
-        # Liste ordonnée des tables selon les dépendances
-        tables = [
-            'historique_',
-            'ligne_recu',
-            'recu',
-            'stock_laboratoire',
-            'article',
-            'type',
-            'categorie',
-            'stock_magasin',
-            'tp',
-            'matiere',
-            'professeur',
-            'laboratoire',
-            'utilisateur'
-        ]
-
-        # Vidage sécurisé des tables
-        for table in tables:
-            try:
-                cursor.execute(f"TRUNCATE TABLE `{table}`")  # Plus efficace que DELETE
-                app.logger.info(f"Table {table} vidée")
-            except Error as e:
-                conn.rollback()
-                app.logger.error(f"Échec sur table {table}: {str(e)}")
-                raise
-
-        # Réinsertion des données de base avec paramètres sécurisés
-        base_data = [
-            
-            ('professeur', ['prenom', 'nom', 'email', 'telephone'], [
-                ('meden', 'sidahmed', '23543@isme.esp.mr', '12333333'),
-                ('nn', '233', 'sidahmedmeden07@gmail.com', '22222222'),
-                ('d', 'dd', 'ss@isme.esp.mr', '22233333')
-            ]),
-            ('utilisateur', ['username', 'password', 'role'], [
-                ('admin', 'scrypt:32768:8:1$rkpkHCNutBHs3SVB$d12470ea3d4be77c06195f0947400d2107d28cc7ec2bff61f8b4c2e19740c875104d864d11509ab7760abb8d95fbf3903db237e9776494462f99f3440f4fa109', 'admin'),
-                ('user', 'scrypt:32768:8:1$aGYiKRgvvcZ0S3FN$b82fa992d132278f95637d8eccdde4d941b207bc8e546983a5a74e857137e00f96a04730e1210d93c6fc5ef76e7d4da43d9124cdc84e1ecdfb98ffb147b79f20', 'user')
-            ])
-        ]
-
-        for table, columns, data in base_data:
-            try:
-                placeholders = ', '.join(['%s'] * len(columns))
-                columns_str = ', '.join([f'`{col}`' for col in columns])
-                query = f"INSERT INTO `{table}` ({columns_str}) VALUES ({placeholders})"
-                
-                cursor.executemany(query, data)
-                app.logger.info(f"{len(data)} enregistrements insérés dans {table}")
-            except Error as e:
-                conn.rollback()
-                app.logger.error(f"Échec insertion dans {table}: {str(e)}")
-                raise
-
-        # Réactivation des contraintes
-        cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
-        conn.commit()
-
-        flash('Réinitialisation réussie', 'success')
-
-    except Error as e:
-        flash(f'Erreur base de données: {e.msg} (Code {e.errno})', 'danger')
-    except Exception as e:
-        app.logger.exception("Erreur inattendue")
-        flash('Une erreur critique est survenue', 'danger')
-    finally:
-        # Nettoyage des ressources
-        try:
-            if cursor:
-                cursor.close()
-        except Error as e:
-            app.logger.error(f"Erreur fermeture cursor: {str(e)}")
-        
-        try:
-            if conn:
-                conn.close()
-        except Error as e:
-            app.logger.error(f"Erreur fermeture connexion: {str(e)}")
-
-    return redirect(url_for('index'))
 @app.route('/supprimer_tp/<int:id>', methods=['POST'])
 def supprimer_tp(id):
     redirect_week = request.args.get('redirect_week', 0, type=int)
@@ -406,12 +289,10 @@ def creer_tp():
         'P5': ('17:00', '18:30')
     }
 
-    # Récupération des paramètres initiaux
-    from_emploi = 'date' in request.args  # Nouveau flag
-    default_date = request.args.get('date')  # Plus de valeur par défaut
+    from_emploi = 'date' in request.args
+    default_date = request.args.get('date')
     default_periode = request.args.get('periode', None)
 
-    # Récupération des données pour les listes déroulantes
     cur = mysql.connection.cursor()
     cur.execute("SELECT id_prof, prenom, nom FROM professeur")
     professeurs = cur.fetchall()
@@ -433,9 +314,8 @@ def creer_tp():
                 'annee_scolaire': request.form['annee_scolaire'].strip()
             }
 
-            # Validation spécifique selon l'origine
             if from_emploi and not data['date_tp']:
-                data['date_tp'] = default_date  # Force la date de l'emploi
+                data['date_tp'] = default_date
 
             if not all([data['nom_tp'], data['id_prof'], data['id_matiere'], data['date_tp']]):
                 flash("Tous les champs obligatoires (*) doivent être remplis", "danger")
@@ -457,7 +337,6 @@ def creer_tp():
                                     from_emploi=from_emploi,
                                     default_date=default_date)
 
-            # Insertion en base
             cur = mysql.connection.cursor()
             created_count = 0
             
@@ -466,6 +345,23 @@ def creer_tp():
                     debut, fin = CRENEAUX[periode]
                     heure_debut = datetime.strptime(f"{data['date_tp']} {debut}", "%Y-%m-%d %H:%M")
                     heure_fin = datetime.strptime(f"{data['date_tp']} {fin}", "%Y-%m-%d %H:%M")
+
+                    # Vérification créneau occupé
+                    cur.execute("""
+                        SELECT id_tp FROM tp 
+                        WHERE heure_debut = %s 
+                        AND heure_fin = %s
+                    """, (heure_debut, heure_fin))
+                    if cur.fetchone():
+                        flash(f"Le créneau {periode} ({debut}-{fin}) est déjà occupé !", "danger")
+                        mysql.connection.rollback()
+                        return render_template('creer_tp.html',
+                                            professeurs=professeurs,
+                                            matieres=matieres,
+                                            CRENEAUX=CRENEAUX,
+                                            laboratoires=laboratoires,
+                                            from_emploi=from_emploi,
+                                            default_date=default_date)
 
                     cur.execute("""
                         INSERT INTO tp (
@@ -521,13 +417,11 @@ def editer_tp(id):
         'P5': ('17:00', '18:30')
     }
 
-    # Récupération du paramètre de redirection
     redirect_week = request.args.get('redirect_week', 0, type=int)
     from_emploi = 'redirect_week' in request.args
     
     cur = mysql.connection.cursor()
     try:
-        # Récupération du TP existant avec jointures
         cur.execute("""
             SELECT 
                 tp.*,
@@ -551,7 +445,6 @@ def editer_tp(id):
             return redirect(url_for('emploi', week_offset=redirect_week))
 
         if request.method == 'POST':
-            # Récupération des données du formulaire
             data = {
                 'nom_tp': request.form['nom_tp'].strip(),
                 'id_prof': request.form['id_prof'].strip(),
@@ -563,11 +456,9 @@ def editer_tp(id):
                 'redirect_week': request.form.get('redirect_week', 0, type=int)
             }
 
-            # Validation spécifique
             if from_emploi and not data['date_tp']:
                 data['date_tp'] = tp['date_tp'].strftime('%Y-%m-%d')
 
-            # Validation des champs obligatoires
             if not all([data['nom_tp'], data['id_prof'], data['id_matiere'], data['date_tp']]):
                 flash("Tous les champs obligatoires doivent être remplis", "danger")
                 return render_edit_form(cur, tp, data, redirect_week, from_emploi)
@@ -577,17 +468,27 @@ def editer_tp(id):
                 return render_edit_form(cur, tp, data, redirect_week, from_emploi)
 
             try:
-                # Suppression de l'ancien TP
+                # Suppression ancien TP
                 cur.execute("DELETE FROM tp WHERE id_tp = %s", (id,))
                 
-                # Création des nouveaux TP
+                # Vérification et création des nouveaux TP
                 created_count = 0
                 for periode in data['periodes']:
                     if periode in CRENEAUX:
                         debut, fin = CRENEAUX[periode]
-                        
                         heure_debut = datetime.strptime(f"{data['date_tp']} {debut}", "%Y-%m-%d %H:%M")
                         heure_fin = datetime.strptime(f"{data['date_tp']} {fin}", "%Y-%m-%d %H:%M")
+
+                        # Vérification créneau occupé
+                        cur.execute("""
+                            SELECT id_tp FROM tp 
+                            WHERE heure_debut = %s 
+                            AND heure_fin = %s
+                        """, (heure_debut, heure_fin))
+                        if cur.fetchone():
+                            flash(f"Le créneau {periode} ({debut}-{fin}) est déjà occupé !", "danger")
+                            mysql.connection.rollback()
+                            return render_edit_form(cur, tp, data, redirect_week, from_emploi)
 
                         cur.execute("""
                             INSERT INTO tp (
@@ -612,7 +513,6 @@ def editer_tp(id):
                 flash(f"Erreur base de données : {str(e)}", "danger")
                 return render_edit_form(cur, tp, data, redirect_week, from_emploi)
 
-        # Préparation des données pour le formulaire GET
         return render_edit_form(cur, tp, None, redirect_week, from_emploi)
 
     except Exception as e:

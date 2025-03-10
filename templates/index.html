@@ -158,14 +158,7 @@
                             <span class="badge bg-danger">ADMIN</span>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li>
-                                <button class="dropdown-item text-danger fw-bold" 
-                                        data-bs-toggle="modal" 
-                                        data-bs-target="#resetDbModal">
-                                    <i class="fas fa-database me-2"></i>
-                                    Réinitialiser la base
-                                </button>
-                            </li>
+                           
                             <li><hr class="dropdown-divider"></li>
                             <li>
                                 <a class="dropdown-item" href="{{ url_for('logout') }}">
@@ -185,44 +178,7 @@
 <!-- Ajoutez ce modal juste avant la fermeture du body -->
 <div class="modal fade" id="resetDbModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title">
-                    <i class="fas fa-database me-2"></i>Réinitialisation de la base
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            
-            <form method="POST" action="{{ url_for('format_database') }}">
-                <div class="modal-body">
-                    <div class="alert alert-danger">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        Cette action supprimera TOUTES les données !
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Tapez "CONFIRMER" pour valider</label>
-                        <input type="text" 
-                               class="form-control" 
-                               id="confirmationInput"
-                               name="confirmation"
-                               required
-                               oninput="this.value = this.value.toUpperCase()">
-                    </div>
-                    
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                </div>
-                
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        Annuler
-                    </button>
-                    <button type="submit" class="btn btn-danger" id="confirmBtn" disabled>
-                        Confirmer
-                    </button>
-                </div>
-            </form>
-        </div>
+
     </div>
 </div>
 
@@ -420,33 +376,9 @@
                 });
             }
         });
-        // Validation dynamique de la confirmation
-        document.addEventListener('DOMContentLoaded', function() {
-            const confirmationInput = document.getElementById('confirmationInput');
-            const confirmButton = document.getElementById('confirmButton');
-            
-            if (confirmationInput && confirmButton) {
-                confirmationInput.addEventListener('input', function(e) {
-                    const isValid = e.target.value.toUpperCase() === 'CONFIRMER';
-                    confirmButton.disabled = !isValid;
-                    
-                    // Feedback visuel
-                    if (isValid) {
-                        confirmationInput.classList.remove('is-invalid');
-                        confirmationInput.classList.add('is-valid');
-                    } else {
-                        confirmationInput.classList.remove('is-valid');
-                        confirmationInput.classList.add('is-invalid');
-                    }
-                });
-            }
-        });
+        
 
-        // Validation dynamique
-        document.getElementById('confirmationInput').addEventListener('input', function(e) {
-            const btn = document.getElementById('confirmBtn');
-            btn.disabled = e.target.value.toUpperCase() !== 'CONFIRMER';
-        });
+        
             
     </script>
 
