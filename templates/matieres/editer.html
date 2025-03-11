@@ -120,6 +120,15 @@
                                    placeholder="Ex: Chimie Organique">
                         </div>
 
+                        <div class="col-12">
+                            <label class="form-label">Niveau <span class="text-danger">*</span></label>
+                            <select class="form-select form-select-lg" name="niveau" required>
+                                <option value="L1" {% if matiere.niveau == 'L1' %}selected{% endif %}>Licence 1 (L1)</option>
+                                <option value="L2" {% if matiere.niveau == 'L2' %}selected{% endif %}>Licence 2 (L2)</option>
+                                <option value="L3" {% if matiere.niveau == 'L3' %}selected{% endif %}>Licence 3 (L3)</option>
+                            </select>
+                        </div>
+
                         <div class="d-flex justify-content-end gap-2 mt-4">
                             <a href="{{ url_for('liste_matieres') }}" class="btn btn-outline-secondary btn-lg">
                                 <i class="fas fa-times me-2"></i> Annuler

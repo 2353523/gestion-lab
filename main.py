@@ -4,12 +4,10 @@ from flask import Flask, render_template, request, redirect, url_for, flash, ses
 from flask_mysqldb import MySQL
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask import session
-from dateutil.relativedelta import relativedelta
 from flask_session import Session 
 from flask_wtf.csrf import CSRFProtect
-import mysql.connector as pymysql
 import mysql.connector
-from mysql.connector import Error
+
 
 
 
