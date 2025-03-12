@@ -119,66 +119,72 @@
 
                         <form method="POST" class="needs-validation" novalidate>
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <input type="hidden" name="redirect_week" value="{{ redirect_week }}">
-
+                            {% if tp %}<input type="hidden" name="redirect_week" value="{{ redirect_week }}">{% endif %}
+                        
                             <div class="row g-4">
-                                <!-- Nom TP -->
+                                <!-- Nom du TP -->
                                 <div class="col-12">
-                                    <label class="form-label required-label">Nom du TP</label>
+                                    <label for="nom_tp" class="form-label required-label">Nom du TP</label>
                                     <input type="text" class="form-control form-control-lg" 
-                                           name="nom_tp" value="{{ tp.nom_tp }}" required
-                                           placeholder="Ex: Chromatographie des pigments végétaux">
+                                           id="nom_tp" name="nom_tp" 
+                                           value="{{ tp.nom_tp if tp else '' }}" 
+                                           placeholder="Ex: Chromatographie des pigments végétaux" 
+                                           required>
                                 </div>
-
-                                <!-- Sélection des entités -->
+                        
+                                <!-- Sélection du professeur avec vérification disponibilité -->
                                 <div class="col-md-6">
-                                    <label class="form-label required-label">Professeur</label>
-                                    <select class="form-select form-select-lg" name="id_prof" required>
+                                    <label for="id_prof" class="form-label required-label">Professeur</label>
+                                    <select class="form-select form-select-lg" id="id_prof" name="id_prof" required>
                                         <option value="" disabled>Choisir un professeur...</option>
                                         {% for prof in professeurs %}
-                                        <option value="{{ prof.id_prof }}" 
-                                            {{ 'selected' if prof.id_prof == tp.id_prof|int }}>
+                                        <option value="{{ prof.id_prof }}"
+                                            {{ 'selected' if tp and prof.id_prof == tp.id_prof|int }}>
                                             {{ prof.prenom }} {{ prof.nom }}
                                         </option>
                                         {% endfor %}
                                     </select>
+                                    <div id="professor-availability" class="mt-2 small"></div>
                                 </div>
-
+                        
+                                <!-- Sélection de la matière -->
                                 <div class="col-md-6">
-                                    <label class="form-label required-label">Matière</label>
-                                    <select class="form-select form-select-lg" name="id_matiere" required>
+                                    <label for="id_matiere" class="form-label required-label">Matière</label>
+                                    <select class="form-select form-select-lg" id="id_matiere" name="id_matiere" required>
                                         <option value="" disabled>Choisir une matière...</option>
                                         {% for matiere in matieres %}
-                                        <option value="{{ matiere.id_matiere }}" 
-                                            {{ 'selected' if matiere.id_matiere == tp.id_matiere|int }}>
-                                            {{ matiere.nom_matiere }}
+                                        <option value="{{ matiere.id_matiere }}"
+                                            {{ 'selected' if tp and matiere.id_matiere == tp.id_matiere|int }}>
+                                            {{ matiere.nom_matiere }} ({{ matiere.niveau }})
                                         </option>
                                         {% endfor %}
                                     </select>
                                 </div>
-
+                        
+                                <!-- Sélection du laboratoire -->
                                 <div class="col-md-6">
-                                    <label class="form-label">Laboratoire</label>
-                                    <select class="form-select form-select-lg" name="id_laboratoire">
+                                    <label for="id_laboratoire" class="form-label">Laboratoire</label>
+                                    <select class="form-select form-select-lg" id="id_laboratoire" name="id_laboratoire">
                                         <option value="">Aucun laboratoire</option>
                                         {% for lab in laboratoires %}
-                                        <option value="{{ lab.id_laboratoire }}" 
-                                            {{ 'selected' if lab.id_laboratoire == tp.id_laboratoire|int }}>
+                                        <option value="{{ lab.id_laboratoire }}"
+                                            {{ 'selected' if tp and lab.id_laboratoire == tp.id_laboratoire|int }}>
                                             {{ lab.nom_laboratoire }}
                                         </option>
                                         {% endfor %}
                                     </select>
                                 </div>
-
+                        
                                 <!-- Date -->
                                 <div class="col-md-6">
-                                    <label class="form-label required-label">Date</label>
+                                    <label for="date_tp" class="form-label required-label">Date</label>
                                     <input type="date" class="form-control form-control-lg" 
-                                           name="date_tp" 
-                                           value="{{ tp.heure_debut.strftime('%Y-%m-%d') }}" 
+                                           id="date_tp" name="date_tp" 
+                                           value="{{ tp.heure_debut.strftime('%Y-%m-%d') if tp else default_date }}" 
+                                           {{ 'readonly' if from_emploi else '' }} 
                                            required>
                                 </div>
-
+                        
                                 <!-- Créneaux horaires -->
                                 <div class="col-12">
                                     <label class="form-label required-label">Créneaux horaires</label>
@@ -187,17 +193,13 @@
                                             {% for periode, heures in CRENEAUX.items() %}
                                             <div class="form-check">
                                                 <input class="form-check-input" type="checkbox" 
-                                                    name="periodes" 
-                                                    value="{{ periode }}" 
-                                                    id="{{ periode }}"
-                                                    {{ 'checked' if periode in periodes_selectionnes }}>
-                                                <label class="form-check-label {{ 'creneau-selectionne' if periode in periodes_selectionnes }}" 
-                                                       for="{{ periode }}">
-                                                    <span class="period-display">
-                                                        {{ periode }} 
-                                                        <small class="text-muted">({{ heures[0] }} - {{ heures[1] }})</small>
-                                                    </span>
-                                                    {% if periode in periodes_selectionnes %}
+                                                       name="periodes" 
+                                                       value="{{ periode }}" 
+                                                       id="periode{{ loop.index }}"
+                                                       {{ 'checked' if periode in (periodes_selectionnes if tp else default_periodes) }}>
+                                                <label class="form-check-label" for="periode{{ loop.index }}">
+                                                    {{ periode }} ({{ heures[0] }} - {{ heures[1] }})
+                                                    {% if periode in (periodes_selectionnes if tp else default_periodes) %}
                                                     <span class="badge bg-success ms-2">Sélectionné</span>
                                                     {% endif %}
                                                 </label>
@@ -206,25 +208,25 @@
                                         </div>
                                     </div>
                                 </div>
-
+                        
                                 <!-- Année Scolaire -->
                                 <div class="col-md-6">
-                                    <label class="form-label required-label">Année scolaire</label>
+                                    <label for="annee_scolaire" class="form-label required-label">Année scolaire</label>
                                     <input type="text" class="form-control form-control-lg" 
-                                           name="annee_scolaire" 
-                                           value="{{ tp.annee_scolaire }}" 
+                                           id="annee_scolaire" name="annee_scolaire" 
+                                           value="{{ tp.annee_scolaire if tp else default_annee }}" 
                                            pattern="\d{4}-\d{4}" 
-                                           placeholder="2023-2024"
+                                           {{ 'readonly' if tp else '' }} 
                                            required>
                                 </div>
-
+                        
                                 <!-- Boutons -->
-                                <div class="col-12 mt-4">
+                                <div class="col-12 mt-5">
                                     <div class="d-grid gap-3 d-md-flex justify-content-md-end">
                                         <button type="submit" class="btn btn-success btn-lg px-5">
                                             <i class="fas fa-save me-2"></i>Enregistrer
                                         </button>
-                                        <a href="{{ url_for('emploi', week_offset=redirect_week) }}" 
+                                        <a href="{{ url_for('emploi', week_offset=redirect_week) if tp else url_for('index') }}" 
                                            class="btn btn-outline-secondary btn-lg px-5">
                                             <i class="fas fa-times me-2"></i>Annuler
                                         </a>

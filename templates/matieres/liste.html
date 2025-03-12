@@ -129,6 +129,7 @@
                             <thead class="table-light">
                                 <tr>
                                     <th>Nom de la matière</th>
+                                    <th>Niveau</th> <!-- Colonne ajoutée -->
                                     <th class="text-end">Actions</th>
                                 </tr>
                             </thead>
@@ -136,6 +137,17 @@
                                 {% for matiere in matieres %}
                                 <tr>
                                     <td class="fw-semibold">{{ matiere.nom_matiere }}</td>
+                                    <td>
+                                        <span class="badge bg-primary">
+                                            {% if matiere.niveau == 'L1' %}
+                                                Licence 1
+                                            {% elif matiere.niveau == 'L2' %}
+                                                Licence 2
+                                            {% elif matiere.niveau == 'L3' %}
+                                                Licence 3
+                                            {% endif %}
+                                        </span>
+                                    </td>
                                     <td class="text-end">
                                         <div class="d-flex gap-2 justify-content-end">
                                             {% if session.role == 'admin' %}
@@ -146,7 +158,8 @@
                                             </a>
                                             {% endif %}
                                             <form method="POST" 
-                                                  action="{{ url_for('supprimer_matiere', id=matiere.id_matiere) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                  action="{{ url_for('supprimer_matiere', id=matiere.id_matiere) }}">
+                                                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                                   {% if session.role == 'admin' %}
                                                 <button type="submit" 
                                                         class="btn btn-danger btn-action"

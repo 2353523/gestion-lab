@@ -174,16 +174,22 @@ def forbidden(e):
 
 @app.route('/')
 def index():
-
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
-    show_welcome = session.pop('show_welcome', False)  # <-- Récupérer et supprimer le flag
+    show_welcome = session.pop('show_welcome', False)
+
+    CRENEAUX = {
+        'P1': ('08:00', '09:30'),
+        'P2': ('09:45', '11:15'),
+        'P3': ('11:30', '13:00'),
+        'P4': ('15:10', '16:40'),
+        'P5': ('17:00', '18:30')
+    }
 
     try:
         cur = mysql.connection.cursor()
         
-        # Récupération des TP du jour
         today = datetime.now().date()
         cur.execute("""
             SELECT 
@@ -193,6 +199,7 @@ def index():
                 tp.heure_fin,
                 CONCAT(p.prenom, ' ', p.nom) AS professeur,
                 m.nom_matiere AS matiere,
+                m.niveau,
                 l.nom_laboratoire
             FROM tp
             JOIN professeur p ON tp.id_prof = p.id_prof
@@ -204,16 +211,24 @@ def index():
         
         tps_jour = []
         for tp in cur.fetchall():
-            start = tp['heure_debut'].time()
-            end = tp['heure_fin'].time()
+            start_dt = tp['heure_debut']
+            end_dt = tp['heure_fin']
+            start_time = start_dt.strftime('%H:%M')
+            end_time = end_dt.strftime('%H:%M')
+            
+            periode = None
+            for key, (s, e) in CRENEAUX.items():
+                if s == start_time and e == end_time:
+                    periode = key
+                    break
             
             tps_jour.append({
                 **tp,
-                'statut': get_tp_status(start, end),
-                'heure_debut': tp['heure_debut'].strftime('%H:%M'),
-                'heure_fin': tp['heure_fin'].strftime('%H:%M')
+                'statut': get_tp_status(start_dt.time(), end_dt.time()),
+                'periode': periode,
+                'heure_debut': start_time,
+                'heure_fin': end_time
             })
-
         # Alertes stock
         cur.execute("""
             SELECT 
@@ -268,7 +283,7 @@ def supprimer_tp(id):
     finally:
         cur.close()
     
-    return redirect(url_for('emploi', week_offset=redirect_week))
+    return redirect(url_for('index', week_offset=redirect_week))
 
 CRENEAUX = {
         'P1': ('08:00', '09:30'),
@@ -294,12 +309,19 @@ def creer_tp():
     cur = mysql.connection.cursor()
     cur.execute("SELECT id_prof, prenom, nom FROM professeur")
     professeurs = cur.fetchall()
-    cur.execute("SELECT id_matiere, nom_matiere FROM matiere")
+    cur.execute("SELECT id_matiere, nom_matiere, niveau FROM matiere")  # Ajouter niveau
     matieres = cur.fetchall()
     cur.execute("SELECT id_laboratoire, nom_laboratoire FROM laboratoire")
     laboratoires = cur.fetchall()
     cur.close()
 
+    now = datetime.now()
+    current_year = now.year
+    default_annee = "2024-2025"
+    if now.month >= 10:
+        default_annee = f"{current_year + 1}-{current_year + 2}"
+    else:
+        pass
     if request.method == 'POST':
         try:
             data = {
@@ -309,7 +331,9 @@ def creer_tp():
                 'id_laboratoire': request.form.get('id_laboratoire', '').strip(),
                 'date_tp': request.form['date_tp'].strip(),
                 'periodes': request.form.getlist('periodes'),
-                'annee_scolaire': request.form['annee_scolaire'].strip()
+                'annee_scolaire': request.form['annee_scolaire'].strip(),
+                'annee_scolaire': default_annee  # On utilise la valeur calculée
+
             }
 
             if from_emploi and not data['date_tp']:
@@ -409,6 +433,7 @@ def creer_tp():
                                 default_date=default_date)
 
     return render_template('creer_tp.html',
+                        default_annee=default_annee,
                          professeurs=professeurs,
                          matieres=matieres,
                          laboratoires=laboratoires,
@@ -499,7 +524,7 @@ def editer_tp(id):
                                     (heure_fin BETWEEN %s AND %s)
                                 )
                                 AND id_prof = %s
-                                AND id_tp != %s  <!-- Exclusion du TP actuel -->
+                                AND id_tp != %s  /* Exclusion du TP actuel */
                             """, (
                                 heure_fin, heure_debut,
                                 heure_debut, heure_fin,
@@ -770,26 +795,32 @@ def liste_matieres():
 def creer_matiere():
     if request.method == 'POST':
         nom_matiere = request.form['nom_matiere'].strip()
+        niveau = request.form['niveau']  # Récupération du niveau
 
-        if not nom_matiere:
-            flash("Le nom de la matière est obligatoire", "danger")
+        if not nom_matiere or not niveau:
+            flash("Tous les champs obligatoires doivent être remplis", "danger")
             return redirect(url_for('creer_matiere'))
 
         cur = mysql.connection.cursor()
         try:
-            # Vérifier si la matière existe déjà (insensible à la casse et aux espaces)
+            # Vérification des doublons avec niveau
             cur.execute("""
                 SELECT id_matiere 
                 FROM matiere 
                 WHERE LOWER(TRIM(nom_matiere)) = LOWER(TRIM(%s))
-            """, (nom_matiere,))
+                AND niveau = %s
+            """, (nom_matiere, niveau))
             
             if cur.fetchone():
-                flash("Cette matière existe déjà", "danger")
+                flash("Cette matière existe déjà pour ce niveau", "danger")
                 return redirect(url_for('creer_matiere'))
 
-            # Créer la matière si elle n'existe pas
-            cur.execute("INSERT INTO matiere (nom_matiere) VALUES (%s)", (nom_matiere,))
+            # Insertion avec niveau
+            cur.execute("""
+                INSERT INTO matiere (nom_matiere, niveau) 
+                VALUES (%s, %s)
+            """, (nom_matiere, niveau))
+            
             mysql.connection.commit()
             flash("Matière créée avec succès", "success")
             return redirect(url_for('liste_matieres'))
@@ -808,35 +839,38 @@ def editer_matiere(id):
     try:
         if request.method == 'POST':
             nom_matiere = request.form['nom_matiere'].strip()
+            niveau = request.form['niveau']  # Récupération du niveau
             
-            if not nom_matiere:
-                flash("Le nom de la matière est obligatoire", "danger")
+            if not nom_matiere or not niveau:
+                flash("Tous les champs obligatoires doivent être remplis", "danger")
                 return redirect(url_for('editer_matiere', id=id))
 
-            # Vérifier les doublons en excluant l'ID courant
+            # Vérification des doublons avec niveau
             cur.execute("""
                 SELECT id_matiere 
                 FROM matiere 
                 WHERE LOWER(TRIM(nom_matiere)) = LOWER(TRIM(%s))
+                AND niveau = %s
                 AND id_matiere != %s
-            """, (nom_matiere, id))
+            """, (nom_matiere, niveau, id))
             
             if cur.fetchone():
-                flash("Cette matière existe déjà", "danger")
+                flash("Cette matière existe déjà pour ce niveau", "danger")
                 return redirect(url_for('editer_matiere', id=id))
 
-            # Mettre à jour si pas de doublon
+            # Mise à jour avec niveau
             cur.execute("""
                 UPDATE matiere 
-                SET nom_matiere = %s 
+                SET nom_matiere = %s, 
+                    niveau = %s 
                 WHERE id_matiere = %s
-            """, (nom_matiere, id))
+            """, (nom_matiere, niveau, id))
             
             mysql.connection.commit()
             flash("Matière mise à jour", "success")
             return redirect(url_for('liste_matieres'))
 
-        # Récupération de la matière pour l'édition
+        # Récupération de la matière avec niveau
         cur.execute("SELECT * FROM matiere WHERE id_matiere = %s", (id,))
         matiere = cur.fetchone()
         return render_template('matieres/editer.html', matiere=matiere)
@@ -847,7 +881,7 @@ def editer_matiere(id):
         return redirect(url_for('liste_matieres'))
     finally:
         cur.close()
-
+        
 @app.route('/matieres/supprimer/<int:id>', methods=['POST'])
 def supprimer_matiere(id):
     cur = mysql.connection.cursor()
