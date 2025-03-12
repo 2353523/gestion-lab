@@ -369,11 +369,11 @@ def creer_tp():
                     heure_fin = datetime.strptime(f"{data['date_tp']} {fin}", "%Y-%m-%d %H:%M")
 
                     # Remplacer la requête SQL existante par :
+                    # 1. Vérification conflit professeur
                     cur.execute("""
                         SELECT id_tp 
                         FROM tp 
                         WHERE (
-                            (heure_debut < %s AND heure_fin > %s) OR
                             (heure_debut < %s AND heure_fin > %s) OR
                             (heure_debut BETWEEN %s AND %s) OR
                             (heure_fin BETWEEN %s AND %s)
@@ -383,12 +383,39 @@ def creer_tp():
                         heure_fin, heure_debut,
                         heure_debut, heure_fin,
                         heure_debut, heure_fin,
-                        heure_debut, heure_fin,
                         data['id_prof']
                     ))
                     if cur.fetchone():
-                        flash(f"Le créneau {periode} ({debut}-{fin}) est déjà occupé !", "danger")
+                        flash(f"Le professeur est déjà occupé ({periode} {debut}-{fin}) !", "danger")
                         mysql.connection.rollback()
+                        return render_template('creer_tp.html',
+                                            professeurs=professeurs,
+                                            matieres=matieres,
+                                            CRENEAUX=CRENEAUX,
+                                            laboratoires=laboratoires,
+                                            from_emploi=from_emploi,
+                                            default_date=default_date)
+                    
+                    # 2. Vérification conflit laboratoire (nouveau)
+                    cur.execute("""
+                        SELECT id_tp 
+                        FROM tp 
+                        WHERE (
+                            (heure_debut < %s AND heure_fin > %s) OR
+                            (heure_debut BETWEEN %s AND %s) OR
+                            (heure_fin BETWEEN %s AND %s)
+                        )
+                        AND id_laboratoire = %s
+                    """, (
+                        heure_fin, heure_debut,
+                        heure_debut, heure_fin,
+                        heure_debut, heure_fin,
+                        data['id_laboratoire']
+                    ))
+                    if cur.fetchone():
+                        flash(f"Le labo est déjà réservé ({periode} {debut}-{fin}) !", "danger")
+                        mysql.connection.rollback()
+
                         return render_template('creer_tp.html',
                                             professeurs=professeurs,
                                             matieres=matieres,
