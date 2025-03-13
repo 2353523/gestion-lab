@@ -164,7 +164,7 @@
                 <!-- Formulaire de gestion -->
                 <div class="mb-5">
                     <h4 class="mb-3">Ajouter/Retirer du stock</h4>
-                    <form method="POST">
+                    <form method="POST"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div class="row g-3">
                             <div class="col-md-4">
                                 <select name="article_id" id="selectArticle" class="form-select" required>
