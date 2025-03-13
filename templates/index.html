@@ -6,7 +6,6 @@
     <title>Gestion Laboratoire</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- DataTables Bootstrap CSS -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
 
     <style>
@@ -127,15 +126,43 @@
             100% { transform: translateX(100%) rotate(45deg); }
         }
     
-        /* Overlay de bienvenue amélioré */
+        /* Overlay de bienvenue corrigé */
         .welcome-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(5px);
+            z-index: 9999;
+            transition: opacity 0.3s ease;
+        }
+    
+        .welcome-overlay.hide {
+            opacity: 0;
+            pointer-events: none;
         }
     
         #welcome-message {
             border: none;
             overflow: hidden;
+            position: relative;
+            max-width: 500px;
+            margin: 20px;
+        }
+    
+        .close-overlay-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            z-index: 2;
+            color: #2563eb;
         }
     
         /* Filtres modernes */
@@ -201,7 +228,6 @@
 <body class="bg-light">
     <!-- Barre de navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
-        
         <div class="container">
             <a class="navbar-brand d-flex align-items-center" href="{{ url_for('index') }}">
                 <i class="fas fa-flask fs-4 me-2"></i>
@@ -211,21 +237,30 @@
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
-
+    
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
+                    <!-- Nouvel élément Stocks -->
                     <li class="nav-item">
-                        <a class="nav-link active" href="{{ url_for('index') }}">
+                        <a class="nav-link" href="{{ url_for('stocks_overview') }}">
+                            <i class="fas fa-boxes me-2"></i>Stocks
+                        </a>
+                    </li>
+                    
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('index') }}">
                             <i class="fas fa-calendar-day me-2"></i>TP du Jour
                         </a>
                     </li>
+                    
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('emploi') }}">
                             <i class="fas fa-calendar-alt me-2"></i>Emploi du temps
                         </a>
                     </li>
+                    
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle active" href="#" id="gestionDropdown" data-bs-toggle="dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="gestionDropdown" data-bs-toggle="dropdown">
                             <i class="fas fa-cogs me-2"></i>Gestion
                         </a>
                         <ul class="dropdown-menu dropdown-menu-dark">
@@ -238,68 +273,65 @@
                             <li><a class="dropdown-item" href="{{ url_for('liste_laboratoires') }}">
                                 <i class="fas fa-microscope me-2"></i>Laboratoires
                             </a></li>
+                            <!-- Nouveau sous-menu Stock -->
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('stock_magasin') }}">
+                                <i class="fas fa-warehouse me-2"></i>Stock Magasin
+                            </a></li>
                         </ul>
                     </li>
                 </ul>
+                
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
                             <i class="fas fa-user-cog me-2"></i>{{ session.username }}
-                            
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
-                           
+                            <li><a class="dropdown-item" href="#">
+                                <i class="fas fa-sliders-h me-2"></i>Paramètres
+                            </a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li>
                                 <a class="dropdown-item" href="{{ url_for('logout') }}">
-                                    <i class="fas fa-sign-out-alt me-2"></i>
-                                    Déconnexion
+                                    <i class="fas fa-sign-out-alt me-2"></i>Déconnexion
                                 </a>
                             </li>
                         </ul>
                     </li>
                 </ul>
-
-               
             </div>
         </div>
     </nav>
 
-<!-- Ajoutez ce modal juste avant la fermeture du body -->
-<div class="modal fade" id="resetDbModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-
-    </div>
-</div>
-
-    <!-- Bouton Nouveau positionné après la navbar -->
-<div class="container mt-2">
-    <div class="d-flex justify-content-end">
-        <div class="dropdown">
-            <button class="btn btn-success dropdown-toggle" type="button" 
-                    id="createDropdown" data-bs-toggle="dropdown">
-                <i class="fas fa-plus-circle me-2"></i>Nouveau
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end">
-                <li><a class="dropdown-item" href="{{ url_for('creer_tp') }}">
-                    <i class="fas fa-flask me-2"></i>Nouveau TP
-                </a></li>
-                {% if session.role == 'admin' %}
-                <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item" href="{{ url_for('creer_professeur') }}">
-                    <i class="fas fa-user-plus me-2"></i>Professeur
-                </a></li>
-                <li><a class="dropdown-item" href="{{ url_for('creer_matiere') }}">
-                    <i class="fas fa-book-medical me-2"></i>Matière
-                </a></li>
-                <li><a class="dropdown-item" href="{{ url_for('creer_laboratoire') }}">
-                    <i class="fas fa-vial me-2"></i>Laboratoire
-                </a></li>
-                {% endif %}
-            </ul>
+    <!-- Bouton Nouveau -->
+    <div class="container mt-2">
+        <div class="d-flex justify-content-end">
+            <div class="dropdown">
+                <button class="btn btn-success dropdown-toggle" type="button" 
+                        id="createDropdown" data-bs-toggle="dropdown">
+                    <i class="fas fa-plus-circle me-2"></i>Nouveau
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="{{ url_for('creer_tp') }}">
+                        <i class="fas fa-flask me-2"></i>Nouveau TP
+                    </a></li>
+                    {% if session.role == 'admin' %}
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="{{ url_for('creer_professeur') }}">
+                        <i class="fas fa-user-plus me-2"></i>Professeur
+                    </a></li>
+                    <li><a class="dropdown-item" href="{{ url_for('creer_matiere') }}">
+                        <i class="fas fa-book-medical me-2"></i>Matière
+                    </a></li>
+                    <li><a class="dropdown-item" href="{{ url_for('creer_laboratoire') }}">
+                        <i class="fas fa-vial me-2"></i>Laboratoire
+                    </a></li>
+                    {% endif %}
+                </ul>
+            </div>
         </div>
     </div>
-</div>
 
     <main class="container py-4">
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -320,7 +352,7 @@
         <div id="welcome-overlay" class="welcome-overlay">
             <div id="welcome-message" class="card shadow">
                 <button class="close-overlay-btn" onclick="closeWelcome()">
-                    <i class="fas fa-times fs-5 text-primary"></i>
+                    <i class="fas fa-times fs-5"></i>
                 </button>
                 <div class="card-body text-center py-5 px-4">
                     <img src="{{ url_for('static', filename='ISME1.jpg') }}" 
@@ -342,12 +374,10 @@
         {% endif %}
 
         <div class="card mb-4 shadow">
-            
             <div class="card-header text-white d-flex justify-content-between align-items-center">
                 <h3 class="mb-0">
                     <i class="fas fa-calendar-day me-2"></i>TP du Jour - {{ date_actuelle }}
                 </h3>
-                
             </div>
             
             <div class="card-body p-4">
@@ -385,73 +415,73 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="table-responsive">
+                    <table id="tableTP" class="table table-hover table-striped align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Nom TP</th>
+                                <th>Horaire</th>
+                                <th>Professeur</th>
+                                <th>Matière</th>
+                                <th>Niveau</th>
+                                <th>Laboratoire</th>
+                                <th>Statut</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for tp in tps_jour %}
+                            <tr>
+                                <td class="fw-semibold">{{ tp.nom_tp }}</td>
+                                <td>{{ tp.periode }}</td>
+                                <td>{{ tp.professeur }}</td>
+                                <td>{{ tp.matiere }}</td>
+                                <td>
+                                    <span>
+                                        {% if tp.niveau == 'L1' %}  L1
+                                        {% elif tp.niveau == 'L2' %}L2
+                                        {% elif tp.niveau == 'L3' %}L3
+                                        {% endif %}
+                                    </span>
+                                </td>
+                                <td>{{ tp.nom_laboratoire or '-' }}</td>
+                                <td>
+                                    <span class="badge 
+                                          {% if tp.statut == 'En cours' %}bg-success
+                                          {% elif tp.statut == 'En attente' %}bg-warning
+                                          {% else %}bg-secondary{% endif %}">
+                                        {{ tp.statut }}
+                                    </span>
+                                </td>
+                                <td class="text-end">
+                                    <div class="d-flex gap-2 justify-content-end">
+                                        <a href="{{ url_for('editer_tp', id=tp.id_tp) }}" 
+                                           class="btn btn-warning btn-action"
+                                           title="Modifier">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <form method="POST" action="{{ url_for('supprimer_tp', id=tp.id_tp) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" 
+                                                    class="btn btn-danger btn-action"
+                                                    title="Supprimer"
+                                                    onclick="return confirm('Supprimer ce TP définitivement ?')">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                        <a href="{{ url_for('creer_recu', id_tp=tp.id_tp) }}" 
+                                           class="btn btn-info btn-action"
+                                           title="Générer un reçu">
+                                            <i class="fas fa-file-invoice"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
-                    <div class="table-responsive">
-                        <table id="tableTP" class="table table-hover table-striped align-middle">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Nom TP</th>
-                                    <th>Horaire</th>
-                                    <th>Professeur</th>
-                                    <th>Matière</th>
-                                    <th>Niveau</th>  <!-- Nouvelle colonne ajoutée -->
-                                    <th>Laboratoire</th>
-                                    <th>Statut</th>
-                                    <th class="text-end">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for tp in tps_jour %}
-                                <tr>
-                                    <td class="fw-semibold">{{ tp.nom_tp }}</td>
-                                    <td>{{ tp.periode }}</td>
-                                    <td>{{ tp.professeur }}</td>
-                                    <td>{{ tp.matiere }}</td>
-                                    <td>
-                                        <span >
-                                            {% if tp.niveau == 'L1' %}  L1
-                                            {% elif tp.niveau == 'L2' %}L2
-                                            {% elif tp.niveau == 'L3' %}L3
-                                            {% endif %}
-                                        </span>
-                                    </td>
-                                    <td>{{ tp.nom_laboratoire or '-' }}</td>
-                                    <td>
-                                        <span class="badge 
-                                              {% if tp.statut == 'En cours' %}bg-success
-                                              {% elif tp.statut == 'En attente' %}bg-warning
-                                              {% else %}bg-secondary{% endif %}">
-                                            {{ tp.statut }}
-                                        </span>
-                                    </td>
-                                    <td class="text-end">
-                                        <div class="d-flex gap-2 justify-content-end">
-                                            <a href="{{ url_for('editer_tp', id=tp.id_tp) }}" 
-                                               class="btn btn-warning btn-action"
-                                               title="Modifier">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                            <form method="POST" action="{{ url_for('supprimer_tp', id=tp.id_tp) }}">
-                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                <button type="submit" 
-                                                        class="btn btn-danger btn-action"
-                                                        title="Supprimer"
-                                                        onclick="return confirm('Supprimer ce TP définitivement ?')">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            </form>
-                                            <a href="{{ url_for('creer_recu', id_tp=tp.id_tp) }}" 
-                                               class="btn btn-info btn-action"
-                                               title="Générer un reçu">
-                                                <i class="fas fa-file-invoice"></i>
-                                            </a>
-                                        </div>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
                 {% else %}
                     <div class="alert alert-info mb-0 shadow-sm">
                         <i class="fas fa-info-circle me-2"></i>
@@ -490,7 +520,13 @@
         </div>
     </main>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
     <script>
+        // Gestion du message de bienvenue
         function closeWelcome() {
             const welcomeOverlay = document.getElementById('welcome-overlay');
             if (welcomeOverlay) {
@@ -505,79 +541,43 @@
             const welcomeOverlay = document.getElementById('welcome-overlay');
             
             if (welcomeOverlay) {
-                setTimeout(closeWelcome, 2500);
+                setTimeout(closeWelcome, 3000);
                 welcomeOverlay.addEventListener('click', function(e) {
                     if (e.target === this) closeWelcome();
                 });
             }
-        });
-        $(document).ready(function() {
-        $('#tableTP').DataTable({
-            // Vous pouvez personnaliser la recherche et l'affichage ici
-            language: {
-                search: "Rechercher:",
-                lengthMenu: "Afficher _MENU_ entrées par page",
-                info: "Affichage de _START_ à _END_ sur _TOTAL_ entrées",
-                paginate: {
-                    first: "Premier",
-                    previous: "Précédent",
-                    next: "Suivant",
-                    last: "Dernier"
-                }
+
+            // Configuration DataTable
+            var table = $('#tableTP').DataTable({
+                language: {
+                    search: "Rechercher:",
+                    lengthMenu: "Afficher _MENU_ entrées",
+                    info: "Affichage de _START_ à _END_ sur _TOTAL_ entrées",
+                    paginate: {
+                        first: "Premier",
+                        previous: "Précédent",
+                        next: "Suivant",
+                        last: "Dernier"
+                    }
+                },
+                columnDefs: [
+                    { orderable: false, targets: [7] }
+                ]
+            });
+
+            // Gestion des filtres
+            function filterTable() {
+                var niveau = $('#niveau_filter').val();
+                var statut = $('#statut_filter').val();
+                table.columns(4).search(niveau).columns(6).search(statut).draw();
             }
+
+            $('#niveau_filter, #statut_filter').on('change', filterTable);
+            $('#reset_filters').on('click', function() {
+                $('#niveau_filter, #statut_filter').val('');
+                filterTable();
+            });
         });
-    });
-        
-
-        
-            
     </script>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
-<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
-<!-- DataTables JS -->
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
-<!-- Initialisation de DataTables (qui ajoute la boîte de recherche automatiquement) -->
-<script>
-    $(document).ready(function() {
-        var table = $('#tableTP').DataTable({
-            language: {
-                search: "Rechercher:",
-                lengthMenu: "Afficher _MENU_ entrées par page",
-                info: "Affichage de _START_ à _END_ sur _TOTAL_ entrées",
-                paginate: {
-                    first: "Premier",
-                    previous: "Précédent",
-                    next: "Suivant",
-                    last: "Dernier"
-                }
-            },
-            columnDefs: [
-                { orderable: false, targets: [7] } // Désactiver le tri sur la colonne Actions
-            ]
-        });
-    
-        // Filtre personnalisé
-        function filterTable() {
-            var niveau = $('#niveau_filter').val();
-            var statut = $('#statut_filter').val();
-            
-            table.columns(4).search(niveau).columns(6).search(statut).draw();
-        }
-    
-        // Événements de changement
-        $('#niveau_filter, #statut_filter').on('change', function() {
-            filterTable();
-        });
-    
-        // Réinitialisation des filtres
-        $('#reset_filters').on('click', function() {
-            $('#niveau_filter, #statut_filter').val('');
-            filterTable();
-        });
-    });
-    </script>
-
 </html>

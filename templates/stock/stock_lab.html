@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion Stock Laboratoire</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .card-header {
+            background: linear-gradient(135deg, #0d6efd, #0b5ed7);
+            border-radius: 12px 12px 0 0;
+        }
+        .card {
+            border-radius: 12px;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+        }
+        .btn-group .btn {
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 200, 0, 0.2);
+        }
+        .btn-warning:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(255, 193, 7, 0.2);
+        }
+        .badge {
+            min-width: 60px;
+            padding: 8px 12px;
+        }
+        .filter-box {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .filter-group {
+            margin-bottom: 1rem;
+        }
+        .filter-label {
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            color: #495057;
+        }
+        .list-group-item:hover {
+            background-color: #f8f9fa;
+            transform: translateX(5px);
+            transition: all 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <!-- Barre de navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center" href="{{ url_for('index') }}">
+                <i class="fas fa-flask fs-4 me-2"></i>
+                <span class="fw-bold">Gestion Lab</span>
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{{ url_for('index') }}">
+                            <i class="fas fa-calendar-day me-2"></i>TP du Jour
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('emploi') }}">
+                            <i class="fas fa-calendar-alt me-2"></i>Emploi du temps
+                        </a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle active" href="#" id="gestionDropdown" data-bs-toggle="dropdown">
+                            <i class="fas fa-cogs me-2"></i>Gestion
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-dark">
+                            <li><a class="dropdown-item" href="{{ url_for('liste_professeurs') }}">
+                                <i class="fas fa-chalkboard-teacher me-2"></i>Professeurs
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('liste_matieres') }}">
+                                <i class="fas fa-book me-2"></i>Matières
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('liste_laboratoires') }}">
+                                <i class="fas fa-microscope me-2"></i>Laboratoires
+                            </a></li>
+                        </ul>
+                    </li>
+                </ul>
+
+                <ul class="navbar-nav ms-auto">
+                    {% if session.user_id %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-circle me-2"></i>{{ session.username }}
+                            <span class="badge bg-{{ 'danger' if session.role == 'admin' else 'primary' }} ms-1">
+                                {{ session.role }}
+                            </span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="#">
+                                <i class="fas fa-cog me-2"></i>Paramètres
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}">
+                                <i class="fas fa-sign-out-alt me-2"></i>Déconnexion
+                            </a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mt-4">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h3>
+                    <i class="fas fa-warehouse me-2"></i>
+                    Gestion du stock - {{ labo.nom_laboratoire }}
+                </h3>
+            </div>
+            
+            <div class="card-body">
+                <!-- Filtres -->
+                <div class="filter-box">
+                    <div class="row g-4">
+                        <div class="col-md-4">
+                            <div class="filter-group">
+                                <label class="filter-label">Catégorie</label>
+                                <select id="filterCategorie" class="form-select">
+                                    <option value="">Toutes les catégories</option>
+                                    {% for categorie in categories %}
+                                    <option value="{{ categorie.id_categorie }}">{{ categorie.nom_categorie }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="filter-group">
+                                <label class="filter-label">Type</label>
+                                <select id="filterType" class="form-select" disabled>
+                                    <option value="">Tous les types</option>
+                                    {% for type in types %}
+                                    <option value="{{ type.id_type }}" data-categorie="{{ type.id_categorie }}">
+                                        {{ type.nom_type }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Formulaire de gestion -->
+                <div class="mb-5">
+                    <h4 class="mb-3">Ajouter/Retirer du stock</h4>
+                    <form method="POST">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <select name="article_id" id="selectArticle" class="form-select" required>
+                                    <option value="">Choisir un article...</option>
+                                    {% for article in articles %}
+                                    <option value="{{ article.id_article }}" 
+                                            data-type="{{ article.id_type }}"
+                                            data-categorie="{{ type_categories[article.id_type] }}">
+                                        {{ article.nom_article }} ({{ article.unite_mesure }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-3">
+                                <input type="number" name="quantite" 
+                                       class="form-control" 
+                                       placeholder="Quantité" 
+                                       min="1" required>
+                            </div>
+                            
+                            <div class="col-md-5">
+                                <div class="btn-group">
+                                    <button type="submit" 
+                                            name="action" 
+                                            value="ajouter"
+                                            class="btn btn-success">
+                                        <i class="fas fa-arrow-right me-2"></i>
+                                        Ajouter au labo
+                                    </button>
+                                    
+                                    <button type="submit" 
+                                            name="action" 
+                                            value="retirer"
+                                            class="btn btn-warning">
+                                        <i class="fas fa-arrow-left me-2"></i>
+                                        Retirer vers magasin
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Liste du stock -->
+                <h4 class="mb-3">Stock actuel</h4>
+                <div class="list-group">
+                    {% for item in stock %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="fw-bold">{{ item.nom_article }}</span>
+                            <small class="text-muted ms-2">{{ item.unite_mesure }}</small>
+                            <br>
+                            <small class="text-muted">
+                                Catégorie: {{ categories_dict[type_categories[item.id_type]] }} → 
+                                Type: {{ types_dict[item.id_type] }}
+                            </small>
+                        </div>
+                        <div>
+                            <span class="badge bg-primary rounded-pill fs-6">
+                                {{ item.quantite }}
+                            </span>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        Aucun stock dans ce laboratoire
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Gestion des filtres
+        const filterCategorie = document.getElementById('filterCategorie');
+        const filterType = document.getElementById('filterType');
+        const selectArticle = document.getElementById('selectArticle');
+
+        function updateFilters() {
+            // Filtrage des types
+            const selectedCategorie = filterCategorie.value;
+            Array.from(filterType.options).forEach(option => {
+                const showType = !selectedCategorie || 
+                               (option.dataset.categorie === selectedCategorie);
+                option.hidden = !showType;
+            });
+            filterType.disabled = !selectedCategorie;
+
+            // Filtrage des articles
+            const selectedType = filterType.value;
+            Array.from(selectArticle.options).forEach(option => {
+                if(option.value === "") return;
+                const showArticle = (
+                    (!selectedCategorie || option.dataset.categorie === selectedCategorie) &&
+                    (!selectedType || option.dataset.type === selectedType)
+                );
+                option.hidden = !showArticle;
+            });
+        }
+
+        // Événements
+        filterCategorie.addEventListener('change', () => {
+            filterType.value = '';
+            updateFilters();
+        });
+
+        filterType.addEventListener('change', updateFilters);
+        
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', updateFilters);
+    </script>
+</body>
+</html>
