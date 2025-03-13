@@ -197,32 +197,40 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Script de filtrage
         document.addEventListener('DOMContentLoaded', function() {
             const filterCategorie = document.getElementById('filterCategorie');
             const filterType = document.getElementById('filterType');
-            
+            const stockItems = document.querySelectorAll('.stock-item');
+    
             function updateFilters() {
                 const selectedCategorie = filterCategorie.value;
                 const selectedType = filterType.value;
-                
+    
+                // Reset et mise à jour des options de type
                 Array.from(filterType.options).forEach(option => {
-                    option.hidden = selectedCategorie && option.dataset.categorie !== selectedCategorie;
+                    if(option.value === "") return;
+                    const showType = !selectedCategorie || 
+                                   option.dataset.categorie === selectedCategorie;
+                    option.hidden = !showType;
+                    option.disabled = !showType;
                 });
-                filterType.disabled = !selectedCategorie;
-                
-                document.querySelectorAll('.stock-item').forEach(row => {
-                    const catMatch = !selectedCategorie || row.dataset.categorie === selectedCategorie;
-                    const typeMatch = !selectedType || row.dataset.type === selectedType;
+    
+                // Filtrage des lignes
+                stockItems.forEach(row => {
+                    const catMatch = !selectedCategorie || 
+                                   row.dataset.categorie === selectedCategorie;
+                    const typeMatch = !selectedType || 
+                                   row.dataset.type === selectedType;
                     row.style.display = (catMatch && typeMatch) ? '' : 'none';
                 });
             }
-
-            filterCategorie.addEventListener('change', () => {
+    
+            filterCategorie.addEventListener('change', function() {
                 filterType.value = '';
+                filterType.disabled = !this.value;
                 updateFilters();
             });
-
+    
             filterType.addEventListener('change', updateFilters);
         });
     </script>
