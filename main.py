@@ -283,7 +283,7 @@ def supprimer_tp(id):
     finally:
         cur.close()
     
-    return redirect(url_for('index', week_offset=redirect_week))
+    return redirect(url_for('emploi', week_offset=redirect_week))
 
 CRENEAUX = {
         'P1': ('08:00', '09:30'),
