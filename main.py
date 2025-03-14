@@ -283,7 +283,7 @@ def supprimer_tp(id):
     finally:
         cur.close()
     
-    return redirect(url_for('emploi', week_offset=redirect_week))
+    return redirect(url_for('index', week_offset=redirect_week))
 
 CRENEAUX = {
         'P1': ('08:00', '09:30'),
@@ -1161,16 +1161,17 @@ def stock_magasin():
     
     cur = mysql.connection.cursor()
     try:
-        # Requête modifiée avec jointure correcte
+        # Modifier la requête SQL pour inclure les IDs
         cur.execute("""
-                SELECT a.id_article, a.nom_article, a.unite_mesure, 
-                    sm.quantite AS quantite_magasin,
-                    t.nom_type, c.nom_categorie
-                FROM article a
-                JOIN stock_magasin sm ON a.id_article = sm.id_article  
-                JOIN type t ON a.id_type = t.id_type
-                JOIN categorie c ON t.id_categorie = c.id_categorie
-            """)
+            SELECT a.id_article, a.nom_article, a.unite_mesure, 
+                sm.quantite AS quantite_magasin,
+                t.id_type, t.nom_type,
+                c.id_categorie, c.nom_categorie
+            FROM article a
+            JOIN stock_magasin sm ON a.id_article = sm.id_article  
+            JOIN type t ON a.id_type = t.id_type
+            JOIN categorie c ON t.id_categorie = c.id_categorie
+        """)
         stock = cur.fetchall()
 
         cur.execute("SELECT * FROM categorie")
