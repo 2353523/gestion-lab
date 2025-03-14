@@ -1441,6 +1441,344 @@ def stock_laboratoire(id_lab):
                          types_dict=types_dict)
 
 
+@app.route('/parametres_stock')
+def parametres_stock():
+    """
+    Affiche l'interface de gestion des catégories et types d'articles.
+    Interface destinée uniquement aux administrateurs.
+    
+    Cette route récupère depuis la base de données:
+    - La liste complète des catégories
+    - La liste complète des types avec leurs catégories associées
+    pour permettre leur visualisation et gestion.
+    
+    Returns:
+        Response: Rendu du template de gestion des paramètres ou redirection
+    """
+    if 'user_id' not in session or session['role'] != 'admin':
+        flash("Accès réservé aux administrateurs", "danger")
+        return redirect(url_for('index'))
+    
+    cur = mysql.connection.cursor()
+    try:
+        # Récupération des catégories
+        cur.execute("""
+            SELECT c.*,
+                (SELECT COUNT(*) FROM type t WHERE t.id_categorie = c.id_categorie) AS nb_types
+            FROM categorie c
+            ORDER BY c.nom_categorie
+        """)
+        categories = cur.fetchall()
+        
+        # Récupération des types avec leurs catégories
+        cur.execute("""
+            SELECT t.*, c.nom_categorie,
+                (SELECT COUNT(*) FROM article a WHERE a.id_type = t.id_type) AS nb_articles
+            FROM type t
+            JOIN categorie c ON t.id_categorie = c.id_categorie
+            ORDER BY c.nom_categorie, t.nom_type
+        """)
+        types = cur.fetchall()
+        
+    except Exception as e:
+        flash(f"Erreur base de données : {str(e)}", "danger")
+        return redirect(url_for('index'))
+    finally:
+        cur.close()
+    
+    return render_template('stock/parametres_stock.html',
+                         categories=categories,
+                         types=types)
+
+@app.route('/ajouter_categorie', methods=['POST'])
+def ajouter_categorie():
+    """
+    Traite l'ajout d'une nouvelle catégorie d'articles.
+    Accessible uniquement aux administrateurs via méthode POST.
+    
+    Vérifie l'unicité du nom de catégorie avant insertion
+    pour éviter les doublons.
+    
+    Returns:
+        Response: Redirection avec message de confirmation ou d'erreur
+    """
+    if 'user_id' not in session or session['role'] != 'admin':
+        flash("Accès réservé aux administrateurs", "danger")
+        return redirect(url_for('index'))
+    
+    try:
+        nom_categorie = request.form['nom_categorie'].strip()
+        
+        if not nom_categorie:
+            flash("Le nom de la catégorie ne peut pas être vide", "danger")
+            return redirect(url_for('parametres_stock'))
+        
+        # Vérification de l'unicité
+        cur = mysql.connection.cursor()
+        cur.execute("SELECT * FROM categorie WHERE nom_categorie = %s", (nom_categorie,))
+        if cur.fetchone():
+            flash("Cette catégorie existe déjà", "warning")
+            return redirect(url_for('parametres_stock'))
+        
+        # Insertion de la nouvelle catégorie
+        cur.execute("INSERT INTO categorie (nom_categorie) VALUES (%s)", (nom_categorie,))
+        mysql.connection.commit()
+        flash(f"Catégorie '{nom_categorie}' créée avec succès", "success")
+        
+    except Exception as e:
+        mysql.connection.rollback()
+        flash(f"Erreur lors de la création de la catégorie : {str(e)}", "danger")
+    finally:
+        cur.close() if 'cur' in locals() else None
+    
+    return redirect(url_for('parametres_stock'))
+
+@app.route('/editer_categorie/<int:id>', methods=['POST'])
+def editer_categorie(id):
+    """
+    Met à jour une catégorie existante identifiée par son ID.
+    Accessible uniquement aux administrateurs via méthode POST.
+    
+    Args:
+        id (int): Identifiant de la catégorie à modifier
+    
+    Vérifie l'existence de la catégorie et l'unicité du nouveau nom
+    avant d'effectuer la mise à jour.
+    
+    Returns:
+        Response: Redirection avec message de confirmation ou d'erreur
+    """
+    if 'user_id' not in session or session['role'] != 'admin':
+        flash("Accès réservé aux administrateurs", "danger")
+        return redirect(url_for('index'))
+    
+    try:
+        nom_categorie = request.form['nom_categorie'].strip()
+        
+        if not nom_categorie:
+            flash("Le nom de la catégorie ne peut pas être vide", "danger")
+            return redirect(url_for('parametres_stock'))
+        
+        # Vérification de l'unicité (sauf pour l'élément en cours)
+        cur = mysql.connection.cursor()
+        cur.execute("SELECT * FROM categorie WHERE nom_categorie = %s AND id_categorie != %s", 
+                    (nom_categorie, id))
+        if cur.fetchone():
+            flash("Ce nom de catégorie est déjà utilisé", "warning")
+            return redirect(url_for('parametres_stock'))
+        
+        # Mise à jour de la catégorie
+        cur.execute("UPDATE categorie SET nom_categorie = %s WHERE id_categorie = %s", 
+                    (nom_categorie, id))
+        mysql.connection.commit()
+        flash(f"Catégorie modifiée avec succès", "success")
+        
+    except Exception as e:
+        mysql.connection.rollback()
+        flash(f"Erreur lors de la modification de la catégorie : {str(e)}", "danger")
+    finally:
+        cur.close() if 'cur' in locals() else None
+    
+    return redirect(url_for('parametres_stock'))
+
+@app.route('/supprimer_categorie/<int:id>', methods=['POST'])
+def supprimer_categorie(id):
+    """
+    Supprime une catégorie identifiée par son ID.
+    Accessible uniquement aux administrateurs via méthode POST.
+    
+    Args:
+        id (int): Identifiant de la catégorie à supprimer
+    
+    Vérifie l'absence de types associés avant de procéder à la suppression
+    pour maintenir l'intégrité référentielle.
+    
+    Returns:
+        Response: Redirection avec message de confirmation ou d'erreur
+    """
+    if 'user_id' not in session or session['role'] != 'admin':
+        flash("Accès réservé aux administrateurs", "danger")
+        return redirect(url_for('index'))
+    
+    try:
+        cur = mysql.connection.cursor()
+        
+        # Vérification des dépendances
+        cur.execute("SELECT COUNT(*) as nb_types FROM type WHERE id_categorie = %s", (id,))
+        result = cur.fetchone()
+        
+        if result['nb_types'] > 0:
+            flash(f"Impossible de supprimer cette catégorie : {result['nb_types']} type(s) associé(s)", "danger")
+            return redirect(url_for('parametres_stock'))
+        
+        # Suppression
+        cur.execute("DELETE FROM categorie WHERE id_categorie = %s", (id,))
+        mysql.connection.commit()
+        flash("Catégorie supprimée avec succès", "success")
+        
+    except Exception as e:
+        mysql.connection.rollback()
+        flash(f"Erreur lors de la suppression de la catégorie : {str(e)}", "danger")
+    finally:
+        cur.close() if 'cur' in locals() else None
+    
+    return redirect(url_for('parametres_stock'))
+
+@app.route('/ajouter_type', methods=['POST'])
+def ajouter_type():
+    """
+    Traite l'ajout d'un nouveau type d'article.
+    Accessible uniquement aux administrateurs via méthode POST.
+    
+    Le type est associé à une catégorie existante et son nom
+    doit être unique au sein de cette catégorie.
+    
+    Returns:
+        Response: Redirection avec message de confirmation ou d'erreur
+    """
+    if 'user_id' not in session or session['role'] != 'admin':
+        flash("Accès réservé aux administrateurs", "danger")
+        return redirect(url_for('index'))
+    
+    try:
+        nom_type = request.form['nom_type'].strip()
+        id_categorie = int(request.form['id_categorie'])
+        
+        if not nom_type:
+            flash("Le nom du type ne peut pas être vide", "danger")
+            return redirect(url_for('parametres_stock'))
+        
+        # Vérification de l'existence de la catégorie
+        cur = mysql.connection.cursor()
+        cur.execute("SELECT * FROM categorie WHERE id_categorie = %s", (id_categorie,))
+        if not cur.fetchone():
+            flash("La catégorie sélectionnée n'existe pas", "danger")
+            return redirect(url_for('parametres_stock'))
+        
+        # Vérification de l'unicité du type dans la catégorie
+        cur.execute("SELECT * FROM type WHERE nom_type = %s AND id_categorie = %s", 
+                    (nom_type, id_categorie))
+        if cur.fetchone():
+            flash("Ce type existe déjà dans la catégorie sélectionnée", "warning")
+            return redirect(url_for('parametres_stock'))
+        
+        # Insertion du nouveau type
+        cur.execute("INSERT INTO type (nom_type, id_categorie) VALUES (%s, %s)", 
+                    (nom_type, id_categorie))
+        mysql.connection.commit()
+        flash(f"Type '{nom_type}' créé avec succès", "success")
+        
+    except Exception as e:
+        mysql.connection.rollback()
+        flash(f"Erreur lors de la création du type : {str(e)}", "danger")
+    finally:
+        cur.close() if 'cur' in locals() else None
+    
+    return redirect(url_for('parametres_stock'))
+
+@app.route('/editer_type/<int:id>', methods=['POST'])
+def editer_type(id):
+    """
+    Met à jour un type existant identifié par son ID.
+    Accessible uniquement aux administrateurs via méthode POST.
+    
+    Args:
+        id (int): Identifiant du type à modifier
+    
+    Permet la modification du nom et/ou de la catégorie associée
+    avec vérification des contraintes d'unicité.
+    
+    Returns:
+        Response: Redirection avec message de confirmation ou d'erreur
+    """
+    if 'user_id' not in session or session['role'] != 'admin':
+        flash("Accès réservé aux administrateurs", "danger")
+        return redirect(url_for('index'))
+    
+    try:
+        nom_type = request.form['nom_type'].strip()
+        id_categorie = int(request.form['id_categorie'])
+        
+        if not nom_type:
+            flash("Le nom du type ne peut pas être vide", "danger")
+            return redirect(url_for('parametres_stock'))
+        
+        # Vérification de l'existence de la catégorie
+        cur = mysql.connection.cursor()
+        cur.execute("SELECT * FROM categorie WHERE id_categorie = %s", (id_categorie,))
+        if not cur.fetchone():
+            flash("La catégorie sélectionnée n'existe pas", "danger")
+            return redirect(url_for('parametres_stock'))
+        
+        # Vérification de l'unicité (sauf pour l'élément en cours)
+        cur.execute("""
+            SELECT * FROM type 
+            WHERE nom_type = %s AND id_categorie = %s AND id_type != %s
+        """, (nom_type, id_categorie, id))
+        if cur.fetchone():
+            flash("Ce nom de type est déjà utilisé dans cette catégorie", "warning")
+            return redirect(url_for('parametres_stock'))
+        
+        # Mise à jour du type
+        cur.execute("""
+            UPDATE type 
+            SET nom_type = %s, id_categorie = %s 
+            WHERE id_type = %s
+        """, (nom_type, id_categorie, id))
+        mysql.connection.commit()
+        flash(f"Type modifié avec succès", "success")
+        
+    except Exception as e:
+        mysql.connection.rollback()
+        flash(f"Erreur lors de la modification du type : {str(e)}", "danger")
+    finally:
+        cur.close() if 'cur' in locals() else None
+    
+    return redirect(url_for('parametres_stock'))
+
+@app.route('/supprimer_type/<int:id>', methods=['POST'])
+def supprimer_type(id):
+    """
+    Supprime un type identifié par son ID.
+    Accessible uniquement aux administrateurs via méthode POST.
+    
+    Args:
+        id (int): Identifiant du type à supprimer
+    
+    Vérifie l'absence d'articles associés avant de procéder à la suppression
+    pour maintenir l'intégrité référentielle.
+    
+    Returns:
+        Response: Redirection avec message de confirmation ou d'erreur
+    """
+    if 'user_id' not in session or session['role'] != 'admin':
+        flash("Accès réservé aux administrateurs", "danger")
+        return redirect(url_for('index'))
+    
+    try:
+        cur = mysql.connection.cursor()
+        
+        # Vérification des dépendances
+        cur.execute("SELECT COUNT(*) as nb_articles FROM article WHERE id_type = %s", (id,))
+        result = cur.fetchone()
+        
+        if result['nb_articles'] > 0:
+            flash(f"Impossible de supprimer ce type : {result['nb_articles']} article(s) associé(s)", "danger")
+            return redirect(url_for('parametres_stock'))
+        
+        # Suppression
+        cur.execute("DELETE FROM type WHERE id_type = %s", (id,))
+        mysql.connection.commit()
+        flash("Type supprimé avec succès", "success")
+        
+    except Exception as e:
+        mysql.connection.rollback()
+        flash(f"Erreur lors de la suppression du type : {str(e)}", "danger")
+    finally:
+        cur.close() if 'cur' in locals() else None
+    
+    return redirect(url_for('parametres_stock'))
+
 if __name__ == '__main__':
     with app.app_context():
         create_default_users()

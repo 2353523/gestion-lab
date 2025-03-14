@@ -1,0 +1,113 @@
+<!-- Modal Ajout Catégorie -->
+<div class="modal fade" id="addCategorieModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-plus me-2"></i>Nouvelle Catégorie</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('ajouter_categorie') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label>Nom de la catégorie</label>
+                        <input type="text" name="nom_categorie" class="form-control" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Édition Catégorie -->
+<div class="modal fade" id="editCategorieModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-edit me-2"></i>Modifier Catégorie</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('editer_categorie', id=0) }}" id="editCategorieForm"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-body">
+                    <input type="hidden" name="id_categorie" id="editCategorieId">
+                    <div class="mb-3">
+                        <label>Nom de la catégorie</label>
+                        <input type="text" name="nom_categorie" id="editCategorieNom" class="form-control" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Ajout Type -->
+<div class="modal fade" id="addTypeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-plus me-2"></i>Nouveau Type</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('ajouter_type') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label>Nom du type</label>
+                        <input type="text" name="nom_type" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label>Catégorie associée</label>
+                        <select name="id_categorie" class="form-select" required>
+                            {% for categorie in categories %}
+                            <option value="{{ categorie.id_categorie }}">{{ categorie.nom_categorie }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Édition Type -->
+<div class="modal fade" id="editTypeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-edit me-2"></i>Modifier Type</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('editer_type', id=0) }}" id="editTypeForm"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-body">
+                    <input type="hidden" name="id_type" id="editTypeId">
+                    <div class="mb-3">
+                        <label>Nom du type</label>
+                        <input type="text" name="nom_type" id="editTypeNom" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label>Catégorie associée</label>
+                        <select name="id_categorie" id="editTypeCategorie" class="form-select" required>
+                            {% for categorie in categories %}
+                            <option value="{{ categorie.id_categorie }}">{{ categorie.nom_categorie }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
