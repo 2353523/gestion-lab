@@ -228,23 +228,26 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Gestion des modals
         document.addEventListener('DOMContentLoaded', function() {
             // Modal d'édition catégorie
             const editCategorieModal = document.getElementById('editCategorieModal');
             editCategorieModal.addEventListener('show.bs.modal', function(event) {
                 const button = event.relatedTarget;
-                editCategorieModal.querySelector('#editCategorieId').value = button.dataset.id;
-                editCategorieModal.querySelector('#editCategorieNom').value = button.dataset.nom;
+                const form = this.querySelector('form');
+                form.action = `/editer_categorie/${button.dataset.id}`; // Ajoutez cette ligne
+                document.getElementById('editCategorieId').value = button.dataset.id;
+                document.getElementById('editCategorieNom').value = button.dataset.nom;
             });
-
+    
             // Modal d'édition type
             const editTypeModal = document.getElementById('editTypeModal');
             editTypeModal.addEventListener('show.bs.modal', function(event) {
                 const button = event.relatedTarget;
-                editTypeModal.querySelector('#editTypeId').value = button.dataset.id;
-                editTypeModal.querySelector('#editTypeNom').value = button.dataset.nom;
-                editTypeModal.querySelector('#editTypeCategorie').value = button.dataset.categorie;
+                const form = this.querySelector('form');
+                form.action = `/editer_type/${button.dataset.id}`; // Ajoutez cette ligne
+                document.getElementById('editTypeId').value = button.dataset.id;
+                document.getElementById('editTypeNom').value = button.dataset.nom;
+                document.getElementById('editTypeCategorie').value = button.dataset.categorie;
             });
         });
     </script>
