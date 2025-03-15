@@ -1780,6 +1780,9 @@ def supprimer_type(id):
     return redirect(url_for('parametres_stock'))
 
 if __name__ == '__main__':
+    # Création des utilisateurs dans un contexte d'application
     with app.app_context():
         create_default_users()
-    app.run(debug=True)
+    
+    # Lancer le serveur en mode debug accessible sur le réseau
+    app.run(host='0.0.0.0', port=5000, debug=True)
