@@ -7,7 +7,7 @@ from flask import session
 from flask_session import Session 
 from flask_wtf.csrf import CSRFProtect
 import mysql.connector
-
+import locale
 
 
 
@@ -1038,6 +1038,8 @@ def get_period(t):
 @app.route('/emploi')
 def emploi():
     try:
+        locale.setlocale(locale.LC_TIME, 'french')  # Alternative pour Windows
+
         lab_id = request.args.get('lab_id', type=int)
         week_offset = int(request.args.get('week_offset', 0))
         today = datetime.today()
