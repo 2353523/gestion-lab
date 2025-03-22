@@ -8,6 +8,8 @@ from flask_session import Session
 from flask_wtf.csrf import CSRFProtect
 import mysql.connector
 import locale
+from collections import defaultdict
+
 
 
 
@@ -1780,6 +1782,77 @@ def supprimer_type(id):
         cur.close() if 'cur' in locals() else None
     
     return redirect(url_for('parametres_stock'))
+
+@app.route('/statistiques')
+def statistiques():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    try:
+        cur = mysql.connection.cursor()
+
+        # Statistiques laboratoires
+        cur.execute("""
+            SELECT 
+                l.id_laboratoire,
+                l.nom_laboratoire,
+                l.capacite,
+                (SELECT COUNT(*) FROM tp WHERE id_laboratoire = l.id_laboratoire) AS nb_tp
+            FROM laboratoire l
+            ORDER BY l.nom_laboratoire
+        """)
+        labs_stats = cur.fetchall()
+
+        # Données pour les graphiques
+        lab_names = [lab['nom_laboratoire'] for lab in labs_stats]
+        tp_counts = [lab['nb_tp'] for lab in labs_stats]
+        capacities = [lab['capacite'] for lab in labs_stats]
+
+        # Statistiques types par labo
+        cur.execute("""
+            SELECT 
+                l.id_laboratoire,
+                COALESCE(c.nom_categorie, 'Non classé') AS categorie,
+                COUNT(DISTINCT t.id_type) as types_count
+            FROM laboratoire l
+            LEFT JOIN stock_laboratoire sl ON l.id_laboratoire = sl.id_laboratoire
+            LEFT JOIN article a ON sl.id_article = a.id_article
+            LEFT JOIN type t ON a.id_type = t.id_type
+            LEFT JOIN categorie c ON t.id_categorie = c.id_categorie
+            GROUP BY l.id_laboratoire, c.nom_categorie
+        """)
+        lab_types_data = cur.fetchall()
+
+        # Préparation données graphique
+        categories = sorted({lt['categorie'] for lt in lab_types_data})
+        lab_types_dict = defaultdict(dict)
+        
+        for lt in lab_types_data:
+            lab_id = lt['id_laboratoire']
+            lab_types_dict[lab_id][lt['categorie']] = lt['types_count']
+
+        # Création des paires catégorie/données
+        category_data = []
+        for category in categories:
+            counts = []
+            for lab in labs_stats:
+                counts.append(lab_types_dict[lab['id_laboratoire']].get(category, 0))
+            category_data.append(counts)
+
+        paired_data = list(zip(categories, category_data))
+
+        return render_template('statistiques.html',
+        lab_names=[lab['nom_laboratoire'] for lab in labs_stats],
+        tp_counts=[lab['nb_tp'] for lab in labs_stats],
+        capacities=[lab['capacite'] for lab in labs_stats],
+        categories=categories,
+        category_data=category_data)
+
+    except Exception as e:
+        flash(f"Erreur base de données : {str(e)}", "danger")
+        return redirect(url_for('index'))
+    finally:
+        cur.close()
 
 if __name__ == '__main__':
     # Création des utilisateurs dans un contexte d'application
