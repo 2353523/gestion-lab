@@ -180,8 +180,8 @@
                                 <td>{{ item.nom_article }}</td>
                                 <td>{{ item.nom_categorie }}</td>
                                 <td>{{ item.nom_type }}</td>
-                                <td class="text-center {% if item.quantite_magasin < 10 %}quantite-low{% else %}quantite-ok{% endif %}">
-                                    {{ item.quantite_magasin }}
+                                <td class="text-center {% if item.quantite < 10 %}quantite-low{% else %}quantite-ok{% endif %}">
+                                    {{ item.quantite }}
                                 </td>
                                 <td class="text-center">{{ item.unite_mesure }}</td>
                                 <td class="text-end action-buttons">
@@ -191,6 +191,7 @@
                                             <i class="fas fa-edit"></i>
                                         </a>
                                         <form method="POST" action="{{ url_for('supprimer_article', id=item.id_article) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <button type="submit" class="btn btn-danger btn-sm"
                                                 onclick="return confirm('Supprimer définitivement cet article ?')">
                                                 <i class="fas fa-trash"></i>
@@ -221,37 +222,44 @@
             const filterType = document.getElementById('filterType');
             const resetBtn = document.getElementById('resetFilters');
             const rows = document.querySelectorAll('tbody tr');
-
+        
             function updateFilters() {
-                const categorieId = filterCategorie.value;
-                const typeId = filterType.value;
-
-                // Gestion des options de type
+                // Récupère les valeurs sélectionnées
+                const categorieId = filterCategorie.value.toString();
+                const typeId = filterType.value.toString();
+        
+                // Met à jour les options du Type
                 Array.from(filterType.options).forEach(option => {
-                    if(option.value === "") return;
-                    const matchCategorie = option.dataset.categorie === categorieId;
-                    option.hidden = categorieId && !matchCategorie;
-                    option.disabled = categorieId && !matchCategorie;
+                    if (option.value === "") return;
+                    const isMatch = option.dataset.categorie === categorieId;
+                    option.hidden = !isMatch;
+                    option.disabled = !isMatch;
                 });
-
-                // Filtrage des lignes
+        
+                // Filtre les lignes du tableau
                 rows.forEach(row => {
-                    const rowCat = row.dataset.categorie;
-                    const rowType = row.dataset.type;
+                    const rowCat = row.dataset.categorie.toString();
+                    const rowType = row.dataset.type.toString();
+                    
                     const catMatch = !categorieId || rowCat === categorieId;
                     const typeMatch = !typeId || rowType === typeId;
+                    
                     row.style.display = (catMatch && typeMatch) ? '' : 'none';
                 });
+        
+                // Réactive le select Type si une catégorie est sélectionnée
+                filterType.disabled = !categorieId;
+                if (!categorieId) filterType.value = '';
             }
-
+        
+            // Événements
             filterCategorie.addEventListener('change', function() {
                 filterType.value = '';
-                filterType.disabled = !this.value;
                 updateFilters();
             });
-
+        
             filterType.addEventListener('change', updateFilters);
-
+        
             resetBtn.addEventListener('click', function(e) {
                 e.preventDefault();
                 filterCategorie.value = '';
@@ -259,7 +267,10 @@
                 filterType.disabled = true;
                 rows.forEach(row => row.style.display = '');
             });
+        
+            // Initialisation
+            updateFilters();
         });
-    </script>
+        </script>
 </body>
 </html>

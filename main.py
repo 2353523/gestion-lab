@@ -1129,27 +1129,28 @@ def stocks_overview():
         
         # Récupération données magasin
         cur.execute("""
-                SELECT COUNT(a.id_article) as nb_articles, 
-                    SUM(sm.quantite) as total_quantite
-                FROM stock_magasin sm
-                JOIN article a ON sm.id_article = a.id_article  # ✅ Correction ici
-            """)
+            SELECT COUNT(DISTINCT sm.id_article) as nb_articles, 
+                SUM(sm.quantite) as total_quantite
+            FROM stock_magasin sm
+            WHERE sm.date_expiration IS NULL OR sm.date_expiration > NOW()
+        """)
         magasin = cur.fetchone()
         
-        # Récupération données labos
+        # Récupération données labos (CORRECTION ICI)
         cur.execute("""
-                SELECT l.id_laboratoire, l.nom_laboratoire, 
-                    COUNT(sl.id_article) as nb_articles,
-                    SUM(sl.quantite) as total_quantite
-                FROM laboratoire l
-                LEFT JOIN stock_laboratoire sl ON l.id_laboratoire = sl.id_laboratoire
-                GROUP BY l.id_laboratoire
-            """)
+            SELECT l.id_laboratoire, l.nom_laboratoire, 
+                COUNT(DISTINCT sm.id_article) as nb_articles,
+                SUM(sl.quantite) as total_quantite
+            FROM laboratoire l
+            LEFT JOIN stock_laboratoire sl ON l.id_laboratoire = sl.id_laboratoire
+            LEFT JOIN stock_magasin sm ON sl.id_lot = sm.id_lot
+            GROUP BY l.id_laboratoire
+        """)
         laboratoires = cur.fetchall()
         
         return render_template('stock/stock.html',
-                             magasin=magasin,
-                             laboratoires=laboratoires)
+                            magasin=magasin,
+                            laboratoires=laboratoires)
         
     except Exception as e:
         flash(f"Erreur base de données : {str(e)}", "danger")
@@ -1163,35 +1164,56 @@ def stock_magasin():
         flash("Accès réservé aux administrateurs", "danger")
         return redirect(url_for('index'))
     
-    cur = mysql.connection.cursor()
+    # Initialisation des variables avec des valeurs par défaut
+    stock = []
+    categories = []
+    types = []
+    cur = None
+
     try:
-        # Modifier la requête SQL pour inclure les IDs
+        cur = mysql.connection.cursor()
+        
+        # Requête pour le stock
         cur.execute("""
-            SELECT a.id_article, a.nom_article, a.unite_mesure, 
-                sm.quantite AS quantite_magasin,
-                t.id_type, t.nom_type,
-                c.id_categorie, c.nom_categorie
-            FROM article a
-            JOIN stock_magasin sm ON a.id_article = sm.id_article  
+            SELECT 
+                sm.id_lot, 
+                a.id_article, 
+                a.nom_article, 
+                a.unite_mesure,
+                sm.quantite, 
+                sm.date_expiration, 
+                sm.date_ajout,
+                t.id_type, 
+                t.nom_type, 
+                c.id_categorie, 
+                c.nom_categorie
+            FROM stock_magasin sm
+            JOIN article a ON sm.id_article = a.id_article
             JOIN type t ON a.id_type = t.id_type
             JOIN categorie c ON t.id_categorie = c.id_categorie
+            ORDER BY sm.date_expiration ASC
         """)
         stock = cur.fetchall()
 
+        # Requête pour les catégories
         cur.execute("SELECT * FROM categorie")
         categories = cur.fetchall()
+
+        # Requête pour les types
         cur.execute("SELECT * FROM type")
         types = cur.fetchall()
 
     except Exception as e:
         flash(f"Erreur base de données : {str(e)}", "danger")
     finally:
-        cur.close()
+        if cur:
+            cur.close()
 
     return render_template('stock/stock_magasin.html',
                          stock=stock,
                          categories=categories,
                          types=types)
+
 
 # Route pour ajouter un article
 @app.route('/ajouter_article', methods=['GET', 'POST'])
@@ -1202,7 +1224,6 @@ def ajouter_article():
 
     cur = mysql.connection.cursor()
     try:
-        # Récupération des catégories/types
         cur.execute("SELECT * FROM categorie")
         categories = cur.fetchall()
         cur.execute("SELECT * FROM type")
@@ -1213,33 +1234,36 @@ def ajouter_article():
             unite = request.form['unite']
             quantite = int(request.form['quantite'])
             id_type = int(request.form['type'])
+            date_expiration = request.form.get('date_expiration') or None
 
-            # Transaction atomique
-            with mysql.connection.cursor() as trans_cur:
-                # 1. Insertion article
-                # Insert article
-                trans_cur.execute("""
-                    INSERT INTO article (nom_article, unite_mesure, id_type)
-                    VALUES (%s, %s, %s)
-                """, (nom, unite, id_type))
-                id_article = trans_cur.lastrowid
+            try:
+                with mysql.connection.cursor() as trans_cur:
+                    # Création de l'article
+                    trans_cur.execute("""
+                        INSERT INTO article (nom_article, unite_mesure, id_type, date_expiration)
+                        VALUES (%s, %s, %s, %s)
+                    """, (nom, unite, id_type, date_expiration))
+                    id_article = trans_cur.lastrowid
 
-                # Insert stock
-                trans_cur.execute("""
-                    INSERT INTO stock_magasin (id_article, quantite)
-                    VALUES (%s, %s)
-                """, (id_article, quantite))
+                    # Création du lot
+                    trans_cur.execute("""
+                        INSERT INTO stock_magasin (id_article, quantite, date_expiration)
+                        VALUES (%s, %s, %s)
+                    """, (id_article, quantite, date_expiration))
 
-                mysql.connection.commit()
-                flash("Article créé avec stock initial", "success")
-                return redirect(url_for('stock_magasin'))
+                    mysql.connection.commit()
+                    flash("Article et lot créés avec succès", "success")
+                    return redirect(url_for('stock_magasin'))
+
+            except Exception as e:
+                mysql.connection.rollback()
+                flash(f"Erreur : {str(e)}", "danger")
 
         return render_template('stock/ajouter_article.html',
                              categories=categories,
                              types=types)
 
     except Exception as e:
-        mysql.connection.rollback()
         flash(f"Erreur : {str(e)}", "danger")
         return redirect(url_for('stock_magasin'))
     finally:
@@ -1260,35 +1284,46 @@ def editer_article(id):
             unite = request.form['unite']
             quantite = int(request.form['quantite'])
             id_type = int(request.form['type'])
+            date_expiration = request.form.get('date_expiration') or None
 
             with mysql.connection.cursor() as trans_cur:
-                # Mise à jour article
+                # Mise à jour article avec date d'expiration
                 trans_cur.execute("""
                     UPDATE article SET
                         nom_article = %s,
                         unite_mesure = %s,
-                        id_type = %s
+                        id_type = %s,
+                        date_expiration = %s
                     WHERE id_article = %s
-                """, (nom, unite, id_type, id))
+                """, (nom, unite, id_type, date_expiration, id))
 
-                # Mise à jour stock magasin
+                # Mise à jour stock magasin avec date d'expiration
                 trans_cur.execute("""
                     UPDATE stock_magasin SET
-                        quantite = %s
+                        quantite = %s,
+                        date_expiration = %s
                     WHERE id_article = %s
-                """, (quantite, id))
+                    ORDER BY date_expiration ASC
+                    LIMIT 1
+                """, (quantite, date_expiration, id))
 
                 mysql.connection.commit()
                 flash("Modifications enregistrées", "success")
                 return redirect(url_for('stock_magasin'))
 
-        # Récupération données existantes
+        # Récupération données existantes avec jointure
         cur.execute("""
-            SELECT a.*, sm.quantite, t.id_categorie 
+            SELECT 
+                a.*, 
+                sm.quantite, 
+                sm.date_expiration,
+                t.id_categorie 
             FROM article a
             JOIN stock_magasin sm ON a.id_article = sm.id_article
             JOIN type t ON a.id_type = t.id_type
             WHERE a.id_article = %s
+            ORDER BY sm.date_expiration ASC
+            LIMIT 1
         """, (id,))
         article = cur.fetchone()
 
@@ -1317,10 +1352,12 @@ def supprimer_article(id):
 
     try:
         with mysql.connection.cursor() as trans_cur:
-            # La suppression en cascade s'occupe du stock_magasin
+            # Suppression en cascade
+            trans_cur.execute("DELETE FROM stock_laboratoire WHERE id_lot IN (SELECT id_lot FROM stock_magasin WHERE id_article = %s)", (id,))
+            trans_cur.execute("DELETE FROM stock_magasin WHERE id_article = %s", (id,))
             trans_cur.execute("DELETE FROM article WHERE id_article = %s", (id,))
             mysql.connection.commit()
-            flash("Article et stock associé supprimés", "success")
+            flash("Article et stocks associés supprimés", "success")
 
     except Exception as e:
         mysql.connection.rollback()
@@ -1340,6 +1377,17 @@ def stock_laboratoire(id_lab):
         cur.execute("SELECT * FROM laboratoire WHERE id_laboratoire = %s", (id_lab,))
         labo = cur.fetchone()
 
+        # Récupération des catégories et types
+        cur.execute("SELECT * FROM categorie")
+        categories = cur.fetchall()
+        cur.execute("SELECT * FROM type")
+        types = cur.fetchall()
+        
+        # Création des dictionnaires de correspondance
+        type_categories = {t['id_type']: t['id_categorie'] for t in types}
+        categories_dict = {c['id_categorie']: c['nom_categorie'] for c in categories}
+        types_dict = {t['id_type']: t['nom_type'] for t in types}
+
         if request.method == 'POST':
             article_id = request.form['article_id']
             quantite = int(request.form['quantite'])
@@ -1348,52 +1396,65 @@ def stock_laboratoire(id_lab):
             try:
                 with mysql.connection.cursor() as trans_cur:
                     if action == 'ajouter':
-                        # Vérification stock magasin avec verrou
+                        # Logique d'ajout inchangée
                         trans_cur.execute("""
-                            SELECT quantite FROM stock_magasin 
-                            WHERE id_article = %s FOR UPDATE
+                            SELECT sm.id_lot, sm.quantite 
+                            FROM stock_magasin sm
+                            WHERE sm.id_article = %s 
+                            AND (sm.date_expiration IS NULL OR sm.date_expiration > NOW())
+                            ORDER BY sm.date_expiration ASC
+                            LIMIT 1
+                            FOR UPDATE
                         """, (article_id,))
-                        stock = trans_cur.fetchone()
+                        lot = trans_cur.fetchone()
                         
-                        if not stock or stock['quantite'] < quantite:
-                            raise Exception("Stock magasin insuffisant")
+                        if not lot or lot['quantite'] < quantite:
+                            raise Exception("Stock magasin insuffisant ou expiré")
 
-                        # Mise à jour transactionnelle
                         trans_cur.execute("""
                             UPDATE stock_magasin
                             SET quantite = quantite - %s
-                            WHERE id_article = %s
-                        """, (quantite, article_id))
+                            WHERE id_lot = %s
+                        """, (quantite, lot['id_lot']))
                         
                         trans_cur.execute("""
-                            INSERT INTO stock_laboratoire (id_article, id_laboratoire, quantite)
+                            INSERT INTO stock_laboratoire (id_lot, id_laboratoire, quantite)
                             VALUES (%s, %s, %s)
                             ON DUPLICATE KEY UPDATE quantite = quantite + VALUES(quantite)
-                        """, (article_id, id_lab, quantite))
+                        """, (lot['id_lot'], id_lab, quantite))
 
                     elif action == 'retirer':
-                        # Vérification stock labo
+                        # CORRECTION : Récupération du lot depuis le stock du labo
                         trans_cur.execute("""
-                            SELECT quantite FROM stock_laboratoire 
-                            WHERE id_article = %s AND id_laboratoire = %s FOR UPDATE
-                        """, (article_id, id_lab))
-                        stock = trans_cur.fetchone()
+                            SELECT sl.id_lot, sl.quantite 
+                            FROM stock_laboratoire sl
+                            JOIN stock_magasin sm ON sl.id_lot = sm.id_lot
+                            WHERE sl.id_laboratoire = %s 
+                            AND sm.id_article = %s
+                            LIMIT 1
+                            FOR UPDATE
+                        """, (id_lab, article_id))
+                        lot = trans_cur.fetchone()
                         
-                        if not stock or stock['quantite'] < quantite:
-                            raise Exception("Stock laboratoire insuffisant")
+                        if not lot:
+                            raise Exception("Article non présent dans le stock du labo")
+                            
+                        if lot['quantite'] < quantite:
+                            raise Exception("Quantité insuffisante en stock labo")
 
-                        # Mise à jour transactionnelle
+                        # Mise à jour du stock labo
                         trans_cur.execute("""
                             UPDATE stock_laboratoire
                             SET quantite = quantite - %s
-                            WHERE id_article = %s AND id_laboratoire = %s
-                        """, (quantite, article_id, id_lab))
+                            WHERE id_lot = %s AND id_laboratoire = %s
+                        """, (quantite, lot['id_lot'], id_lab))
                         
+                        # Remise en stock magasin
                         trans_cur.execute("""
                             UPDATE stock_magasin
                             SET quantite = quantite + %s
-                            WHERE id_article = %s
-                        """, (quantite, article_id))
+                            WHERE id_lot = %s
+                        """, (quantite, lot['id_lot']))
 
                     mysql.connection.commit()
                     flash("Opération réussie", "success")
@@ -1402,47 +1463,57 @@ def stock_laboratoire(id_lab):
                 mysql.connection.rollback()
                 flash(f"Erreur : {str(e)}", "danger")
 
-        # Récupération des données
+        # Récupération du stock avec type et catégorie
         cur.execute("""
-            SELECT a.id_article, a.nom_article, a.unite_mesure,
-                   sl.quantite, t.id_categorie, t.id_type
+            SELECT 
+                sl.id_lot,
+                a.id_article,
+                a.nom_article,
+                a.unite_mesure,
+                sl.quantite,
+                a.id_type,
+                t.id_categorie
             FROM stock_laboratoire sl
-            JOIN article a ON sl.id_article = a.id_article
+            JOIN stock_magasin sm ON sl.id_lot = sm.id_lot
+            JOIN article a ON sm.id_article = a.id_article
             JOIN type t ON a.id_type = t.id_type
             WHERE sl.id_laboratoire = %s
         """, (id_lab,))
         stock = cur.fetchall()
 
+        # Récupération des articles disponibles
         cur.execute("""
-            SELECT a.*, sm.quantite AS stock_disponible 
-            FROM article a
-            JOIN stock_magasin sm ON a.id_article = sm.id_article
+            SELECT 
+                sm.id_lot,
+                a.id_article,
+                a.nom_article,
+                a.unite_mesure,
+                sm.quantite AS stock_disponible,
+                a.id_type,
+                t.id_categorie
+            FROM stock_magasin sm
+            JOIN article a ON sm.id_article = a.id_article
+            JOIN type t ON a.id_type = t.id_type
+            WHERE sm.quantite > 0
+            AND (sm.date_expiration IS NULL OR sm.date_expiration > NOW())
         """)
         articles = cur.fetchall()
 
-        cur.execute("SELECT * FROM categorie")
-        categories = cur.fetchall()
-        cur.execute("SELECT * FROM type")
-        types = cur.fetchall()
-
-        type_categories = {t['id_type']: t['id_categorie'] for t in types}
-        categories_dict = {c['id_categorie']: c['nom_categorie'] for c in categories}
-        types_dict = {t['id_type']: t['nom_type'] for t in types}
+        return render_template('stock/stock_lab.html',
+                            labo=labo,
+                            stock=stock,
+                            articles=articles,
+                            categories=categories,
+                            types=types,
+                            type_categories=type_categories,
+                            categories_dict=categories_dict,
+                            types_dict=types_dict)
 
     except Exception as e:
         flash(f"Erreur base de données : {str(e)}", "danger")
+        return redirect(url_for('index'))
     finally:
         cur.close()
-
-    return render_template('stock/stock_lab.html',
-                         labo=labo,
-                         stock=stock,
-                         articles=articles,
-                         categories=categories,
-                         types=types,
-                         type_categories=type_categories,
-                         categories_dict=categories_dict,
-                         types_dict=types_dict)
 
 
 @app.route('/parametres_stock')

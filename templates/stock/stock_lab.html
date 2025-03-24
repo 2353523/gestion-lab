@@ -134,85 +134,84 @@
     <main class="container mt-4">
         <div class="card shadow">
             <div class="card-header bg-primary text-white">
-                <h3>
+                <h3 class="mb-0">
                     <i class="fas fa-warehouse me-2"></i>
-                    Gestion du stock - {{ labo.nom_laboratoire }}
+                    Stock - {{ labo.nom_laboratoire }}
                 </h3>
             </div>
             
             <div class="card-body">
                 <!-- Filtres -->
                 <div class="filter-box">
-                    <div class="row g-4">
+                    <div class="row g-3">
                         <div class="col-md-4">
-                            <div class="filter-group">
-                                <label class="filter-label">Catégorie</label>
-                                <select id="filterCategorie" class="form-select">
-                                    <option value="">Toutes les catégories</option>
-                                    {% for categorie in categories %}
-                                    <option value="{{ categorie.id_categorie }}">{{ categorie.nom_categorie }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
+                            <label class="form-label">Catégorie</label>
+                            <select id="filterCategorie" class="form-select">
+                                <option value="">Toutes</option>
+                                {% for categorie in categories %}
+                                <option value="{{ categorie.id_categorie }}">
+                                    {{ categorie.nom_categorie }}
+                                </option>
+                                {% endfor %}
+                            </select>
                         </div>
-                        
                         <div class="col-md-4">
-                            <div class="filter-group">
-                                <label class="filter-label">Type</label>
-                                <select id="filterType" class="form-select" disabled>
-                                    <option value="">Tous les types</option>
-                                    {% for type in types %}
-                                    <option value="{{ type.id_type }}" data-categorie="{{ type.id_categorie }}">
-                                        {{ type.nom_type }}
-                                    </option>
-                                    {% endfor %}
-                                </select>
-                            </div>
+                            <label class="form-label">Type</label>
+                            <select id="filterType" class="form-select" disabled>
+                                <option value="">Tous</option>
+                                {% for type in types %}
+                                <option value="{{ type.id_type }}" 
+                                        data-categorie="{{ type.id_categorie }}">
+                                    {{ type.nom_type }}
+                                </option>
+                                {% endfor %}
+                            </select>
                         </div>
                     </div>
                 </div>
 
                 <!-- Formulaire de gestion -->
-                <div class="mb-5">
-                    <h4 class="mb-3">Ajouter/Retirer du stock</h4>
-                    <form method="POST"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <div class="row g-3">
+                <div class="mb-4">
+                    <h4 class="mb-3 border-bottom pb-2">Transactions</h4>
+                    <form method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                        <div class="row g-3 align-items-end">
                             <div class="col-md-4">
-                                <select name="article_id" id="selectArticle" class="form-select" required>
-                                    <option value="">Choisir un article...</option>
+                                <select name="article_id" 
+                                        id="selectArticle" 
+                                        class="form-select" 
+                                        required>
+                                    <option value="">Sélectionner un article...</option>
                                     {% for article in articles %}
-                                    <option value="{{ article.id_article }}" 
+                                    <option value="{{ article.id_article }}"
                                             data-type="{{ article.id_type }}"
-                                            data-categorie="{{ type_categories[article.id_type] }}">
+                                            data-categorie="{{ article.id_categorie }}">
                                         {{ article.nom_article }} ({{ article.unite_mesure }})
                                     </option>
                                     {% endfor %}
                                 </select>
                             </div>
-                            
                             <div class="col-md-3">
-                                <input type="number" name="quantite" 
-                                       class="form-control" 
-                                       placeholder="Quantité" 
-                                       min="1" required>
+                                <input type="number" 
+                                       name="quantite"
+                                       class="form-control"
+                                       placeholder="Quantité"
+                                       min="1"
+                                       required>
                             </div>
-                            
                             <div class="col-md-5">
-                                <div class="btn-group">
+                                <div class="btn-group w-100">
                                     <button type="submit" 
                                             name="action" 
                                             value="ajouter"
                                             class="btn btn-success">
-                                        <i class="fas fa-arrow-right me-2"></i>
-                                        Ajouter au labo
+                                        <i class="fas fa-arrow-right me-2"></i>Ajouter
                                     </button>
-                                    
                                     <button type="submit" 
                                             name="action" 
                                             value="retirer"
                                             class="btn btn-warning">
-                                        <i class="fas fa-arrow-left me-2"></i>
-                                        Retirer vers magasin
+                                        <i class="fas fa-arrow-left me-2"></i>Retirer
                                     </button>
                                 </div>
                             </div>
@@ -221,28 +220,26 @@
                 </div>
 
                 <!-- Liste du stock -->
-                <h4 class="mb-3">Stock actuel</h4>
+                <h4 class="mb-3 border-bottom pb-2">Inventaire</h4>
                 <div class="list-group">
                     {% for item in stock %}
-                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <div class="list-group-item d-flex justify-content-between align-items-center py-3">
                         <div>
-                            <span class="fw-bold">{{ item.nom_article }}</span>
-                            <small class="text-muted ms-2">{{ item.unite_mesure }}</small>
-                            <br>
+                            <div class="fw-bold">{{ item.nom_article }}</div>
                             <small class="text-muted">
-                                Catégorie: {{ categories_dict[type_categories[item.id_type]] }} → 
-                                Type: {{ types_dict[item.id_type] }}
+                                {{ categories_dict[item.id_categorie] }} → 
+                                {{ types_dict[item.id_type] }} | 
+                                {{ item.unite_mesure }}
                             </small>
                         </div>
-                        <div>
-                            <span class="badge bg-primary rounded-pill fs-6">
-                                {{ item.quantite }}
-                            </span>
-                        </div>
+                        <span class="badge bg-primary rounded-pill fs-6">
+                            {{ item.quantite }}
+                        </span>
                     </div>
                     {% else %}
-                    <div class="alert alert-info">
-                        Aucun stock dans ce laboratoire
+                    <div class="alert alert-info mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Aucun article en stock dans ce laboratoire
                     </div>
                     {% endfor %}
                 </div>
@@ -252,43 +249,37 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Gestion des filtres
-        const filterCategorie = document.getElementById('filterCategorie');
-        const filterType = document.getElementById('filterType');
-        const selectArticle = document.getElementById('selectArticle');
+        document.addEventListener('DOMContentLoaded', () => {
+            const filterCategorie = document.getElementById('filterCategorie')
+            const filterType = document.getElementById('filterType')
+            const selectArticle = document.getElementById('selectArticle')
 
-        function updateFilters() {
-            // Filtrage des types
-            const selectedCategorie = filterCategorie.value;
-            Array.from(filterType.options).forEach(option => {
-                const showType = !selectedCategorie || 
-                               (option.dataset.categorie === selectedCategorie);
-                option.hidden = !showType;
-            });
-            filterType.disabled = !selectedCategorie;
+            function updateFilters() {
+                // Filtrage des types
+                const categorieId = filterCategorie.value
+                Array.from(filterType.options).forEach(option => {
+                    option.hidden = option.value && 
+                                  option.dataset.categorie !== categorieId
+                })
+                filterType.disabled = !categorieId
+                filterType.value = ''
 
-            // Filtrage des articles
-            const selectedType = filterType.value;
-            Array.from(selectArticle.options).forEach(option => {
-                if(option.value === "") return;
-                const showArticle = (
-                    (!selectedCategorie || option.dataset.categorie === selectedCategorie) &&
-                    (!selectedType || option.dataset.type === selectedType)
-                );
-                option.hidden = !showArticle;
-            });
-        }
+                // Filtrage des articles
+                const typeId = filterType.value
+                Array.from(selectArticle.options).forEach(option => {
+                    if(!option.value) return
+                    const matchCategorie = !categorieId || 
+                        option.dataset.categorie === categorieId
+                    const matchType = !typeId || 
+                        option.dataset.type === typeId
+                    option.hidden = !(matchCategorie && matchType)
+                })
+            }
 
-        // Événements
-        filterCategorie.addEventListener('change', () => {
-            filterType.value = '';
-            updateFilters();
-        });
-
-        filterType.addEventListener('change', updateFilters);
-        
-        // Initialisation
-        document.addEventListener('DOMContentLoaded', updateFilters);
+            filterCategorie.addEventListener('change', updateFilters)
+            filterType.addEventListener('change', updateFilters)
+            updateFilters()
+        })
     </script>
 </body>
 </html>
