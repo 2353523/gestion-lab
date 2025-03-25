@@ -1879,46 +1879,44 @@ def statistiques():
         tp_counts = [lab['nb_tp'] for lab in labs_stats]
         capacities = [lab['capacite'] for lab in labs_stats]
 
-        # Statistiques types par labo
+        # Nouvelle requête avec type
         cur.execute("""
             SELECT 
                 l.id_laboratoire,
-                COALESCE(c.nom_categorie, 'Non classé') AS categorie,
+                COALESCE(t.nom_type, 'Non spécifié') AS type_article,
                 COUNT(DISTINCT t.id_type) as types_count
             FROM laboratoire l
             LEFT JOIN stock_laboratoire sl ON l.id_laboratoire = sl.id_laboratoire
-            LEFT JOIN stock_magasin sm ON sl.id_lot = sm.id_lot  -- Added this line
-            LEFT JOIN article a ON sm.id_article = a.id_article  -- Adjusted to use sm
+            LEFT JOIN stock_magasin sm ON sl.id_lot = sm.id_lot
+            LEFT JOIN article a ON sm.id_article = a.id_article
             LEFT JOIN type t ON a.id_type = t.id_type
-            LEFT JOIN categorie c ON t.id_categorie = c.id_categorie
-            GROUP BY l.id_laboratoire, c.nom_categorie
+            GROUP BY l.id_laboratoire, t.nom_type
         """)
         lab_types_data = cur.fetchall()
 
-        # Préparation données graphique
-        categories = sorted({lt['categorie'] for lt in lab_types_data})
+       # Préparation données graphique
+        types = sorted({lt['type_article'] for lt in lab_types_data if lt['type_article']}) 
         lab_types_dict = defaultdict(dict)
         
         for lt in lab_types_data:
             lab_id = lt['id_laboratoire']
-            lab_types_dict[lab_id][lt['categorie']] = lt['types_count']
+            lab_types_dict[lab_id][lt['type_article']] = lt['types_count']
 
         # Création des paires catégorie/données
-        category_data = []
-        for category in categories:
+        type_data = []
+        for type_name in types:
             counts = []
             for lab in labs_stats:
-                counts.append(lab_types_dict[lab['id_laboratoire']].get(category, 0))
-            category_data.append(counts)
+                counts.append(lab_types_dict[lab['id_laboratoire']].get(type_name, 0))
+            type_data.append(counts)
 
-        paired_data = list(zip(categories, category_data))
+        paired_data = list(zip(types, type_data))
 
         return render_template('statistiques.html',
         lab_names=[lab['nom_laboratoire'] for lab in labs_stats],
         tp_counts=[lab['nb_tp'] for lab in labs_stats],
-        capacities=[lab['capacite'] for lab in labs_stats],
-        categories=categories,
-        category_data=category_data)
+        types=types,
+        type_data=type_data)
 
     except Exception as e:
         flash(f"Erreur base de données : {str(e)}", "danger")
