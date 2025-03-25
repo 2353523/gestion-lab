@@ -2,10 +2,10 @@
 -- version 5.2.1
 -- https://www.phpmyadmin.net/
 --
--- Host: 127.0.0.1:3306
--- Generation Time: Mar 13, 2025 at 05:37 PM
--- Server version: 9.1.0
--- PHP Version: 8.3.14
+-- Hôte : 127.0.0.1:3306
+-- Généré le : mar. 25 mars 2025 à 00:49
+-- Version du serveur : 5.6.17
+-- Version de PHP : 8.3.14
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -18,66 +18,71 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- Database: `gestion_lab`
+-- Base de données : `gestion_lab`
 --
 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `article`
+-- Structure de la table `article`
 --
 
 DROP TABLE IF EXISTS `article`;
 CREATE TABLE IF NOT EXISTS `article` (
-  `id_article` int NOT NULL AUTO_INCREMENT,
+  `id_article` int(11) NOT NULL AUTO_INCREMENT,
   `nom_article` varchar(150) NOT NULL,
   `unite_mesure` varchar(50) NOT NULL,
-  `id_type` int NOT NULL,
+  `date_expiration` datetime DEFAULT NULL,
+  `id_type` int(11) NOT NULL,
   PRIMARY KEY (`id_article`),
   KEY `id_type` (`id_type`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=latin1;
 
 --
--- Dumping data for table `article`
+-- Déchargement des données de la table `article`
 --
 
-INSERT INTO `article` (`id_article`, `nom_article`, `unite_mesure`, `id_type`) VALUES
-(1, 'becher', 'litre', 1);
+INSERT INTO `article` (`id_article`, `nom_article`, `unite_mesure`, `date_expiration`, `id_type`) VALUES
+(1, 'becher', 'litre', NULL, 1),
+(2, 'meden', 'litre', NULL, 1),
+(7, 'Diagana', 'litre', '2025-03-23 00:00:00', 1),
+(8, 'Diagana', 'kg', '2025-03-25 00:00:00', 1);
 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `categorie`
+-- Structure de la table `categorie`
 --
 
 DROP TABLE IF EXISTS `categorie`;
 CREATE TABLE IF NOT EXISTS `categorie` (
-  `id_categorie` int NOT NULL AUTO_INCREMENT,
+  `id_categorie` int(11) NOT NULL AUTO_INCREMENT,
   `nom_categorie` varchar(100) NOT NULL,
   PRIMARY KEY (`id_categorie`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=latin1;
 
 --
--- Dumping data for table `categorie`
+-- Déchargement des données de la table `categorie`
 --
 
 INSERT INTO `categorie` (`id_categorie`, `nom_categorie`) VALUES
-(1, 'materiel');
+(1, 'materiel'),
+(4, 'produit');
 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `historique_`
+-- Structure de la table `historique_`
 --
 
 DROP TABLE IF EXISTS `historique_`;
 CREATE TABLE IF NOT EXISTS `historique_` (
-  `id_historique` int NOT NULL AUTO_INCREMENT,
-  `id_tp` int NOT NULL,
-  `id_prof` int NOT NULL,
+  `id_historique` int(11) NOT NULL AUTO_INCREMENT,
+  `id_tp` int(11) NOT NULL,
+  `id_prof` int(11) NOT NULL,
   `degradation` tinyint(1) NOT NULL DEFAULT '0',
-  `id_article` int NOT NULL,
-  `quantite` int NOT NULL DEFAULT '0',
+  `id_article` int(11) NOT NULL,
+  `quantite` int(11) NOT NULL DEFAULT '0',
   `date_utilisation` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `commentaire` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id_historique`)
@@ -86,19 +91,19 @@ CREATE TABLE IF NOT EXISTS `historique_` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `laboratoire`
+-- Structure de la table `laboratoire`
 --
 
 DROP TABLE IF EXISTS `laboratoire`;
 CREATE TABLE IF NOT EXISTS `laboratoire` (
-  `id_laboratoire` int NOT NULL AUTO_INCREMENT,
+  `id_laboratoire` int(11) NOT NULL AUTO_INCREMENT,
   `nom_laboratoire` varchar(50) NOT NULL,
-  `capacite` int NOT NULL DEFAULT '0',
+  `capacite` int(11) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id_laboratoire`)
 ) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=latin1;
 
 --
--- Dumping data for table `laboratoire`
+-- Déchargement des données de la table `laboratoire`
 --
 
 INSERT INTO `laboratoire` (`id_laboratoire`, `nom_laboratoire`, `capacite`) VALUES
@@ -109,14 +114,14 @@ INSERT INTO `laboratoire` (`id_laboratoire`, `nom_laboratoire`, `capacite`) VALU
 -- --------------------------------------------------------
 
 --
--- Table structure for table `ligne_recu`
+-- Structure de la table `ligne_recu`
 --
 
 DROP TABLE IF EXISTS `ligne_recu`;
 CREATE TABLE IF NOT EXISTS `ligne_recu` (
-  `id_article` int NOT NULL DEFAULT '0',
-  `id_recu` int NOT NULL DEFAULT '0',
-  `quantite` int NOT NULL DEFAULT '0',
+  `id_article` int(11) NOT NULL DEFAULT '0',
+  `id_recu` int(11) NOT NULL DEFAULT '0',
+  `quantite` int(11) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id_article`,`id_recu`),
   KEY `id_recu` (`id_recu`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
@@ -124,19 +129,19 @@ CREATE TABLE IF NOT EXISTS `ligne_recu` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `matiere`
+-- Structure de la table `matiere`
 --
 
 DROP TABLE IF EXISTS `matiere`;
 CREATE TABLE IF NOT EXISTS `matiere` (
-  `id_matiere` int NOT NULL AUTO_INCREMENT,
+  `id_matiere` int(11) NOT NULL AUTO_INCREMENT,
   `nom_matiere` varchar(100) NOT NULL,
   `niveau` enum('L1','L2','L3') NOT NULL,
   PRIMARY KEY (`id_matiere`)
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=latin1;
 
 --
--- Dumping data for table `matiere`
+-- Déchargement des données de la table `matiere`
 --
 
 INSERT INTO `matiere` (`id_matiere`, `nom_matiere`, `niveau`) VALUES
@@ -148,12 +153,12 @@ INSERT INTO `matiere` (`id_matiere`, `nom_matiere`, `niveau`) VALUES
 -- --------------------------------------------------------
 
 --
--- Table structure for table `professeur`
+-- Structure de la table `professeur`
 --
 
 DROP TABLE IF EXISTS `professeur`;
 CREATE TABLE IF NOT EXISTS `professeur` (
-  `id_prof` int NOT NULL AUTO_INCREMENT,
+  `id_prof` int(11) NOT NULL AUTO_INCREMENT,
   `prenom` varchar(50) NOT NULL,
   `nom` varchar(50) NOT NULL,
   `email` varchar(50) NOT NULL,
@@ -164,7 +169,7 @@ CREATE TABLE IF NOT EXISTS `professeur` (
 ) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=latin1;
 
 --
--- Dumping data for table `professeur`
+-- Déchargement des données de la table `professeur`
 --
 
 INSERT INTO `professeur` (`id_prof`, `prenom`, `nom`, `email`, `telephone`) VALUES
@@ -176,17 +181,17 @@ INSERT INTO `professeur` (`id_prof`, `prenom`, `nom`, `email`, `telephone`) VALU
 -- --------------------------------------------------------
 
 --
--- Table structure for table `recu`
+-- Structure de la table `recu`
 --
 
 DROP TABLE IF EXISTS `recu`;
 CREATE TABLE IF NOT EXISTS `recu` (
-  `id_recu` int NOT NULL AUTO_INCREMENT,
+  `id_recu` int(11) NOT NULL AUTO_INCREMENT,
   `date_emission` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `degradation` tinyint(1) NOT NULL DEFAULT '0',
   `observations` varchar(255) DEFAULT NULL,
-  `id_tp` int NOT NULL,
-  `id_prof` int NOT NULL,
+  `id_tp` int(11) NOT NULL,
+  `id_prof` int(11) NOT NULL,
   PRIMARY KEY (`id_recu`),
   KEY `id_tp` (`id_tp`),
   KEY `id_prof` (`id_prof`)
@@ -195,57 +200,67 @@ CREATE TABLE IF NOT EXISTS `recu` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `stock_laboratoire`
+-- Structure de la table `stock_laboratoire`
 --
 
 DROP TABLE IF EXISTS `stock_laboratoire`;
 CREATE TABLE IF NOT EXISTS `stock_laboratoire` (
-  `id_article` int NOT NULL DEFAULT '0',
-  `id_laboratoire` int NOT NULL DEFAULT '0',
-  `quantite` int NOT NULL DEFAULT '0',
-  PRIMARY KEY (`id_article`,`id_laboratoire`),
+  `id_lot` int(11) NOT NULL,
+  `id_laboratoire` int(11) NOT NULL,
+  `quantite` int(11) NOT NULL,
+  PRIMARY KEY (`id_lot`,`id_laboratoire`),
   KEY `id_laboratoire` (`id_laboratoire`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `stock_magasin`
+-- Structure de la table `stock_magasin`
 --
 
 DROP TABLE IF EXISTS `stock_magasin`;
 CREATE TABLE IF NOT EXISTS `stock_magasin` (
-  `id_stock_magasin` int NOT NULL AUTO_INCREMENT,
-  `quantite` int NOT NULL DEFAULT '0',
-  `id_article` int DEFAULT NULL,
-  PRIMARY KEY (`id_stock_magasin`),
-  KEY `fk_stock_magasin_article` (`id_article`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+  `id_lot` int(11) NOT NULL AUTO_INCREMENT,
+  `id_article` int(11) NOT NULL,
+  `quantite` int(11) NOT NULL,
+  `date_expiration` datetime DEFAULT NULL,
+  `date_ajout` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id_lot`),
+  KEY `id_article` (`id_article`)
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=latin1;
+
+--
+-- Déchargement des données de la table `stock_magasin`
+--
+
+INSERT INTO `stock_magasin` (`id_lot`, `id_article`, `quantite`, `date_expiration`, `date_ajout`) VALUES
+(5, 7, 10, '2025-03-23 00:00:00', '2025-03-24 22:31:28'),
+(6, 8, 7, '2025-03-25 00:00:00', '2025-03-24 22:31:52');
 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `tp`
+-- Structure de la table `tp`
 --
 
 DROP TABLE IF EXISTS `tp`;
 CREATE TABLE IF NOT EXISTS `tp` (
-  `id_tp` int NOT NULL AUTO_INCREMENT,
+  `id_tp` int(11) NOT NULL AUTO_INCREMENT,
   `nom_tp` varchar(100) NOT NULL,
   `heure_debut` datetime NOT NULL,
   `heure_fin` datetime NOT NULL,
   `annee_scolaire` varchar(9) NOT NULL,
-  `id_laboratoire` int NOT NULL,
-  `id_matiere` int NOT NULL,
-  `id_prof` int NOT NULL,
+  `id_laboratoire` int(11) NOT NULL,
+  `id_matiere` int(11) NOT NULL,
+  `id_prof` int(11) NOT NULL,
   PRIMARY KEY (`id_tp`),
   KEY `id_laboratoire` (`id_laboratoire`),
   KEY `id_matiere` (`id_matiere`),
   KEY `id_prof` (`id_prof`)
-) ENGINE=InnoDB AUTO_INCREMENT=76 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=77 DEFAULT CHARSET=latin1;
 
 --
--- Dumping data for table `tp`
+-- Déchargement des données de la table `tp`
 --
 
 INSERT INTO `tp` (`id_tp`, `nom_tp`, `heure_debut`, `heure_fin`, `annee_scolaire`, `id_laboratoire`, `id_matiere`, `id_prof`) VALUES
@@ -278,93 +293,94 @@ INSERT INTO `tp` (`id_tp`, `nom_tp`, `heure_debut`, `heure_fin`, `annee_scolaire
 (72, 'aaa', '2025-03-13 09:45:00', '2025-03-13 11:15:00', '2024-2025', 5, 1, 3),
 (73, 'aaa', '2025-03-13 11:30:00', '2025-03-13 13:00:00', '2024-2025', 5, 1, 3),
 (74, 'aaa', '2025-03-13 15:10:00', '2025-03-13 16:40:00', '2024-2025', 5, 1, 3),
-(75, 'aaa', '2025-03-13 17:00:00', '2025-03-13 18:30:00', '2024-2025', 5, 1, 3);
+(75, 'aaa', '2025-03-13 17:00:00', '2025-03-13 18:30:00', '2024-2025', 5, 1, 3),
+(76, 'corrosion', '2025-03-18 09:45:00', '2025-03-18 11:15:00', '2024-2025', 1, 2, 3);
 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `type`
+-- Structure de la table `type`
 --
 
 DROP TABLE IF EXISTS `type`;
 CREATE TABLE IF NOT EXISTS `type` (
-  `id_type` int NOT NULL AUTO_INCREMENT,
+  `id_type` int(11) NOT NULL AUTO_INCREMENT,
   `nom_type` varchar(50) NOT NULL,
-  `id_categorie` int NOT NULL,
+  `id_categorie` int(11) NOT NULL,
   PRIMARY KEY (`id_type`),
   KEY `id_categorie` (`id_categorie`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=latin1;
 
 --
--- Dumping data for table `type`
+-- Déchargement des données de la table `type`
 --
 
 INSERT INTO `type` (`id_type`, `nom_type`, `id_categorie`) VALUES
-(1, 'recipient', 1);
+(1, 'recipiente', 1);
 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `utilisateur`
+-- Structure de la table `utilisateur`
 --
 
 DROP TABLE IF EXISTS `utilisateur`;
 CREATE TABLE IF NOT EXISTS `utilisateur` (
-  `id` int NOT NULL AUTO_INCREMENT,
+  `id` int(11) NOT NULL AUTO_INCREMENT,
   `username` varchar(50) NOT NULL,
   `password` varchar(255) NOT NULL,
   `role` enum('admin','user') NOT NULL DEFAULT 'user',
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4;
 
 --
--- Dumping data for table `utilisateur`
+-- Déchargement des données de la table `utilisateur`
 --
 
 INSERT INTO `utilisateur` (`id`, `username`, `password`, `role`) VALUES
-(3, 'admin', 'scrypt:32768:8:1$xmmxTqTqqrpQuIy9$a6050327d9d75a52f0c38c73105064bbe9f027455c89ddeb29428cbcd4b635fd19c71b48bdfe93b63cd50f5cc12298f4ab6c9b8a35bcee721ee85f7e2a7b4288', 'admin'),
-(4, 'user', 'scrypt:32768:8:1$v8TyVGznbgTZmpfO$5471fb1171e02d10f9e8f88fc6d20f83d6d48ba3ceea9c6028dd7da6502bfcf465e80643bf72c517dbf5c505c4c1677e5290649c5956fe60167e8a1d0e355269', 'user');
+(5, 'admin', 'scrypt:32768:8:1$clT7v7hQyqaPkQ83$0743f96b5698e29ffc2676ee08cedbd34c8cc0bf8db7efa837e9b25cf83f6571328253133930b672ab32544846bc62f95ee432a474ac602ee8764f866210d0c3', 'admin'),
+(6, 'user', 'scrypt:32768:8:1$8eOYiv0OZoQkVAjs$a162834f8313d9950b5547da4961549423e968a4b03d7b03d9c6fb815fc07efc717c8019b18e6c0a28dda15f865f97219090906d555894b94fe4153b045d3e61', 'user');
 
 --
--- Constraints for dumped tables
+-- Contraintes pour les tables déchargées
 --
 
 --
--- Constraints for table `article`
+-- Contraintes pour la table `article`
 --
 ALTER TABLE `article`
   ADD CONSTRAINT `article_ibfk_2` FOREIGN KEY (`id_type`) REFERENCES `type` (`id_type`);
 
 --
--- Constraints for table `ligne_recu`
+-- Contraintes pour la table `ligne_recu`
 --
 ALTER TABLE `ligne_recu`
   ADD CONSTRAINT `ligne_recu_ibfk_1` FOREIGN KEY (`id_article`) REFERENCES `article` (`id_article`) ON DELETE CASCADE,
   ADD CONSTRAINT `ligne_recu_ibfk_2` FOREIGN KEY (`id_recu`) REFERENCES `recu` (`id_recu`) ON DELETE CASCADE;
 
 --
--- Constraints for table `recu`
+-- Contraintes pour la table `recu`
 --
 ALTER TABLE `recu`
   ADD CONSTRAINT `recu_ibfk_1` FOREIGN KEY (`id_tp`) REFERENCES `tp` (`id_tp`),
   ADD CONSTRAINT `recu_ibfk_2` FOREIGN KEY (`id_prof`) REFERENCES `professeur` (`id_prof`);
 
 --
--- Constraints for table `stock_laboratoire`
+-- Contraintes pour la table `stock_laboratoire`
 --
 ALTER TABLE `stock_laboratoire`
-  ADD CONSTRAINT `stock_laboratoire_ibfk_1` FOREIGN KEY (`id_article`) REFERENCES `article` (`id_article`) ON DELETE CASCADE,
-  ADD CONSTRAINT `stock_laboratoire_ibfk_2` FOREIGN KEY (`id_laboratoire`) REFERENCES `laboratoire` (`id_laboratoire`) ON DELETE CASCADE;
+  ADD CONSTRAINT `stock_laboratoire_ibfk_1` FOREIGN KEY (`id_lot`) REFERENCES `stock_magasin` (`id_lot`),
+  ADD CONSTRAINT `stock_laboratoire_ibfk_2` FOREIGN KEY (`id_laboratoire`) REFERENCES `laboratoire` (`id_laboratoire`);
 
 --
--- Constraints for table `stock_magasin`
+-- Contraintes pour la table `stock_magasin`
 --
 ALTER TABLE `stock_magasin`
-  ADD CONSTRAINT `fk_stock_magasin_article` FOREIGN KEY (`id_article`) REFERENCES `article` (`id_article`) ON DELETE CASCADE;
+  ADD CONSTRAINT `stock_magasin_ibfk_1` FOREIGN KEY (`id_article`) REFERENCES `article` (`id_article`);
 
 --
--- Constraints for table `tp`
+-- Contraintes pour la table `tp`
 --
 ALTER TABLE `tp`
   ADD CONSTRAINT `tp_ibfk_1` FOREIGN KEY (`id_laboratoire`) REFERENCES `laboratoire` (`id_laboratoire`),
@@ -372,7 +388,7 @@ ALTER TABLE `tp`
   ADD CONSTRAINT `tp_ibfk_3` FOREIGN KEY (`id_prof`) REFERENCES `professeur` (`id_prof`);
 
 --
--- Constraints for table `type`
+-- Contraintes pour la table `type`
 --
 ALTER TABLE `type`
   ADD CONSTRAINT `type_ibfk_1` FOREIGN KEY (`id_categorie`) REFERENCES `categorie` (`id_categorie`);
