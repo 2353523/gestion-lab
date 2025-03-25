@@ -37,82 +37,10 @@
     </style>
 </head>
 <body class="bg-light">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
-        <div class="container">
-            <a class="navbar-brand d-flex align-items-center" href="{{ url_for('index') }}">
-                <i class="fas fa-flask fs-4 me-2"></i>
-                <span class="fw-bold">Gestion Lab</span>
-            </a>
-            
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-    
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <!-- Nouvel élément Stocks -->
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('stocks_overview') }}">
-                            <i class="fas fa-boxes me-2"></i>Stocks
-                        </a>
-                    </li>
-                    
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('index') }}">
-                            <i class="fas fa-calendar-day me-2"></i>TP du Jour
-                        </a>
-                    </li>
-                    
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('emploi') }}">
-                            <i class="fas fa-calendar-alt me-2"></i>Emploi du temps
-                        </a>
-                    </li>
-                    
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="gestionDropdown" data-bs-toggle="dropdown">
-                            <i class="fas fa-cogs me-2"></i>Gestion
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-dark">
-                            <li><a class="dropdown-item" href="{{ url_for('liste_professeurs') }}">
-                                <i class="fas fa-chalkboard-teacher me-2"></i>Professeurs
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('liste_matieres') }}">
-                                <i class="fas fa-book me-2"></i>Matières
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('liste_laboratoires') }}">
-                                <i class="fas fa-microscope me-2"></i>Laboratoires
-                            </a></li>
-                            <!-- Nouveau sous-menu Stock -->
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{{ url_for('stock_magasin') }}">
-                                <i class="fas fa-warehouse me-2"></i>Stock Magasin
-                            </a></li>
-                        </ul>
-                    </li>
-                </ul>
-                
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
-                            <i class="fas fa-user-cog me-2"></i>{{ session.username }}
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="#">
-                                <i class="fas fa-sliders-h me-2"></i>Paramètres
-                            </a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li>
-                                <a class="dropdown-item" href="{{ url_for('logout') }}">
-                                    <i class="fas fa-sign-out-alt me-2"></i>Déconnexion
-                                </a>
-                            </li>
-                        </ul>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
+    {% include 'nav.html' %}
+    <div class="content">
+        {% block content %}{% endblock %}
+    </div>
 
     <main class="container py-4">
         <div class="card shadow">

@@ -1,6 +1,6 @@
 import os
 from datetime import datetime, time, timedelta
-from flask import Flask, render_template, request, redirect, url_for, flash, session, abort
+from flask import Flask, render_template, request, redirect, url_for, flash, session, abort,render_template_string,Response  
 from flask_mysqldb import MySQL
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask import session
@@ -9,6 +9,7 @@ from flask_wtf.csrf import CSRFProtect
 import mysql.connector
 import locale
 from collections import defaultdict
+
 
 
 
@@ -1040,6 +1041,8 @@ def get_period(t):
 @app.route('/emploi')
 def emploi():
     try:
+        if request.method == 'HEAD':
+            return Response()
         locale.setlocale(locale.LC_TIME, 'french')  # Alternative pour Windows
 
         lab_id = request.args.get('lab_id', type=int)
@@ -1061,7 +1064,7 @@ def emploi():
         # Récupération de la liste des laboratoires
         cur.execute("SELECT id_laboratoire, nom_laboratoire FROM laboratoire")
         laboratoires = cur.fetchall()
-
+        
         # Requête modifiée pour filtrer par labo
         query = """
             SELECT 
@@ -1082,6 +1085,7 @@ def emploi():
             WHERE YEARWEEK(tp.heure_debut, 1) = YEARWEEK(%s, 1)
         """
         params = [start_date]
+        
         
         if lab_id:
             query += " AND l.id_laboratoire = %s"
@@ -1105,6 +1109,7 @@ def emploi():
                 tps[lab_key] = tp
 
         return render_template('emplois/emploi.html',
+                            current_time=datetime.now().strftime('%d/%m/%Y à %H:%M'),  
                             laboratoires=laboratoires,
                             selected_lab=lab_id,
                             days=days,
@@ -1923,6 +1928,7 @@ def statistiques():
         return redirect(url_for('index'))
     finally:
         cur.close()
+
 
 if __name__ == '__main__':
     # Création des utilisateurs dans un contexte d'application
