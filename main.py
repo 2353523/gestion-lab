@@ -1887,7 +1887,8 @@ def statistiques():
                 COUNT(DISTINCT t.id_type) as types_count
             FROM laboratoire l
             LEFT JOIN stock_laboratoire sl ON l.id_laboratoire = sl.id_laboratoire
-            LEFT JOIN article a ON sl.id_article = a.id_article
+            LEFT JOIN stock_magasin sm ON sl.id_lot = sm.id_lot  -- Added this line
+            LEFT JOIN article a ON sm.id_article = a.id_article  -- Adjusted to use sm
             LEFT JOIN type t ON a.id_type = t.id_type
             LEFT JOIN categorie c ON t.id_categorie = c.id_categorie
             GROUP BY l.id_laboratoire, c.nom_categorie

@@ -78,7 +78,6 @@
             const labData = {
                 names: {{ lab_names|tojson }},
                 tpCounts: {{ tp_counts|tojson }},
-                capacities: {{ capacities|tojson }},
                 categories: {{ categories|tojson }},
                 typeData: {{ category_data|tojson }}
             };
@@ -99,11 +98,6 @@
                         label: 'TP Programmés',
                         data: labData.tpCounts,
                         backgroundColor: 'rgba(44, 62, 80, 0.8)',
-                        borderWidth: 0
-                    }, {
-                        label: 'Capacité Maximale',
-                        data: labData.capacities,
-                        backgroundColor: 'rgba(52, 152, 219, 0.8)',
                         borderWidth: 0
                     }]
                 },
