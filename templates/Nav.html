@@ -1,75 +1,114 @@
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm sticky-top">
     <div class="container">
+        <!-- Logo and Brand -->
         <a class="navbar-brand d-flex align-items-center" href="{{ url_for('index') }}">
-            <i class="fas fa-flask fs-4 me-2"></i>
+            <i class="fas fa-flask fs-4 me-2 pulse-icon"></i>
             <span class="fw-bold">Gestion Lab</span>
         </a>
         
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
 
         <div class="collapse navbar-collapse" id="navbarNav">
+            <!-- Main Navigation Items -->
             <ul class="navbar-nav me-auto">
-                <!-- Nouvel élément Stocks -->
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('stocks_overview') }}">
-                        <i class="fas fa-boxes me-2"></i>Stocks
-                    </a>
-                </li>
-                
+                <!-- Dashboard Item -->
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('index') }}">
-                        <i class="fas fa-calendar-day me-2"></i>TP du Jour
+                        <i class="fas fa-home me-2"></i>Accueil
                     </a>
                 </li>
                 
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('emploi') }}">
-                        <i class="fas fa-calendar-alt me-2"></i>Emploi du temps
-                    </a>
-                </li>
-                
+                <!-- Stocks Section -->
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="gestionDropdown" data-bs-toggle="dropdown">
-                        <i class="fas fa-cogs me-2"></i>Gestion
+                    <a class="nav-link dropdown-toggle" href="#" id="stocksDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-boxes me-2"></i>Stocks
                     </a>
-                    <ul class="dropdown-menu dropdown-menu-dark">
+                    <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="stocksDropdown">
+                        <li><a class="dropdown-item" href="{{ url_for('stocks_overview') }}">
+                            <i class="fas fa-th me-2"></i>Vue d'ensemble
+                        </a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('stock_magasin') }}">
+                            <i class="fas fa-warehouse me-2"></i>Stock Magasin
+                        </a></li>
+                    </ul>
+                </li>
+                
+                <!-- Planning Section -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="planningDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-calendar-alt me-2"></i>Planning
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="planningDropdown">
+                        <li><a class="dropdown-item" href="{{ url_for('index') }}">
+                            <i class="fas fa-calendar-day me-2"></i>TP du Jour
+                        </a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('emploi') }}">
+                            <i class="fas fa-calendar-week me-2"></i>Emploi du temps
+                        </a></li>
+                    </ul>
+                </li>
+                
+                <!-- Administration Section -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="gestionDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-cogs me-2"></i>Administration
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="gestionDropdown">
+                        <li><h6 class="dropdown-header">Personnel & Ressources</h6></li>
                         <li><a class="dropdown-item" href="{{ url_for('liste_professeurs') }}">
                             <i class="fas fa-chalkboard-teacher me-2"></i>Professeurs
                         </a></li>
                         <li><a class="dropdown-item" href="{{ url_for('liste_matieres') }}">
                             <i class="fas fa-book me-2"></i>Matières
                         </a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('liste_recus') }}">
+                            <i class="fas fa-file-invoice me-2"></i>Reçus
+                        </a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header">Infrastructure</h6></li>
                         <li><a class="dropdown-item" href="{{ url_for('liste_laboratoires') }}">
                             <i class="fas fa-microscope me-2"></i>Laboratoires
                         </a></li>
-                        <!-- Nouveau sous-menu Stock -->
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{{ url_for('stock_magasin') }}">
-                            <i class="fas fa-warehouse me-2"></i>Stock Magasin
-                        </a></li>
                     </ul>
                 </li>
+                
+                <!-- Analytics -->
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('statistiques') }}">
-                        <i class="fas fa-chart-bar"></i> Statistiques
+                        <i class="fas fa-chart-bar me-2"></i>Statistiques
                     </a>
                 </li>
             </ul>
             
+            <!-- User Menu -->
             <ul class="navbar-nav ms-auto">
+                
+                
+                <!-- User Profile -->
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
-                        <i class="fas fa-user-cog me-2"></i>{{ session.username }}
+                    <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <div class="bg-light rounded-circle d-flex justify-content-center align-items-center me-2" style="width: 24px; height: 24px;">
+                            <span class="text-primary small fw-bold">{{ session.username[0]|upper }}</span>
+                        </div>
+                        <span>{{ session.username }}</span>
                     </a>
-                    <ul class="dropdown-menu dropdown-menu-end">
+                    <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark" aria-labelledby="userDropdown">
+                        <li class="px-3 py-1 text-white-50 small">
+                            <div>Connecté en tant que:</div>
+                            <div class="fw-bold">{{ session.username }}</div>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#">
+                            <i class="fas fa-user me-2"></i>Profil
+                        </a></li>
                         <li><a class="dropdown-item" href="#">
                             <i class="fas fa-sliders-h me-2"></i>Paramètres
                         </a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li>
-                            <a class="dropdown-item" href="{{ url_for('logout') }}">
+                            <a class="dropdown-item text-danger" href="{{ url_for('logout') }}">
                                 <i class="fas fa-sign-out-alt me-2"></i>Déconnexion
                             </a>
                         </li>
@@ -79,3 +118,33 @@
         </div>
     </div>
 </nav>
+
+
+<style>
+    /* Animation for the flask icon */
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.15); }
+        100% { transform: scale(1); }
+    }
+    
+    .pulse-icon {
+        animation: pulse 2s infinite;
+    }
+    
+    /* Improve dropdown hover effects */
+    .dropdown-item:hover {
+        background-color: rgba(13, 110, 253, 0.5) !important;
+    }
+    
+    /* Active navigation item */
+    .nav-link.active {
+        background-color: rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+    }
+    
+    /* Make navbar sticky */
+    .sticky-top {
+        z-index: 1030;
+    }
+</style>

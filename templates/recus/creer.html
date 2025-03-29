@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Création de Reçu - LabManager</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bs-primary: #0d6efd;
+            --bs-primary-rgb: 13, 110, 253;
+            --bs-primary-hover: #0b5ed7;
+        }
+        
+        body {
+            background-color: #f8f9fa;
+        }
+        
+        .card {
+            border: none;
+            border-radius: 0.5rem;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            transition: box-shadow 0.3s ease;
+        }
+        
+        .card:hover {
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        }
+        
+        .card-header {
+            border-radius: 0.5rem 0.5rem 0 0 !important;
+            padding: 1rem 1.5rem;
+        }
+        
+        .btn {
+            border-radius: 0.25rem;
+            padding: 0.5rem 1rem;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary {
+            background-color: var(--bs-primary);
+            border-color: var(--bs-primary);
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--bs-primary-hover);
+        }
+        
+        .btn-success {
+            font-weight: 500;
+        }
+        
+        .btn-danger {
+            padding: 0.375rem 0.75rem;
+        }
+        
+        .form-control:focus {
+            border-color: #86b7fe;
+            box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.25);
+        }
+        
+        .table {
+            vertical-align: middle;
+        }
+        
+        .table th {
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        /* Datalist styling */
+        .datalist-container { 
+            position: relative;
+        }
+        
+        .datalist-items {
+            position: absolute;
+            width: 100%;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1000;
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 0.375rem;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+            margin-top: 0.25rem;
+        }
+        
+        .datalist-item {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-bottom: 1px solid #f1f1f1;
+        }
+        
+        .datalist-item:last-child {
+            border-bottom: none;
+        }
+        
+        .datalist-item:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .stock-warning {
+            color: #dc3545;
+            font-weight: 600;
+        }
+        
+        /* Transitions */
+        .article-row {
+            transition: background-color 0.2s;
+        }
+        
+        .article-row:hover {
+            background-color: rgba(var(--bs-primary-rgb), 0.05);
+        }
+        
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+            max-height: 200px;
+            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        }
+        
+        /* Responsive improvements */
+        @media (max-width: 768px) {
+            .card-body {
+                padding: 1rem;
+            }
+            
+            .table-responsive {
+                border-radius: 0.375rem;
+            }
+        }
+    </style>
+</head>
+<body class="bg-light">
+    {% include 'nav.html' %}
+
+    <main class="container my-5">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white d-flex align-items-center">
+                <i class="fas fa-file-invoice me-2 fs-4"></i>
+                <h2 class="h4 mb-0 flex-grow-1">Nouveau Reçu</h2>
+            </div>
+
+            <div class="card-body p-4">
+                <!-- En-tête -->
+                <div class="row mb-4 g-4">
+                    <div class="col-md-6">
+                        <div class="card bg-light border-0 h-100">
+                            <div class="card-body">
+                                <h5 class="card-title mb-3 text-primary">Informations TP</h5>
+                                <dl class="row mb-0">
+                                    <dt class="col-sm-4 text-muted">TP:</dt>
+                                    <dd class="col-sm-8 fw-medium">{{ tp.nom_tp }}</dd>
+                                    <dt class="col-sm-4 text-muted">Laboratoire:</dt>
+                                    <dd class="col-sm-8 fw-medium">{{ tp.nom_laboratoire }}</dd>
+                                    <dt class="col-sm-4 text-muted">Matière:</dt>
+                                    <dd class="col-sm-8 fw-medium">{{ tp.nom_matiere }}</dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card bg-light border-0 h-100">
+                            <div class="card-body">
+                                <h5 class="card-title mb-3 text-primary">Informations Session</h5>
+                                <dl class="row mb-0">
+                                    <dt class="col-sm-4 text-muted">Date:</dt>
+                                    <dd class="col-sm-8 fw-medium">{{ tp.heure_debut.strftime('%d/%m/%Y %H:%M') }}</dd>
+                                    <dt class="col-sm-4 text-muted">Professeur:</dt>
+                                    <dd class="col-sm-8 fw-medium">{{ tp.professeur }}</dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Formulaire -->
+                <form method="POST" id="receiptForm" class="needs-validation" novalidate>
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <!-- Recherche -->
+                    <div class="row mb-4">
+                        <div class="col-lg-8">
+                            <label for="articleSearch" class="form-label fw-medium">Rechercher un article</label>
+                            <div class="datalist-container position-relative">
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white">
+                                        <i class="fas fa-search text-muted"></i>
+                                    </span>
+                                    <input type="text" 
+                                        id="articleSearch" 
+                                        class="form-control form-control-lg border-start-0" 
+                                        placeholder="Saisissez le nom de l'article..."
+                                        autocomplete="off"
+                                        aria-haspopup="true">
+                                    <button type="button" 
+                                        class="btn btn-primary" 
+                                        id="btnAddArticle"
+                                        disabled>
+                                        <i class="fas fa-plus me-2"></i>Ajouter
+                                    </button>
+                                </div>
+                                <div id="articleResults" class="datalist-items"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Articles sélectionnés -->
+                    <div class="card mb-4 border">
+                        <div class="card-header bg-light py-3">
+                            <h5 class="mb-0 fw-bold text-primary">
+                                <i class="fas fa-list-ul me-2"></i>Articles sélectionnés
+                            </h5>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="ps-3">Article</th>
+                                            <th>Quantité utilisée</th>
+                                            <th>Dégradations</th>
+                                            <th>Stock initial</th>
+                                            <th>Stock restant</th>
+                                            <th class="text-center">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="selectedArticles">
+                                        <!-- Articles ajoutés dynamiquement -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Observations -->
+                    <div class="mb-4">
+                        <label for="observations" class="form-label fw-medium">Observations :</label>
+                        <textarea 
+                            class="form-control" 
+                            id="observations" 
+                            name="observations" 
+                            rows="4"
+                            placeholder="Notes complémentaires, commentaires sur le TP..."
+                        ></textarea>
+                    </div>
+
+                    <div class="mt-4 d-flex justify-content-between align-items-center">
+                        <a href="#" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Annuler
+                        </a>
+                        <button type="submit" class="btn btn-success btn-lg px-4">
+                            <i class="fas fa-save me-2"></i>Enregistrer le reçu
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <script>
+document.addEventListener('DOMContentLoaded', () => {
+    const articles = {{ articles|tojson|safe }};
+    const searchInput = document.getElementById('articleSearch');
+    const articleList = document.getElementById('articleResults');
+    const selectedTbody = document.getElementById('selectedArticles');
+    let articleIndex = 0;
+
+    // Fonction de recherche améliorée
+    function searchArticles(term) {
+        const addedIds = Array.from(selectedTbody.querySelectorAll('input[data-id]'))
+                            .map(input => parseInt(input.dataset.id));
+        return articles.filter(article => {
+            return article.nom_article.toLowerCase().includes(term) &&
+                   !addedIds.includes(article.id_article);
+        });
+    }
+
+    // Gestion de l'affichage des résultats
+    function displayResults(results) {
+        if (results.length === 0) {
+            articleList.innerHTML = `
+                <div class="datalist-item text-center text-muted py-3">
+                    <i class="fas fa-info-circle me-2"></i>Aucun article trouvé
+                </div>
+            `;
+            return;
+        }
+        
+        articleList.innerHTML = results.map(article => `
+            <div class="datalist-item" 
+                 data-id="${article.id_article}"
+                 data-name="${article.nom_article}"
+                 data-stock="${article.quantite_dispo}"
+                 data-unit="${article.unite_mesure}">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>${article.nom_article}</strong>
+                        <div class="text-muted small">Réf: ${article.id_article}</div>
+                    </div>
+                    <span class="badge bg-primary rounded-pill">
+                        ${article.quantite_dispo} ${article.unite_mesure}
+                    </span>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // Gestionnaire de recherche
+    searchInput.addEventListener('input', function() {
+        const term = this.value.trim().toLowerCase();
+        if (term.length < 1) {
+            articleList.innerHTML = '';
+            return;
+        }
+        const results = searchArticles(term);
+        displayResults(results);
+    });
+
+    // Ajout d'article
+    function addArticleRow(articleData) {
+        const row = document.createElement('tr');
+        row.className = 'article-row';
+        row.innerHTML = `
+            <td class="ps-3">
+                <strong>${articleData.name}</strong>
+                <input type="hidden" 
+                       name="articles[${articleIndex}][id]" 
+                       data-id="${articleData.id}"
+                       value="${articleData.id}">
+                <div class="text-muted small">Réf: ${articleData.id}</div>
+            </td>
+            <td>
+                <div class="input-group">
+                    <input type="number" 
+                           name="articles[${articleIndex}][quantite]" 
+                           class="form-control quantity"
+                           min="0" 
+                           max="${articleData.stock}"
+                           required>
+                    <span class="input-group-text">${articleData.unit}</span>
+                </div>
+            </td>
+            <td>
+                <div class="input-group">
+                    <input type="number" 
+                           name="articles[${articleIndex}][degrade]" 
+                           class="form-control degraded"
+                           min="0" 
+                           max="${articleData.stock}"
+                           value="0">
+                    <span class="input-group-text">${articleData.unit}</span>
+                </div>
+            </td>
+            <td class="initial-stock fw-medium">${articleData.stock} ${articleData.unit}</td>
+            <td class="remaining-stock fw-medium">${articleData.stock} ${articleData.unit}</td>
+            <td class="text-center">
+                <button type="button" class="btn btn-danger btn-sm remove-btn">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+            </td>
+        `;
+
+        // Gestion de la suppression
+        row.querySelector('.remove-btn').addEventListener('click', () => {
+            row.classList.add('bg-light');
+            setTimeout(() => {
+                row.remove();
+                reindexRows();
+                triggerSearchUpdate();
+                
+                if (selectedTbody.querySelectorAll('tr').length === 0) {
+                    selectedTbody.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="text-center py-4 text-muted">
+                                <i class="fas fa-atom fa-2x mb-3"></i>
+                                <p class="mb-0">Aucun article sélectionné</p>
+                                <p class="small">Utilisez la barre de recherche pour ajouter des articles</p>
+                            </td>
+                        </tr>
+                    `;
+                }
+            }, 200);
+        });
+
+        // Gestion des modifications
+        row.querySelectorAll('input').forEach(input => {
+            input.addEventListener('input', () => updateStock(row));
+        });
+
+        // Si c'est le premier élément, on nettoie le message "aucun article"
+        if (selectedTbody.querySelector('td[colspan="6"]')) {
+            selectedTbody.innerHTML = '';
+        }
+
+        selectedTbody.appendChild(row);
+        articleIndex++;
+        updateStock(row);
+        
+        // Auto-focus sur le premier champ de quantité
+        row.querySelector('.quantity').focus();
+    }
+
+    // Réindexation des lignes
+    function reindexRows() {
+        Array.from(selectedTbody.querySelectorAll('.article-row')).forEach((row, index) => {
+            row.querySelectorAll('input').forEach(input => {
+                const field = input.classList.contains('quantity') ? 'quantite' :
+                             input.classList.contains('degraded') ? 'degrade' : 'id';
+                input.name = `articles[${index}][${field}]`;
+            });
+        });
+        articleIndex = selectedTbody.querySelectorAll('.article-row').length;
+    }
+
+    // Mise à jour du stock
+    function updateStock(row) {
+        const initialText = row.querySelector('.initial-stock').textContent;
+        const initial = parseInt(initialText.split(' ')[0]);
+        const quantity = parseInt(row.querySelector('.quantity').value) || 0;
+        const degraded = parseInt(row.querySelector('.degraded').value) || 0;
+        const remaining = initial - (quantity + degraded);
+        const unit = initialText.split(' ')[1];
+        
+        const remainingCell = row.querySelector('.remaining-stock');
+        remainingCell.textContent = `${remaining} ${unit}`;
+        
+        if (remaining < 5) {
+            remainingCell.classList.add('text-danger', 'fw-bold');
+        } else {
+            remainingCell.classList.remove('text-danger', 'fw-bold');
+        }
+    }
+
+    // Gestion de la sélection
+    articleList.addEventListener('click', (e) => {
+        const item = e.target.closest('.datalist-item');
+        if (item) {
+            addArticleRow({
+                id: item.dataset.id,
+                name: item.dataset.name,
+                stock: parseInt(item.dataset.stock),
+                unit: item.dataset.unit
+            });
+            searchInput.value = '';
+            articleList.innerHTML = '';
+            
+            // Animation de feedback
+            searchInput.placeholder = "Article ajouté ! Rechercher un autre...";
+            setTimeout(() => {
+                searchInput.placeholder = "Saisissez le nom de l'article...";
+            }, 2000);
+        }
+    });
+
+    // Rafraîchissement de la recherche
+    function triggerSearchUpdate() {
+        searchInput.dispatchEvent(new Event('input'));
+    }
+
+    // Validation du formulaire
+    document.getElementById('receiptForm').addEventListener('submit', function(e) {
+        const rows = selectedTbody.querySelectorAll('.article-row');
+        let isValid = true;
+
+        if (rows.length === 0) {
+            alert('Veuillez ajouter au moins un article !');
+            isValid = false;
+        }
+
+        rows.forEach(row => {
+            const quantity = parseInt(row.querySelector('.quantity').value) || 0;
+            const degraded = parseInt(row.querySelector('.degraded').value) || 0;
+            
+            if (quantity + degraded === 0) {
+                alert('La quantité totale ne peut pas être zéro pour un article !');
+                isValid = false;
+            }
+            
+            const initialText = row.querySelector('.initial-stock').textContent;
+            const initial = parseInt(initialText.split(' ')[0]);
+            
+            if (quantity + degraded > initial) {
+                alert('La quantité totale dépasse le stock disponible pour un article !');
+                isValid = false;
+            }
+        });
+
+        if (!isValid) e.preventDefault();
+    });
+
+    // Initialisation - Afficher message quand aucun article
+    if (selectedTbody.querySelectorAll('tr').length === 0) {
+        selectedTbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center py-4 text-muted">
+                    <i class="fas fa-atom fa-2x mb-3"></i>
+                    <p class="mb-0">Aucun article sélectionné</p>
+                    <p class="small">Utilisez la barre de recherche pour ajouter des articles</p>
+                </td>
+            </tr>
+        `;
+    }
+    
+    // Focus sur le champ de recherche au chargement
+    searchInput.focus();
+});
+    </script>
+    
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

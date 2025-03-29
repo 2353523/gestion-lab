@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Reçu #{{ recu.id_recu }} - {{ recu.nom_laboratoire }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 1.5cm;
+            @top-center {
+                content: "{{ recu.nom_laboratoire }}";
+                font-size: 10pt;
+            }
+            @bottom-center {
+                content: "Page " counter(page) " sur " counter(pages);
+                font-size: 9pt;
+            }
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .print-container {
+            max-width: 21cm;
+            margin: 0 auto;
+            padding: 2cm 0;
+        }
+
+        .letterhead {
+            border-bottom: 3px solid #004a87;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+        }
+
+        .letterhead img {
+            max-height: 80px;
+            margin-bottom: 0.5rem;
+        }
+
+        .university-info {
+            font-size: 9pt;
+            color: #666;
+            text-align: center;
+        }
+
+        .receipt-title {
+            font-size: 24pt;
+            color: #004a87;
+            text-align: center;
+            margin: 2rem 0;
+        }
+
+        .receipt-meta {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .receipt-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2rem 0;
+        }
+
+        .receipt-table th {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .receipt-table td {
+            border: 1px solid #dee2e6;
+            padding: 10px;
+        }
+
+        .totals {
+            margin-top: 2rem;
+            padding: 1rem;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+
+        .signature-area {
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 2px solid #004a87;
+        }
+
+        .watermark {
+            position: fixed;
+            opacity: 0.1;
+            font-size: 80pt;
+            transform: rotate(-45deg);
+            top: 30%;
+            left: 20%;
+            z-index: -1;
+        }
+
+        @media print {
+            .no-print { display: none !important; }
+            .print-container { padding: 0; }
+            .watermark { display: block; }
+        }
+    </style>
+</head>
+<body>
+    <div class="print-container">
+        <!-- En-tête universitaire -->
+        <div class="letterhead">
+            <div class="university-info">
+                <img src="/static/university-logo.png" alt="Logo Université">
+                <div>ISME</div>
+                <div> Email: 23543@isme.esp.mr</div>
+            </div>
+        </div>
+
+        
+        <div class="watermark">VALIDÉ</div>
+
+        <!-- Titre principal -->
+        <h1 class="receipt-title">REÇU DE MATÉRIEL</h1>
+
+        <!-- Métadonnées -->
+        <div class="receipt-meta">
+            <div>
+                <p><strong>Date:</strong> {{ recu.date_emission.strftime('%d/%m/%Y %H:%M') }}</p>
+                <p><strong>N° Reçu:</strong> {{ recu.id_recu }}</p>
+                <p><strong>Responsable TP:</strong> {{ recu.professeur }}</p>
+            </div>
+            <div>
+                <p><strong>TP:</strong> {{ recu.nom_tp }}</p>
+                <p><strong>Matière:</strong> {{ recu.nom_matiere }}</p>  
+                <p><strong>Laboratoire:</strong> {{ recu.nom_laboratoire }}</p>
+            </div>
+        </div>
+
+        <!-- Tableau des articles -->
+        <table class="receipt-table">
+            <thead>
+                <tr>
+                    <th>Article</th>
+                    <th>Quantité utilisée</th>
+                    <th>Dégradations</th>
+                    <th>Unité</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for article in articles %}
+                <tr>
+                    <td>{{ article.nom_article }}</td>
+                    <td>{{ article.quantite }}</td>
+                    <td>{{ article.degradation_quantite }}</td>
+                    <td>{{ article.unite_mesure }}</td>
+                    <td>{{ article.quantite + article.degradation_quantite }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Totaux -->
+        <div class="totals">
+            <p><strong>Total articles:</strong> {{ articles|length }}</p>
+            <p><strong>Total consommé:</strong> {{ articles|sum(attribute='quantite') }} unités</p>
+            <p><strong>Total dégradé:</strong> {{ articles|sum(attribute='degradation_quantite') }} unités</p>
+        </div>
+
+        <!-- Zone de signature -->
+        <div class="signature-area">
+            <div style="float: left; width: 45%;">
+                <p>Signature du responsable:</p>
+                <div style="height: 80px; border-bottom: 1px solid #000;"></div>
+            </div>
+            <div style="float: right; width: 45%;">
+                <p>Cachet du laboratoire:</p>
+                <div style="height: 80px; border-bottom: 1px solid #000;"></div>
+            </div>
+            <div style="clear: both;"></div>
+        </div>
+
+        <!-- Boutons d'action -->
+        <div class="no-print text-center mt-4">
+            <button onclick="window.print()" class="btn btn-success">
+                <i class="fas fa-print"></i> Imprimer
+            </button>
+            <button onclick="window.close()" class="btn btn-secondary">
+                <i class="fas fa-times"></i> Fermer
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Auto-impression avec délai
+        window.onload = function() {
+            setTimeout(function() {
+                window.print();
+            }, 1000);
+        };
+
+        // Fermeture après impression
+        window.onafterprint = function() {
+            window.close();
+        };
+    </script>
+</body>
+</html>

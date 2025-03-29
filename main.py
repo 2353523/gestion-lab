@@ -638,91 +638,6 @@ def convert_timedelta(td):
     minutes = int((total_seconds % 3600) // 60)
     return time(hour=hours, minute=minutes)
 
-@app.route('/creer_recu/<int:id_tp>', methods=['GET', 'POST'])
-def creer_recu(id_tp):
-    cur = mysql.connection.cursor()
-    try:
-        # Récupérer les informations du TP
-        cur.execute("""
-            SELECT 
-                tp.id_tp,
-                tp.nom_tp,
-                tp.heure_debut,
-                tp.heure_fin,
-                CONCAT(p.prenom, ' ', p.nom) AS professeur,
-                m.nom_matiere AS matiere,
-                l.nom_laboratoire
-            FROM tp
-            JOIN professeur p ON tp.id_prof = p.id_prof
-            JOIN matiere m ON tp.id_matiere = m.id_matiere
-            LEFT JOIN laboratoire l ON tp.id_laboratoire = l.id_laboratoire
-            WHERE tp.id_tp = %s
-        """, (id_tp,))
-        
-        tp_data = cur.fetchone()
-        if not tp_data:
-            flash("TP introuvable", "danger")
-            return redirect(url_for('index'))
-
-        # Récupérer les articles utilisés
-        cur.execute("""
-            SELECT 
-                a.nom_article,
-                a.unite_mesure,
-                h.quantite,
-                h.degradation,
-                h.date_utilisation
-            FROM historique_ h
-            JOIN article a ON h.id_article = a.id_article
-            WHERE h.id_tp = %s
-        """, (id_tp,))
-        articles = cur.fetchall()
-
-        if request.method == 'POST':
-            # Enregistrer le reçu dans la base
-            try:
-                # Insertion du reçu principal
-                cur.execute("""
-                    INSERT INTO recu (id_tp, id_prof, date_emission, degradation, observations)
-                    VALUES (%s, %s, NOW(), %s, %s)
-                """, (
-                    id_tp,
-                    tp_data['id_prof'],
-                    request.form.get('degradation', 0),
-                    request.form.get('observations', '')
-                ))
-                recu_id = cur.lastrowid
-
-                # Insertion des lignes du reçu
-                for article in articles:
-                    cur.execute("""
-                        INSERT INTO ligne_recu (id_article, id_recu, quantite)
-                        VALUES (%s, %s, %s)
-                    """, (
-                        article['id_article'],
-                        recu_id,
-                        article['quantite']
-                    ))
-
-                mysql.connection.commit()
-                flash("Reçu généré avec succès", "success")
-                return redirect(url_for('index'))
-
-            except Exception as e:
-                mysql.connection.rollback()
-                flash(f"Erreur lors de la création du reçu : {str(e)}", "danger")
-
-        return render_template('creer_recu.html',
-                             tp=tp_data,
-                             articles=articles,
-                             maintenant=datetime.now())
-
-    except Exception as e:
-        flash(f"Erreur système : {str(e)}", "danger")
-        return redirect(url_for('index'))
-    finally:
-        cur.close()
-
 # CRUD Professeurs
 @app.route('/professeurs')
 def liste_professeurs():
@@ -1929,6 +1844,342 @@ def statistiques():
     finally:
         cur.close()
 
+
+# === Routes pour la gestion des reçus ===
+def nl2br(value):
+    return value.replace('\n', '<br>') if value else ''
+
+app.jinja_env.filters['nl2br'] = nl2br
+@app.route('/recus/creer/<int:id_tp>', methods=['GET', 'POST'])
+def creer_recu(id_tp):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    try:
+        with mysql.connection.cursor() as cur:
+            
+            cur.execute("""
+                SELECT r.id_recu 
+                FROM recu r
+                WHERE r.id_tp = %s
+                LIMIT 1
+            """, (id_tp,))
+            existing_recu = cur.fetchone()
+
+            if existing_recu:
+                flash("Un reçu existe déjà pour ce TP", "warning")
+                return redirect(url_for('detail_recu', id_recu=existing_recu['id_recu']))
+            # Récupération TP
+            cur.execute("""
+                SELECT tp.*, l.nom_laboratoire, m.nom_matiere,
+                    CONCAT(p.prenom, ' ', p.nom) AS professeur,
+                    tp.id_prof, tp.id_laboratoire
+                FROM tp tp
+                JOIN laboratoire l ON tp.id_laboratoire = l.id_laboratoire
+                JOIN matiere m ON tp.id_matiere = m.id_matiere
+                JOIN professeur p ON tp.id_prof = p.id_prof
+                WHERE tp.id_tp = %s
+                FOR UPDATE
+            """, (id_tp,))
+            tp = cur.fetchone()
+
+            if not tp:
+                flash("TP introuvable", "danger")
+                return redirect(url_for('index'))
+
+            # Récupération articles disponibles
+            cur.execute("""
+                SELECT a.id_article, a.nom_article, a.unite_mesure,
+                    SUM(sl.quantite) AS quantite_dispo
+                FROM article a
+                JOIN stock_magasin sm ON a.id_article = sm.id_article
+                JOIN stock_laboratoire sl ON sm.id_lot = sl.id_lot
+                WHERE sl.id_laboratoire = %s
+                GROUP BY a.id_article
+                HAVING quantite_dispo > 0
+            """, (tp['id_laboratoire'],))
+            articles = [dict(article) for article in cur.fetchall()]
+
+            if request.method == 'POST':
+                articles_data = []
+                seen_articles = set()
+                index = 0
+
+                try:
+                    # Extraction et validation des articles
+                    while True:
+                        article_key = f'articles[{index}][id]'
+                        if article_key not in request.form:
+                            break
+
+                        article_id = int(request.form[article_key])
+                        quantite = int(request.form.get(f'articles[{index}][quantite]', 0))
+                        degrade = int(request.form.get(f'articles[{index}][degrade]', 0))
+
+                        # Vérification des doublons
+                        if article_id in seen_articles:
+                            raise ValueError(f"Article {article_id} en double")
+                        seen_articles.add(article_id)
+
+                        # Vérification du stock
+                        article_stock = next((a for a in articles if a['id_article'] == article_id), None)
+                        if not article_stock:
+                            raise ValueError(f"Article {article_id} invalide")
+
+                        total = quantite + degrade
+                        if total <= 0:
+                            raise ValueError(f"Quantité totale nulle pour l'article {article_id}")
+                        if total > article_stock['quantite_dispo']:
+                            raise ValueError(f"Stock insuffisant pour {article_stock['nom_article']}")
+
+                        articles_data.append({
+                            'id_article': article_id,
+                            'quantite': quantite,
+                            'degrade': degrade
+                        })
+                        index += 1
+
+                    if not articles_data:
+                        flash("Aucun article sélectionné", "danger")
+                        return redirect(url_for('creer_recu', id_tp=id_tp))
+
+                    # Début transaction
+                    with mysql.connection.cursor() as trans_cur:
+                        # Création du reçu
+                        # Modifier la partie d'insertion du reçu :
+                        trans_cur.execute("""
+                            INSERT INTO recu (id_tp, id_prof, date_emission, observations)
+                            VALUES (%s, %s, NOW(), %s)
+                        """, (id_tp, tp['id_prof'], request.form.get('observations', '')))
+                        id_recu = trans_cur.lastrowid
+
+                        # Insertion des lignes
+                        for article in articles_data:
+                            # Insertion ligne reçu
+                            trans_cur.execute("""
+                                INSERT INTO ligne_recu 
+                                (id_recu, id_article, quantite, degradation_quantite)
+                                VALUES (%s, %s, %s, %s)
+                            """, (id_recu, article['id_article'], 
+                                 article['quantite'], article['degrade']))
+
+                            # Mise à jour stock avec verrou de ligne
+                            trans_cur.execute("""
+                                UPDATE stock_laboratoire sl
+                                JOIN (
+                                    SELECT id_lot 
+                                    FROM stock_magasin
+                                    WHERE id_article = %s
+                                    ORDER BY date_expiration ASC
+                                    LIMIT 1
+                                    FOR UPDATE
+                                ) sm ON sl.id_lot = sm.id_lot
+                                SET sl.quantite = sl.quantite - %s
+                                WHERE sl.id_laboratoire = %s
+                            """, (article['id_article'], 
+                                 article['degrade'], 
+                                 tp['id_laboratoire']))
+
+                        # Marquage TP comme traité
+                        trans_cur.execute("""
+                            UPDATE tp SET recu_genere = 1 
+                            WHERE id_tp = %s
+                        """, (id_tp,))
+
+                        mysql.connection.commit()
+                        flash("Reçu créé avec succès", "success")
+                        return redirect(url_for('detail_recu', id_recu=id_recu))
+
+                except ValueError as e:
+                    mysql.connection.rollback()
+                    flash(f"Erreur de validation : {str(e)}", "danger")
+
+                except Exception as e:
+                    mysql.connection.rollback()
+                    flash(f"Erreur système : {str(e)}", "danger")
+
+        return render_template('recus/creer.html', 
+                            tp=tp, 
+                            articles=articles)
+
+    except Exception as e:
+        flash(f"Erreur critique : {str(e)}", "danger")
+        return redirect(url_for('index'))
+    
+@app.route('/recus')
+def liste_recus():
+    """Liste de tous les reçus"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    cur = mysql.connection.cursor()
+    try:
+        cur.execute("""
+            SELECT r.id_recu, r.date_emission, 
+                   tp.nom_tp, l.nom_laboratoire,
+                   CONCAT(p.prenom, ' ', p.nom) AS professeur
+            FROM recu r
+            JOIN tp tp ON r.id_tp = tp.id_tp
+            JOIN laboratoire l ON tp.id_laboratoire = l.id_laboratoire
+            JOIN professeur p ON r.id_prof = p.id_prof
+            ORDER BY r.date_emission DESC
+        """)
+        recus = cur.fetchall()
+        
+        return render_template('recus/liste.html', recus=recus)
+    
+    except Exception as e:
+        flash(f"Erreur base de données : {str(e)}", "danger")
+        return redirect(url_for('index'))
+    finally:
+        cur.close()
+
+@app.route('/recus/<int:id_recu>')
+def detail_recu(id_recu):
+    """Détail d'un reçu spécifique"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    cur = mysql.connection.cursor()
+    try:
+        # Récupération infos reçu
+        cur.execute("""
+            SELECT 
+                r.*, 
+                tp.nom_tp, 
+                l.nom_laboratoire,
+                m.nom_matiere,  -- Ajouter cette colonne
+                CONCAT(p.prenom, ' ', p.nom) AS professeur
+            FROM recu r
+            JOIN tp tp ON r.id_tp = tp.id_tp
+            JOIN laboratoire l ON tp.id_laboratoire = l.id_laboratoire
+            JOIN matiere m ON tp.id_matiere = m.id_matiere  -- Nouvelle jointure
+            JOIN professeur p ON r.id_prof = p.id_prof
+            WHERE r.id_recu = %s
+        """, (id_recu,))
+        recu = cur.fetchone()
+        
+        if not recu:
+            flash("Reçu introuvable", "danger")
+            return redirect(url_for('liste_recus'))
+
+        # Récupération articles
+        cur.execute("""
+            SELECT a.nom_article, lr.quantite, 
+                   lr.degradation_quantite, a.unite_mesure
+            FROM ligne_recu lr
+            JOIN article a ON lr.id_article = a.id_article
+            WHERE lr.id_recu = %s
+        """, (id_recu,))
+        articles = cur.fetchall()
+
+        return render_template('recus/detail.html', 
+                             recu=recu, 
+                             articles=articles)
+    
+    except Exception as e:
+        flash(f"Erreur base de données : {str(e)}", "danger")
+        return redirect(url_for('liste_recus'))
+    finally:
+        cur.close()
+
+@app.route('/recus/<int:id_recu>/supprimer', methods=['POST'])
+def supprimer_recu(id_recu):
+    if 'user_id' not in session or session.get('role') != 'admin':
+        abort(403)
+    
+    cur = mysql.connection.cursor()
+    try:
+        cur.execute("""
+            SELECT lr.id_article, lr.degradation_quantite, tp.id_laboratoire
+            FROM ligne_recu lr
+            JOIN recu r ON lr.id_recu = r.id_recu
+            JOIN tp tp ON r.id_tp = tp.id_tp
+            WHERE lr.id_recu = %s
+        """, (id_recu,))
+        degradations = cur.fetchall()
+
+        with mysql.connection.cursor() as trans_cur:
+            for d in degradations:
+                # Étape 1 : Trouver le lot le plus ancien
+                trans_cur.execute("""
+                    SELECT sm.id_lot 
+                    FROM stock_magasin sm
+                    JOIN stock_laboratoire sl ON sm.id_lot = sl.id_lot
+                    WHERE sm.id_article = %s
+                    AND sl.id_laboratoire = %s
+                    ORDER BY sm.date_expiration ASC 
+                    LIMIT 1
+                """, (d['id_article'], d['id_laboratoire']))
+                lot = trans_cur.fetchone()
+
+                if lot:
+                    # Étape 2 : Mettre à jour le stock
+                    trans_cur.execute("""
+                        UPDATE stock_laboratoire
+                        SET quantite = quantite + %s
+                        WHERE id_lot = %s
+                        AND id_laboratoire = %s
+                    """, (d['degradation_quantite'], 
+                         lot['id_lot'], 
+                         d['id_laboratoire']))
+
+            # Suppression du reçu
+            trans_cur.execute("DELETE FROM recu WHERE id_recu = %s", (id_recu,))
+            trans_cur.execute("UPDATE tp SET recu_genere = 0 WHERE id_tp = (SELECT id_tp FROM recu WHERE id_recu = %s)", (id_recu,))
+
+            mysql.connection.commit()
+            flash("Reçu supprimé avec succès", "success")
+
+    except Exception as e:
+        mysql.connection.rollback()
+        flash(f"Erreur lors de la suppression : {str(e)}", "danger")
+    finally:
+        cur.close()
+    
+    return redirect(url_for('liste_recus'))
+
+@app.route('/recus/<int:id_recu>/imprimer')
+def imprimer_recu(id_recu):
+    """Version imprimable d'un reçu"""
+    cur = mysql.connection.cursor()
+    try:
+        cur.execute("""
+        SELECT 
+            r.*, 
+            tp.nom_tp, 
+            l.nom_laboratoire,
+            m.nom_matiere,  -- À ajouter
+            CONCAT(p.prenom, ' ', p.nom) AS professeur
+        FROM recu r
+        JOIN tp tp ON r.id_tp = tp.id_tp
+        JOIN laboratoire l ON tp.id_laboratoire = l.id_laboratoire
+        JOIN matiere m ON tp.id_matiere = m.id_matiere  -- Jointure manquante
+        JOIN professeur p ON r.id_prof = p.id_prof
+        WHERE r.id_recu = %s
+    """, (id_recu,))
+        recu = cur.fetchone()
+        
+        cur.execute("""
+            SELECT a.nom_article, lr.quantite, 
+                   lr.degradation_quantite, a.unite_mesure
+            FROM ligne_recu lr
+            JOIN article a ON lr.id_article = a.id_article
+            WHERE lr.id_recu = %s
+        """, (id_recu,))
+        articles = cur.fetchall()
+
+        return render_template('recus/imprimer.html',
+                             recu=recu,
+                             articles=articles)
+
+    except Exception as e:
+        flash(f"Erreur : {str(e)}", "danger")
+        return redirect(url_for('liste_recus'))
+    finally:
+        cur.close()
+
+        
 
 if __name__ == '__main__':
     # Création des utilisateurs dans un contexte d'application
