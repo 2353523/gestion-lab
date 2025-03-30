@@ -1039,6 +1039,92 @@ def emploi():
         if 'cur' in locals():
             cur.close()
 
+@app.route('/emploi/print')
+def print_emploi():
+    try:
+        lab_id = request.args.get('lab_id', type=int)
+        week_offset = int(request.args.get('week_offset', 0))
+        
+        # Calcul des dates (identique à la route emploi)
+        today = datetime.today()
+        start_date = today - timedelta(days=today.weekday()) + timedelta(weeks=week_offset)
+        days = [start_date + timedelta(days=i) for i in range(7)]
+
+        cur = mysql.connection.cursor()
+        
+        # Récupération nom labo
+        lab_name = "Tous les laboratoires"
+        if lab_id:
+            cur.execute("SELECT nom_laboratoire FROM laboratoire WHERE id_laboratoire = %s", (lab_id,))
+            lab = cur.fetchone()
+            lab_name = lab['nom_laboratoire'] if lab else lab_name
+
+        # Requête identique à la route emploi
+        query = """
+            SELECT 
+                tp.id_tp,
+                tp.nom_tp,
+                DATE(tp.heure_debut) AS date_tp,
+                TIME(tp.heure_debut) AS debut,
+                TIME(tp.heure_fin) AS fin,
+                p.prenom,
+                p.nom,
+                m.nom_matiere,
+                l.id_laboratoire,
+                l.nom_laboratoire
+            FROM tp
+            JOIN professeur p ON tp.id_prof = p.id_prof
+            JOIN matiere m ON tp.id_matiere = m.id_matiere
+            LEFT JOIN laboratoire l ON tp.id_laboratoire = l.id_laboratoire
+            WHERE YEARWEEK(tp.heure_debut, 1) = YEARWEEK(%s, 1)
+        """
+        params = [start_date]
+        
+        if lab_id:
+            query += " AND l.id_laboratoire = %s"
+            params.append(lab_id)
+            
+        query += " ORDER BY tp.heure_debut, l.id_laboratoire"
+        
+        cur.execute(query, tuple(params))
+        tps_raw = cur.fetchall()
+
+        # Transformation des données comme dans la route emploi
+        tps = {}
+        for tp in tps_raw:
+            debut = tp['debut']
+            if isinstance(debut, timedelta):
+                total_seconds = debut.total_seconds()
+                debut = time(int(total_seconds // 3600), int((total_seconds % 3600) // 60))
+            
+            periode = None
+            for p, (s, e) in CRENEAUX.items():
+                start_time = datetime.strptime(s, "%H:%M").time()
+                end_time = datetime.strptime(e, "%H:%M").time()
+                if start_time <= debut <= end_time:
+                    periode = p
+                    break
+            
+            if periode:
+                date_str = tp['date_tp'].strftime('%Y-%m-%d')
+                lab_key = f"{tp['id_laboratoire']}-{date_str}-{periode}" if tp['id_laboratoire'] else f"{date_str}-{periode}"
+                tps[lab_key] = tp
+
+        return render_template('emplois/emploi_print.html',
+                            lab_name=lab_name,
+                            days=days,
+                            CRENEAUX=CRENEAUX,
+                            tps=tps,
+                            current_time=datetime.now().strftime('%d/%m/%Y %H:%M'),
+                            lab_id=lab_id)
+
+    except Exception as e:
+        flash(f"Erreur système : {str(e)}", "danger")
+        return redirect(url_for('index'))
+    finally:
+        if 'cur' in locals():
+            cur.close()
+            
 @app.route('/stocks')
 def stocks_overview():
     if 'user_id' not in session:

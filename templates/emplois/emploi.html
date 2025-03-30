@@ -190,9 +190,12 @@
                         </a>
                     </div>
                     
-                    <button onclick="window.print()" class="btn btn-success btn-sm">
-                        <i class="fas fa-print me-2"></i>Imprimer
-                    </button>
+                    <!-- Ajouter ce bouton quelque part dans la page -->
+                        <a href="{{ url_for('print_emploi', lab_id=selected_lab, week_offset=week_offset) }}" 
+                        class="btn btn-outline-secondary btn-sm"
+                        target="_blank">
+                        <i class="fas fa-file-pdf me-2"></i>Version imprimable
+                        </a>
                 </div>
             </div>
         </div>

@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Emploi du Temps - {{ lab_name }}</title>
+    <style>
+        @page {
+            size: A4 landscape;
+            margin: 0.5cm; /* Réduction des marges */
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            font-size: 9pt; /* Taille de police réduite */
+            margin: 0;
+            padding: 0.5cm; /* Espacement général réduit */
+        }
+
+        .print-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5cm; /* Espace réduit sous l'en-tête */
+            padding-bottom: 0.3cm;
+            border-bottom: 1px solid #ccc; /* Ligne plus fine */
+        }
+
+        .header-content {
+            flex-grow: 1;
+            text-align: center;
+        }
+
+        .print-header h2 {
+            font-size: 14pt; /* Taille réduite */
+            margin: 0 0 0.1cm 0;
+            color: #2c3e50;
+        }
+
+        .print-header .period {
+            font-size: 10pt; /* Taille réduite */
+            color: #666;
+        }
+
+        .logo {
+            max-height: 40px; /* Taille du logo réduite */
+            width: auto;
+            margin-right: 0.5cm;
+        }
+
+        .print-header .logo {
+            position: absolute;
+            top: 0;
+            left: 1cm;
+            height: 1.5cm; /* Taille réduite */
+        }
+
+        .calendar-table {
+            width: 100%;
+            border-collapse: collapse;
+            page-break-inside: avoid;
+            border: 1px solid #2c3e50;
+        }
+
+        .calendar-header th {
+            background: #3498db;
+            color: white;
+            padding: 6px; /* Padding réduit */
+            border: 1px solid #2c3e50;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 10pt; /* Taille réduite */
+        }
+
+        .time-slot {
+            background: #ecf0f1;
+            font-weight: bold;
+            width: 100px; /* Largeur réduite */
+            color: #2c3e50;
+            text-align: center;
+            vertical-align: middle;
+            border: 1px solid #bdc3c7;
+        }
+
+        .time-cell {
+            height: 75px; /* Hauteur réduite */
+            padding: 3px;
+            border: 1px solid #bdc3c7;
+            vertical-align: top;
+        }
+
+        .time-cell:nth-child(odd) {
+            background-color: #f9f9f9;
+        }
+
+        .tp-event {
+            background: #f8f9fa;
+            border-left: 3px solid #2ecc71; /* Bordure réduite */
+            border-radius: 4px;
+            margin: 1px;
+            padding: 3px;
+            font-size: 9pt; /* Taille réduite */
+            page-break-inside: avoid;
+            height: calc(100% - 8px);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .tp-event strong {
+            display: block;
+            margin-bottom: 2px;
+            color: #2c3e50;
+            font-size: 10pt;
+        }
+
+        .tp-details {
+            font-size: 8pt;
+            color: #555;
+            line-height: 1.2;
+        }
+
+        .tp-details .instructor {
+            margin-bottom: 2px;
+        }
+
+        .tp-details .course {
+            color: #27ae60;
+            font-weight: 500;
+        }
+
+        .tp-details .location {
+            color: #3498db;
+            font-weight: 500;
+            margin-top: 2px;
+        }
+
+        .print-footer {
+            margin-top: 0.5cm; /* Marge réduite */
+            text-align: center; 
+            font-size: 8pt; /* Taille réduite */
+            color: #7f8c8d;
+            border-top: 1px solid #bdc3c7;
+            padding-top: 0.2cm;
+        }
+
+        .watermark {
+            position: fixed;
+            bottom: 3cm;
+            right: 4cm;
+            opacity: 0.03; /* Opacité réduite */
+            transform: rotate(-45deg);
+            font-size: 6cm; /* Taille réduite */
+            font-weight: bold;
+            color: #000;
+            z-index: -1;
+        }
+
+        /* Badges pour les types de TP */
+        .tp-type {
+            display: inline-block;
+            padding: 1px 4px;
+            border-radius: 2px;
+            font-size: 7pt;
+            margin-top: 2px;
+            background-color: #f0f0f0;
+            color: #555;
+        }
+
+        /* Légende */
+        .legend {
+            margin-top: 0.3cm;
+            text-align: center;
+            font-size: 8pt;
+            color: #555;
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+        }
+
+        .legend-color {
+            width: 10px;
+            height: 10px;
+            margin-right: 4px;
+            border-radius: 2px;
+        }
+        
+        /* Style pour le bouton d'impression */
+        .print-button-container {
+            text-align: center;
+            margin: 15px 0;
+        }
+        
+        .print-button {
+            background: #db3434;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            font-size: 12pt;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            transition: background 0.3s;
+        }
+        
+        .print-button:hover {
+            background: #2980b9;
+        }
+
+        @media print {
+            body { 
+                -webkit-print-color-adjust: exact; 
+                print-color-adjust: exact;
+                zoom: 0.95; /* Légère réduction pour s'assurer que tout rentre */
+            }
+            
+            .no-print { 
+                display: none !important; 
+            }
+            
+            .page-break {
+                page-break-after: always;
+            }
+            
+            .print-button-container {
+                display: none;
+            }
+            
+            /* Forcer l'impression sur une seule page */
+            html, body {
+                width: 297mm; /* Largeur A4 en paysage */
+                height: 210mm; /* Hauteur A4 en paysage */
+                overflow: hidden;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="watermark">GestionLab</div>
+    
+    
+    <div class="print-header">
+        
+        <div class="header-content">
+            <img src="/static/university-logo.png" alt="Logo Université">
+
+                 <h2>Emploi du Temps - {{ lab_name }}</h2>
+            <div class="period">
+                Semaine du {{ days[0].strftime('%d/%m/%Y') }} au {{ days[-1].strftime('%d/%m/%Y') }}<br>
+                Généré le {{ current_time }}
+            </div>
+        </div>
+    </div>
+
+    <table class="calendar-table">
+        <thead>
+            <tr class="calendar-header">
+                <th class="time-slot">Horaires</th>
+                {% for day in days %}
+                <th>{{ day.strftime('%A')|upper }}<br>{{ day.strftime('%d/%m/%Y') }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for periode in CRENEAUX %}
+            <tr>
+                <td class="time-slot">
+                    {{ CRENEAUX[periode][0] }}<br>—<br>{{ CRENEAUX[periode][1] }}
+                </td>
+                {% for day in days %}
+                {% set date_str = day.strftime('%Y-%m-%d') %}
+                {% set lab_key = (lab_id|string + '-' + date_str + '-' + periode) if lab_id else date_str + '-' + periode %}
+                <td class="time-cell">
+                    {% if lab_key in tps %}
+                    <div class="tp-event">
+                        <strong>{{ tps[lab_key].nom_tp }}</strong>
+                        <div class="tp-details">
+                            <div class="instructor">
+                                <i class="fas fa-user"></i> {{ tps[lab_key].prenom }} {{ tps[lab_key].nom }}
+                            </div>
+                            <div class="course">
+                                <i class="fas fa-book"></i> {{ tps[lab_key].nom_matiere }}
+                            </div>
+                            {% if not lab_id %}
+                            <div class="location">
+                                <i class="fas fa-map-marker-alt"></i> {{ tps[lab_key].nom_laboratoire }}
+                            </div>
+                            {% endif %}
+                            {% if tps[lab_key].type %}
+                            <div class="tp-type">{{ tps[lab_key].type }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="legend">
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: #2ecc71;"></div>
+            <span>TP Standard</span>
+        </div>
+        
+        <!-- Ajouter d'autres types de TP selon vos besoins -->
+    </div>
+    <div class="print-button-container no-print">
+        <button class="print-button" onclick="window.print()">Imprimer</button>
+    </div>
+    <div class="print-footer">
+        <p>Document généré par GestionLab le {{ current_time }}</p>
+        <p>Ce document est confidentiel et destiné uniquement à un usage interne.</p>
+    </div>
+</body>
+</html>
