@@ -9,7 +9,7 @@ from flask_wtf.csrf import CSRFProtect
 import mysql.connector
 import locale
 from collections import defaultdict
-
+from dateutil.relativedelta import relativedelta
 
 
 
@@ -1869,6 +1869,7 @@ def statistiques():
         cur = mysql.connection.cursor()
 
         # Statistiques laboratoires
+        # Remplacer la requête existante par :
         cur.execute("""
             SELECT 
                 l.id_laboratoire,
@@ -1890,7 +1891,7 @@ def statistiques():
             SELECT 
                 l.id_laboratoire,
                 COALESCE(t.nom_type, 'Non spécifié') AS type_article,
-                COUNT(DISTINCT t.id_type) as types_count
+                SUM(sl.quantite) as total_quantite
             FROM laboratoire l
             LEFT JOIN stock_laboratoire sl ON l.id_laboratoire = sl.id_laboratoire
             LEFT JOIN stock_magasin sm ON sl.id_lot = sm.id_lot
@@ -1900,14 +1901,14 @@ def statistiques():
         """)
         lab_types_data = cur.fetchall()
 
+
        # Préparation données graphique
         types = sorted({lt['type_article'] for lt in lab_types_data if lt['type_article']}) 
+        # Remplacer la boucle de traitement par :
         lab_types_dict = defaultdict(dict)
-        
         for lt in lab_types_data:
             lab_id = lt['id_laboratoire']
-            lab_types_dict[lab_id][lt['type_article']] = lt['types_count']
-
+            lab_types_dict[lab_id][lt['type_article']] = lt['total_quantite']
         # Création des paires catégorie/données
         type_data = []
         for type_name in types:
@@ -1918,11 +1919,57 @@ def statistiques():
 
         paired_data = list(zip(types, type_data))
 
+        # Ajouter dans la partie statistiques
+        cur.execute("""
+            SELECT 
+                DATE_FORMAT(heure_debut, '%x-W%v') AS semaine,
+                COUNT(*) AS nb_tp
+            FROM tp
+            WHERE heure_debut >= NOW() - INTERVAL 1 YEAR
+            GROUP BY semaine
+            ORDER BY semaine
+        """)
+        timeline_data = cur.fetchall()
+        # Structurer les données pour Chart.js
+       # Remplacer le traitement des mois par des semaines
+        timeline_dict = {item['semaine']: item['nb_tp'] for item in timeline_data}
+
+        end_date = datetime.now()
+        start_date = end_date - relativedelta(years=1)
+
+        current_date = start_date
+        weeks = []
+
+        # Générer toutes les semaines ISO de la période
+        while current_date <= end_date:
+            iso_year, iso_week, _ = current_date.isocalendar()
+            week_str = f"{iso_year}-W{iso_week:02d}"
+            if not weeks or week_str != weeks[-1]:
+                weeks.append(week_str)
+            current_date += timedelta(days=7)
+
+        # Formater les libellés et les données
+        timeline_labels = []
+        timeline_counts = []
+
+        for week in weeks:
+            year_part, week_part = week.split('-W')
+            timeline_labels.append(f"Semaine {week_part}, {year_part}")
+            timeline_counts.append(timeline_dict.get(week, 0))
+
+        if not timeline_labels:  # Si pas de données
+            timeline_labels = []
+            timeline_counts = []
+
+
         return render_template('statistiques.html',
         lab_names=[lab['nom_laboratoire'] for lab in labs_stats],
         tp_counts=[lab['nb_tp'] for lab in labs_stats],
         types=types,
-        type_data=type_data)
+        type_data=type_data,
+        timeline_labels=timeline_labels,
+        timeline_data=timeline_counts,
+        timeline_counts=timeline_counts )
 
     except Exception as e:
         flash(f"Erreur base de données : {str(e)}", "danger")

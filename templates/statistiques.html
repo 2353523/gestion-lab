@@ -388,56 +388,46 @@
                 }
             });
 
-            // 3. Graphique Temporel (nouveau)
-            const timelineChart = new Chart(document.getElementById('timelineChart'), {
-                type: 'line',
-                data: {
-                    labels: labData.timeline.labels,
-                    datasets: [{
-                        label: 'Évolution mensuelle des TP',
-                        data: labData.timeline.data,
-                        backgroundColor: 'rgba(231, 76, 60, 0.2)',
-                        borderColor: 'rgba(231, 76, 60, 1)',
-                        borderWidth: 3,
-                        tension: 0.4,
-                        fill: true,
-                        pointBackgroundColor: 'rgba(231, 76, 60, 1)',
-                        pointBorderColor: '#fff',
-                        pointBorderWidth: 2,
-                        pointRadius: 5,
-                        pointHoverRadius: 7
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: {
-                        duration: 1500,
-                        easing: 'easeOutQuart'
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: { display: true, text: 'Nombre de TP', font: { weight: 'bold' } },
-                            grid: {
-                                color: 'rgba(0, 0, 0, 0.05)'
-                            }
-                        },
-                        x: {
-                            grid: {
-                                color: 'rgba(0, 0, 0, 0.05)'
-                            }
-                        }
-                    },
-                    plugins: {
-                        tooltip: {
-                            backgroundColor: 'rgba(44, 62, 80, 0.9)',
-                            padding: 12,
-                            cornerRadius: 8
-                        }
-                    }
+            // Remplacer la configuration existante par :
+const timelineChart = new Chart(document.getElementById('timelineChart'), {
+    type: 'line',
+    data: {
+        labels: {{ timeline_labels|tojson }},
+        datasets: [{
+            label: "Évolution des TP par semaine",
+            data: {{ timeline_counts|tojson }},
+            backgroundColor: 'rgba(231, 76, 60, 0.2)',
+            borderColor: 'rgba(231, 76, 60, 1)',
+            borderWidth: 3,
+            tension: 0.4,
+            fill: true,
+            pointRadius: 5
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            tooltip: {
+                callbacks: {
+                    title: (context) => 'Semaine : ' + context[0].label
                 }
-            });
+            }
+        },
+        scales: {
+            x: {
+                title: { display: true, text: 'Semaines' },
+                ticks: {
+                    autoSkip: true,
+                    maxTicksLimit: 10 // Ajuster selon le besoin
+                }
+            },
+            y: {
+                beginAtZero: true,
+                title: { display: true, text: 'Nombre de TP' }
+            }
+        }
+    }
+});
 
             // Légende dynamique et interactive
             const legendContainer = document.getElementById('typeLegend');
