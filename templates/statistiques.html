@@ -8,169 +8,291 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
     <style>
-        :root {
-            --primary: #2c3e50;
-            --secondary: #3498db;
-            --accent: #e74c3c;
-            --light-gray: #ecf0f1;
-            --dark-gray: #95a5a6;
-            --success: #2ecc71;
-            --warning: #f39c12;
-        }
+    :root {
+    --primary: #2c3e50;
+    --secondary: #3498db;
+    --accent: #e74c3c;
+    --light-gray: #ecf0f1;
+    --dark-gray: #95a5a6;
+    --success: #2ecc71;
+    --warning: #f39c12;
+    --white: #ffffff;
+    --hover-light: #dce4e6;
+    --box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    --transition: all 0.3s ease;
+}
 
-        body {
-            background-color: var(--light-gray);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
+body {
+    background-color: var(--light-gray);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: var(--primary);
+}
 
-        .navbar {
-            background-color: var(--primary);
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
+.navbar {
+    background-color: var(--primary);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
 
-        .chart-card {
-            background: white;
-            border-radius: 12px;
-            padding: 1.75rem;
-            margin-bottom: 2rem;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
-            transition: transform 0.3s ease;
-        }
+/* Animation d'entrée */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
 
-        .chart-card:hover {
-            transform: translateY(-5px);
-        }
+.animated {
+    animation: fadeIn 0.5s ease forwards;
+    opacity: 0;
+}
 
-        .chart-container {
-            height: 400px;
-            position: relative;
-        }
+.delay-1 { animation-delay: 0.1s; }
+.delay-2 { animation-delay: 0.2s; }
+.delay-3 { animation-delay: 0.3s; }
+.delay-4 { animation-delay: 0.4s; }
 
-        .legend-item {
-            display: inline-flex;
-            align-items: center;
-            margin: 0.5rem 1rem 0.5rem 0;
-            padding: 0.4rem 0.9rem;
-            background: var(--light-gray);
-            border-radius: 20px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
+/* Cards */
+.chart-card, .stat-card {
+    background: var(--white);
+    border-radius: 12px;
+    transition: var(--transition);
+    box-shadow: var(--box-shadow);
+}
 
-        .legend-item:hover {
-            background: var(--dark-gray);
-            color: white;
-        }
+.chart-card {
+    padding: 1.75rem;
+    margin-bottom: 2rem;
+}
 
-        .legend-item.inactive {
-            opacity: 0.5;
-        }
+.chart-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+}
 
-        .color-box {
-            width: 20px;
-            height: 20px;
-            margin-right: 0.5rem;
-            border-radius: 4px;
-        }
+.stat-card {
+    padding: 1.25rem;
+    text-align: center;
+}
 
-        .stats-summary {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
+.stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
 
-        .stat-card {
-            background: white;
-            border-radius: 12px;
-            padding: 1.25rem;
-            text-align: center;
-            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
-            transition: all 0.3s ease;
-        }
+.chart-container {
+    height: 400px;
+    position: relative;
+}
 
-        .stat-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        }
+/* Stats Summary */
+.stats-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
 
-        .stat-value {
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin: 0.5rem 0;
-            color: var(--primary);
-        }
+.stat-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin: 0.5rem 0;
+    color: var(--primary);
+    text-shadow: 1px 1px 1px rgba(0,0,0,0.05);
+}
 
-        .stat-title {
-            color: var(--dark-gray);
-            font-weight: 500;
-        }
+.stat-title {
+    color: var(--dark-gray);
+    font-weight: 500;
+}
 
-        .stat-icon {
-            font-size: 2rem;
-            color: var(--secondary);
-            margin-bottom: 0.5rem;
-        }
+.stat-icon {
+    font-size: 2rem;
+    color: var(--secondary);
+    margin-bottom: 0.5rem;
+}
 
-        .chart-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-        }
+/* Chart Headers */
+.chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
 
-        .chart-title {
-            margin: 0;
-            color: var(--primary);
-            font-weight: 600;
-        }
+.chart-title {
+    margin: 0;
+    color: var(--primary);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+}
 
-        .chart-controls {
-            display: flex;
-            gap: 0.5rem;
-        }
+.chart-title i {
+    margin-right: 0.5rem;
+    color: var(--secondary);
+}
 
-        .time-filter {
-            padding: 0.3rem 0.75rem;
-            background: var(--light-gray);
-            border-radius: 20px;
-            border: none;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
+.chart-controls {
+    display: flex;
+    gap: 0.7rem;
+    align-items: center;
+}
 
-        .time-filter.active {
-            background: var(--secondary);
-            color: white;
-        }
+/* Filtres et contrôles */
+.time-filter, .export-btn, .period-select {
+    padding: 0.3rem 0.75rem;
+    border-radius: 20px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    transition: var(--transition);
+}
 
-        .export-btn {
-            padding: 0.3rem 0.75rem;
-            background: var(--success);
-            color: white;
-            border-radius: 20px;
-            border: none;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
+.time-filter {
+    background: var(--light-gray);
+    color: var(--primary);
+}
 
-        .export-btn:hover {
-            background: #27ae60;
-        }
+.time-filter.active {
+    background: var(--secondary);
+    color: var(--white);
+}
 
-        /* Animation */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+.export-btn {
+    background: var(--success);
+    color: var(--white);
+}
 
-        .animated {
-            animation: fadeIn 0.5s ease forwards;
-        }
+.export-btn:hover {
+    background: #27ae60;
+    transform: translateY(-2px);
+}
 
-        .delay-1 { animation-delay: 0.1s; }
-        .delay-2 { animation-delay: 0.2s; }
-        .delay-3 { animation-delay: 0.3s; }
+.export-btn:active {
+    transform: translateY(0);
+}
+
+.period-select {
+    background-color: var(--light-gray);
+    padding: 0.3rem 2rem 0.3rem 0.75rem;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%232c3e50' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+    background-size: 1rem;
+}
+
+.period-select:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.3);
+}
+
+/* Export Menu */
+.export-menu {
+    min-width: 200px;
+    background: var(--white);
+    border-radius: 8px;
+    box-shadow: 0 3px 15px rgba(0,0,0,0.15);
+    overflow: hidden;
+    z-index: 1000;
+}
+
+.export-option {
+    padding: 10px 16px;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.export-option:hover {
+    background-color: var(--hover-light);
+}
+
+.export-option i {
+    margin-right: 10px;
+    color: var(--primary);
+    width: 20px;
+    text-align: center;
+}
+
+/* Legend */
+.legend-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.legend-item {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.4rem 0.9rem;
+    background: var(--light-gray);
+    border-radius: 20px;
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 0.85rem;
+}
+
+.legend-item:hover {
+    background: var(--secondary);
+    color: var(--white);
+}
+
+.legend-item.inactive {
+    opacity: 0.5;
+}
+
+.color-box {
+    width: 16px;
+    height: 16px;
+    margin-right: 0.5rem;
+    border-radius: 4px;
+}
+
+/* Infos supplémentaires */
+.chart-info {
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    background-color: rgba(0, 0, 0, 0.03);
+    font-size: 0.85rem;
+    color: var(--dark-gray);
+    margin-top: 1rem;
+    display: flex;
+    align-items: center;
+}
+
+.chart-info i {
+    margin-right: 0.5rem;
+    color: var(--secondary);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .chart-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .chart-controls {
+        width: 100%;
+        justify-content: flex-start;
+        margin-top: 0.5rem;
+    }
+    
+    .chart-container {
+        height: 300px;
+    }
+    
+    .stat-value {
+        font-size: 2rem;
+    }
+}
     </style>
 </head>
 <body>
@@ -204,11 +326,7 @@
                 <div class="stat-value" id="totalTypes">0</div>
                 <div class="stat-title">Types  des Articles </div>
             </div>
-            <div class="stat-card animated delay-1">
-                <div class="stat-icon"><i class="fas fa-calendar-check"></i></div>
-                <div class="stat-value" id="nextTP">0</div>
-                <div class="stat-title">TP Planifiés (7j)</div>
-            </div>
+            
         </div>
 
         <!-- Graphique Charge TP -->
@@ -259,239 +377,295 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // Configuration des données
-            const labData = {
-                names: {{ lab_names|tojson }},
-                tpCounts: {{ tp_counts|tojson }},
-                types: {{ types|tojson }},
-                typeData: {{ type_data|tojson }},
-                // Données simulées pour le graphique temporel
-                timeline: {
-                    labels: ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'],
-                    data: Array.from({length: 12}, () => Math.floor(Math.random() * 50) + 10)
-                }
-            };
+      document.addEventListener('DOMContentLoaded', () => {
+    // Configuration principale
+    const Dashboard = {
+        // Sélecteurs DOM
+        elements: {
+            stats: {
+                totalTP: document.getElementById('totalTP'),
+                totalLabs: document.getElementById('totalLabs'),
+                totalTypes: document.getElementById('totalTypes'),
+                nextTP: document.getElementById('nextTP')
+            },
+            charts: {
+                workload: document.getElementById('workloadChart'),
+                type: document.getElementById('typeChart'),
+                timeline: document.getElementById('timelineChart')
+            },
+            periodSelect: document.getElementById('timelinePeriodSelect')
+        },
 
-            // Mettre à jour les statistiques résumées
-            document.getElementById('totalTP').textContent = labData.tpCounts.reduce((a, b) => a + b, 0);
-            document.getElementById('totalLabs').textContent = labData.names.length;
-            document.getElementById('totalTypes').textContent = labData.types.length;
-            document.getElementById('nextTP').textContent = Math.floor(Math.random() * 30) + 5; // Simulé
-
-            // Génération des couleurs
-            const generateColors = (count) => {
-                return Array.from({length: count}, (_, i) => 
-                    `hsl(${(i * 360 / count)}, 70%, 50%)`
-                );
-            };
-
-            // 1. Graphique de Charge
-            const workloadChart = new Chart(document.getElementById('workloadChart'), {
-                type: 'bar',
-                data: {
-                    labels: labData.names,
-                    datasets: [{
-                        label: 'TP Programmés',
-                        data: labData.tpCounts,
-                        backgroundColor: 'rgba(52, 152, 219, 0.8)',
-                        borderColor: 'rgba(52, 152, 219, 1)',
-                        borderWidth: 1,
-                        borderRadius: 5,
-                        barPercentage: 0.7
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: {
-                        duration: 1500,
-                        easing: 'easeOutQuart'
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: { display: true, text: 'Nombre de TP', font: { weight: 'bold' } },
-                            grid: {
-                                color: 'rgba(0, 0, 0, 0.05)'
-                            }
-                        },
-                        x: {
-                            grid: {
-                                display: false
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            display: true,
-                            position: 'top'
-                        },
-                        tooltip: {
-                            backgroundColor: 'rgba(44, 62, 80, 0.9)',
-                            padding: 12,
-                            cornerRadius: 8,
-                            titleFont: {
-                                size: 14,
-                                weight: 'bold'
-                            }
-                        }
-                    }
-                }
-            });
-
-            // 2. Graphique des Types
-            const typeColors = generateColors(labData.types.length);
-            const typeChart = new Chart(document.getElementById('typeChart'), {
-                type: 'bar',
-                data: {
-                    labels: labData.names,
-                    datasets: labData.types.map((typeName, index) => ({
-                        label: typeName,
-                        data: labData.typeData[index],
-                        backgroundColor: typeColors[index],
-                        borderColor: typeColors[index],
-                        borderWidth: 1,
-                        borderRadius: 5
-                    }))
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: {
-                        duration: 1500,
-                        easing: 'easeOutQuart'
-                    },
-                    scales: {
-                        x: { 
-                            stacked: true,
-                            grid: {
-                                display: false
-                            }
-                        },
-                        y: { 
-                            stacked: true,
-                            beginAtZero: true,
-                            title: { display: true, text: 'Nombre de Types', font: { weight: 'bold' } },
-                            grid: {
-                                color: 'rgba(0, 0, 0, 0.05)'
-                            }
-                        }
-                    },
-                    plugins: {
-                        tooltip: {
-                            backgroundColor: 'rgba(44, 62, 80, 0.9)',
-                            padding: 12,
-                            cornerRadius: 8
-                        }
-                    }
-                }
-            });
-
-            // Remplacer la configuration existante par :
-const timelineChart = new Chart(document.getElementById('timelineChart'), {
-    type: 'line',
-    data: {
-        labels: {{ timeline_labels|tojson }},
-        datasets: [{
-            label: "Évolution des TP par semaine",
-            data: {{ timeline_counts|tojson }},
-            backgroundColor: 'rgba(231, 76, 60, 0.2)',
-            borderColor: 'rgba(231, 76, 60, 1)',
-            borderWidth: 3,
-            tension: 0.4,
-            fill: true,
-            pointRadius: 5
-        }]
-    },
-    options: {
-        responsive: true,
-        plugins: {
-            tooltip: {
-                callbacks: {
-                    title: (context) => 'Semaine : ' + context[0].label
-                }
+        // Données initiales avec valeurs par défaut
+        data: {
+            labs: {
+                names: {{ lab_names|tojson|default([], true) }},
+                counts: {{ tp_counts|tojson|default([], true) }}
+            },
+            types: {
+                names: {{ types|tojson|default([], true) }},
+                data: {{ type_data|tojson|default([], true) }}
+            },
+            timeline: {
+                labels: {{ timeline_labels|tojson|default([], true) }},
+                counts: {{ timeline_counts|tojson|default([], true) }}
             }
         },
-        scales: {
-            x: {
-                title: { display: true, text: 'Semaines' },
-                ticks: {
-                    autoSkip: true,
-                    maxTicksLimit: 10 // Ajuster selon le besoin
-                }
-            },
-            y: {
-                beginAtZero: true,
-                title: { display: true, text: 'Nombre de TP' }
+
+        // Initialisation
+        init() {
+            this.validateData();
+            this.initStats();
+            this.initCharts();
+            this.initEventHandlers();
+            this.startLiveUpdates();
+        },
+
+        // Validation des données
+        validateData() {
+            // Normalisation des structures de données
+            this.data.labs.names = Array.isArray(this.data.labs.names) ? this.data.labs.names : [];
+            this.data.labs.counts = Array.isArray(this.data.labs.counts) ? this.data.labs.counts : [];
+            this.data.types.names = Array.isArray(this.data.types.names) ? this.data.types.names : [];
+            this.data.types.data = Array.isArray(this.data.types.data) ? this.data.types.data : [];
+            this.data.timeline.labels = Array.isArray(this.data.timeline.labels) ? this.data.timeline.labels : [];
+            this.data.timeline.counts = Array.isArray(this.data.timeline.counts) ? this.data.timeline.counts : [];
+        },
+
+        // Statistiques
+        initStats() {
+            this.setSafeText(this.elements.stats.totalTP, 
+                this.data.labs.counts.reduce((a, b) => a + (Number(b) || 0), 0)
+            );
+            this.setSafeText(this.elements.stats.totalLabs, this.data.labs.names.length);
+            this.setSafeText(this.elements.stats.totalTypes, this.data.types.names.length);
+        },
+
+        // Graphiques
+        initCharts() {
+            if (this.checkChartElement('workload')) {
+                this.initWorkloadChart();
             }
+            if (this.checkChartElement('type')) {
+                this.initTypeChart();
+            }
+            if (this.checkChartElement('timeline')) {
+                this.initTimelineChart();
+                // Suppression de l'appel à addMovingAverage(4)
+            }
+        },
+
+        // Vérification élément DOM
+        checkChartElement(type) {
+            return !!this.elements.charts[type] && this.elements.charts[type].nodeName === 'CANVAS';
+        },
+
+        // Workload Chart
+        initWorkloadChart() {
+            new Chart(this.elements.charts.workload, {
+                type: 'bar',
+                data: {
+                    labels: this.data.labs.names,
+                    datasets: [{
+                        label: 'TP par Laboratoire',
+                        data: this.data.labs.counts,
+                        backgroundColor: 'rgba(52, 152, 219, 0.8)',
+                        borderWidth: 0,
+                        borderRadius: 5
+                    }]
+                },
+                options: this.getCommonOptions({
+                    scales: {
+                        y: { title: { text: 'Nombre de TP' } }
+                    }
+                })
+            });
+        },
+
+        // Type Chart
+        initTypeChart() {
+            const colors = this.generateColors(this.data.types.names.length);
+            new Chart(this.elements.charts.type, {
+                type: 'bar',
+                data: {
+                    labels: this.data.labs.names,
+                    datasets: this.data.types.names.map((name, i) => ({
+                        label: name,
+                        data: this.data.types.data[i] || [],
+                        backgroundColor: colors[i] || '#cccccc',
+                        borderWidth: 0
+                    }))
+                },
+                options: this.getCommonOptions({
+                    scales: {
+                        x: { stacked: true },
+                        y: { stacked: true }
+                    }
+                })
+            });
+        },
+
+        // Timeline Chart
+        initTimelineChart() {
+            new Chart(this.elements.charts.timeline, {
+                type: 'line',
+                data: {
+                    labels: this.data.timeline.labels,
+                    datasets: [{
+                        label: 'Évolution Hebdomadaire',
+                        data: this.data.timeline.counts,
+                        borderColor: '#e74c3c',
+                        tension: 0.4,
+                        fill: false
+                    }]
+                },
+                options: this.getCommonOptions({
+                    scales: {
+                        x: { title: { text: 'Semaines' } },
+                        y: { title: { text: 'Nombre de TP' } }
+                    }
+                })
+            });
+        },
+
+        // Gestion des événements
+        initEventHandlers() {
+            this.initExportHandlers();
+            this.initPeriodSelector();
+        },
+
+        // Exportations
+        initExportHandlers() {
+            document.querySelectorAll('.export-btn').forEach(btn => {
+                btn.addEventListener('click', e => {
+                    e.stopPropagation();
+                    const chartType = e.currentTarget.id.replace('export', '').toLowerCase();
+                    this.showExportMenu(e.currentTarget, chartType);
+                });
+            });
+        },
+
+        // Sélecteur de période
+        initPeriodSelector() {
+            if (this.elements.periodSelect) {
+                this.elements.periodSelect.addEventListener('change', e => {
+                    this.updateTimelinePeriod(e.target.value);
+                });
+            }
+        },
+
+        // Fonction de calcul de moyenne mobile (gardée mais non utilisée)
+        calculateMovingAverage(data, period) {
+            return data.map((_, i) => {
+                if (i < period - 1) return null;
+                const slice = data.slice(i - period + 1, i + 1);
+                return (slice.reduce((a, b) => a + b, 0) / period).toFixed(1);
+            });
+        },
+
+        // Export direct en PNG
+        showExportMenu(button, chartType) {
+            // Export direct en PNG sans menu
+            this.handleExport(chartType, 'png');
+        },
+
+        // Gestion de l'export
+        handleExport(chartType, format) {
+            const chart = this.getChartInstance(chartType);
+            chart.config.options.backgroundColor = 'white';
+
+            if (!chart) return;
+            
+            // Uniquement PNG
+            this.exportPNG(chart, chartType);
+        },
+
+        // Export PNG avec fond blanc
+        exportPNG(chart, name) {
+            // Sauvegarder les paramètres actuels
+            const originalBackgroundColor = chart.options.plugins.tooltip.backgroundColor;
+            const originalPlugins = { ...chart.options.plugins };
+            
+            // Appliquer temporairement un fond blanc
+            chart.options.plugins = {
+                ...originalPlugins,
+                // Assurer que le graphique a un fond blanc à l'export
+                legend: {
+                    ...originalPlugins.legend,
+                    labels: {
+                        ...originalPlugins.legend?.labels,
+                        color: '#000000' // Texte noir sur fond blanc
+                    }
+                },
+                background: {
+                    color: 'white'
+                }
+            };
+            
+            // Redessiner le graphique avec les nouvelles options
+            chart.update();
+            
+            // Générer l'image
+            const link = document.createElement('a');
+            link.download = `${name}_export.png`;
+            link.href = chart.toBase64Image('image/png', 1.0);
+            link.click();
+            
+            // Restaurer les paramètres d'origine
+            chart.options.plugins = originalPlugins;
+            chart.update();
+        },
+
+        // Utilitaires
+        setSafeText(element, value) {
+            if (element) element.textContent = value || 0;
+        },
+
+        generateColors(count) {
+            return Array.from({ length: count }, (_, i) => 
+                `hsl(${(i * 360 / Math.max(1, count))}, 70%, 50%)`
+            );
+        },
+
+        getCommonOptions(customOptions) {
+            return {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            usePointStyle: true,
+                            boxWidth: 12
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(44, 62, 80, 0.95)',
+                        padding: 10,
+                        cornerRadius: 6
+                    }
+                },
+                ...customOptions
+            };
+        },
+
+        getChartInstance(type) {
+            return Chart.getChart(this.elements.charts[type]);
+        },
+
+        // Mise à jour temps réel
+        startLiveUpdates() {
+            setInterval(() => {
+                const current = parseInt(this.elements.stats.nextTP?.textContent) || 0;
+                const newValue = Math.max(1, current + Math.floor(Math.random() * 3) - 1);
+                this.setSafeText(this.elements.stats.nextTP, newValue);
+            }, 10000);
         }
-    }
+    };
+
+    // Initialisation
+    Dashboard.init();
 });
-
-            // Légende dynamique et interactive
-            const legendContainer = document.getElementById('typeLegend');
-            labData.types.forEach((typeName, index) => {
-                const legendItem = document.createElement('div');
-                legendItem.className = 'legend-item';
-                legendItem.innerHTML = `
-                    <div class="color-box" style="background: ${typeColors[index]}"></div>
-                    <span>${typeName}</span>
-                `;
-                
-                // Interaction pour masquer/afficher les séries
-                legendItem.addEventListener('click', () => {
-                    const isDatasetVisible = typeChart.isDatasetVisible(index);
-                    
-                    if (isDatasetVisible) {
-                        typeChart.hide(index);
-                        legendItem.classList.add('inactive');
-                    } else {
-                        typeChart.show(index);
-                        legendItem.classList.remove('inactive');
-                    }
-                });
-                
-                legendContainer.appendChild(legendItem);
-            });
-
-            // Filtres temporels
-            document.querySelectorAll('.time-filter').forEach(button => {
-                button.addEventListener('click', function() {
-                    // Mettre à jour l'état actif
-                    document.querySelectorAll('.time-filter').forEach(btn => btn.classList.remove('active'));
-                    this.classList.add('active');
-                    
-                    // Simuler le changement de données
-                    const period = this.dataset.period;
-                    let newData;
-                    
-                    switch(period) {
-                        case 'month':
-                            newData = labData.tpCounts.map(count => Math.floor(count * 0.3));
-                            break;
-                        case 'quarter':
-                            newData = labData.tpCounts.map(count => Math.floor(count * 0.7));
-                            break;
-                        default: // 'all'
-                            newData = labData.tpCounts;
-                    }
-                    
-                    // Mettre à jour le graphique
-                    workloadChart.data.datasets[0].data = newData;
-                    workloadChart.update();
-                });
-            });
-
-            // Fonctions d'exportation (simulation)
-            document.querySelectorAll('.export-btn').forEach(button => {
-                button.addEventListener('click', function() {
-                    const chartId = this.id.replace('export', '');
-                    alert(`Exportation des données ${chartId} en cours...`);
-                    // Ici, vous implémenteriez la logique réelle d'exportation
-                });
-            });
-        });
     </script>
 </body>
 </html>

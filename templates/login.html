@@ -3,132 +3,353 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Connexion</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+    <title>Gestion Lab | ISME</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <style>
-       body {
-        background: 
-            linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), 
-            url("{{ url_for('static', filename='ISME.jpg') }}") no-repeat center center fixed;
-        background-size: cover;
-        min-height: 100vh;
+        :root {
+            --primary-color: #2563eb;
+            --primary-hover: #1d4ed8;
+            --text-light: rgba(255, 255, 255, 0.8);
+        }
+        
+        body {
+            background: 
+                linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), 
+                url("{{ url_for('static', filename='ISME.jpg') }}") no-repeat center center fixed;
+            background-size: cover;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
         }
     
         .login-card {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 1rem;
+            background: rgba(25, 33, 41, 0.333);
+            backdrop-filter: blur(12px);
+            border-radius: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0.8rem 2rem rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            transition: all 0.3s ease;
+            max-width: 450px;
+            width: 100%;
+        }
+        
+        .login-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.6);
+        }
+        
+        .card-header {
+            background: rgba(0, 0, 0, 0.26);
+            padding: 2rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .logo-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .logo-img {
+            width: 70px;
+            height: 70px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             border: 1px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.3);
+            padding: 5px;
+            overflow: hidden;
+        }
+        
+        .logo-img img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        
+        .divider {
+            width: 1px;
+            height: 40px;
+            background-color: rgba(255, 255, 255, 0.3);
         }
     
         .form-control {
-            background-color: rgba(255, 255, 255, 0.1);
+            background-color: rgba(255, 255, 255, 0.043);
             color: white;
-            border: 1px solid rgba(255, 255, 255, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 0.75rem;
+            padding: 0.8rem 1rem;
             transition: all 0.3s ease;
+            font-size: 1rem;
+            height: auto;
         }
     
         .form-control:focus {
-            background-color: rgba(255, 255, 255, 0.2);
+            background-color: rgba(255, 255, 255, 0.15);
             color: white;
-            box-shadow: 0 0 0 0.25rem rgba(255, 255, 255, 0.25);
+            box-shadow: 0 0 0 0.25rem rgba(37, 99, 235, 0.25);
+            border-color: rgba(255, 255, 255, 0.4);
         }
     
         .form-control::placeholder {
-            color: rgba(255, 255, 255, 0.6);
+            color: rgba(255, 255, 255, 0.5);
         }
-    
-        .btn-custom {
-            padding: 0.75rem;
-            border-radius: 0.5rem;
+        
+        .form-label {
+            color: var(--text-light);
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+        
+        .input-group-text {
+            background-color: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: var(--text-light);
+            border-radius: 0.75rem 0 0 0.75rem;
+        }
+        
+        .password-toggle {
+            background-color: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: var(--text-light);
+            border-radius: 0 0.75rem 0.75rem 0;
+            padding: 0.8rem 1rem;
+            cursor: pointer;
             transition: all 0.3s ease;
         }
-    
-        .btn-outline-primary {
-            border-color: rgba(255, 255, 255, 0.5);
-            color: rgba(255, 255, 255, 0.8);
+        
+        .password-toggle:hover {
+            background-color: rgba(0, 0, 0, 0.4);
         }
     
-        .btn-outline-primary:hover {
-            background-color: rgba(255, 255, 255, 0.1);
-            border-color: white;
+        .btn-login {
+            background-color: var(--primary-color);
             color: white;
+            border: none;
+            border-radius: 0.75rem;
+            padding: 0.8rem 1.5rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            width: 100%;
         }
     
-        .text-muted {
-            color: rgba(255, 255, 255, 0.7) !important;
+        .btn-login:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         }
-        #eye-icon {
-    transition: all 0.3s ease;
+        
+        .btn-login:active {
+            transform: translateY(0);
         }
-        .btn-outline-secondary {
-            background-color: rgba(255, 255, 255, 0.1);
-            border-color: rgba(255, 255, 255, 0.3);
-            color: rgba(255, 255, 255, 0.8);
+        
+        .forgot-password {
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            font-weight: 500;
         }
-        .btn-outline-secondary:hover {
-            background-color: rgba(255, 255, 255, 0.2);
+        
+        .forgot-password:hover {
+            color: white;
+            text-decoration: underline;
+        }
+        
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .login-footer {
+            text-align: center;
+            color: var(--text-light);
+            font-size: 0.9rem;
+            margin-top: 2rem;
+        }
+        
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1050;
+        }
+        
+        .login-toast {
+            background-color: rgba(25, 33, 41, 0.9);
+            color: white;
+            border-radius: 0.5rem;
+            border-left: 4px solid var(--primary-color);
+            backdrop-filter: blur(10px);
+        }
+        
+        .loading-indicator {
+            display: none;
+            margin-right: 10px;
+        }
+        
+        .app-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--primary-color);
+            background: rgba(255, 255, 255, 0.1);
+            padding: 0.3rem 1rem;
+            border-radius: 2rem;
+            margin-top: 0.5rem;
+            display: inline-block;
+        }
+        
+        /* Texte de fallback pour les logos */
+        .logo-fallback {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        @media (max-width: 576px) {
+            .login-card {
+                border-radius: 0;
+                height: 100vh;
+                max-width: 100%;
+            }
+            
+            .card-body {
+                padding: 2rem 1.5rem;
+            }
+            
+            .logo-container {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            
+            .divider {
+                width: 80px;
+                height: 1px;
+                margin: 0.5rem 0;
+            }
         }
     </style>
 </head>
 
-<body class="d-flex align-items-center bg-light">
+<body>
     <div class="container">
         <div class="row justify-content-center">
-            <div class="col-md-8 col-lg-6">
-                <div class="card login-card">
-                    <div class="card-body p-5">
-                        <!-- En-tête -->
-                        <div class="text-center mb-5">
-                            <i class="bi bi-person-circle display-4 text-primary mb-3"></i>
-                            <h1 class="h3 fw-bold">Connexion</h1>
+            <div class="col-lg-10">
+                <div class="login-card mx-auto">
+                    <div class="card-header text-center">
+                        <div class="logo-container">
+                            <!-- Logo ISME - Remplacez le src par le chemin de votre logo -->
+                            <div class="logo-img">
+                                <!-- Utilisez cette balise img pour votre logo ISME -->
+                                <img src="{{ url_for('static', filename='university-logo.png') }}" alt="Logo ISME" onerror="this.style.display='none';this.parentNode.innerHTML='ISME'">
+                            </div>
+                            
+                            <div class="divider"></div>
+                            
+                            <!-- Logo Groupe Polytechnique - Remplacez le src par le chemin de votre logo -->
+                            <div class="logo-img">
+                                <!-- Utilisez cette balise img pour votre logo GP -->
+                                <img src="{{ url_for('static', filename='logo_gp.png') }}" alt="Logo Groupe Polytechnique" onerror="this.style.display='none';this.parentNode.innerHTML='GP'">
+                            </div>
                         </div>
+                        <h1 class="fw-bold h3 mb-1">Institut Supérieur des Métiers de l'Énergie</h1>
+                        <div class="app-title">
+                            <i class="bi bi-flask-fill me-1"></i> Gestion Lab
+                        </div>
+                    </div>
 
-                        <!-- Formulaire -->
-                        <form method="POST" action="{{ url_for('login') }}">
+                    <div class="card-body p-4 p-md-5">
+                        <form method="POST" action="{{ url_for('login') }}" id="loginForm">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            
+                            <!-- Message d'alerte pour les erreurs -->
+                            <div class="alert alert-danger d-none" id="loginAlert" role="alert">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                <span id="alertMessage">Nom d'utilisateur ou mot de passe incorrect</span>
+                            </div>
+                            
                             <!-- Nom d'utilisateur -->
-                            <div class="mb-4">
-                                <label class="form-label">Nom d'utilisateur</label>
+                            <div class="mb-3">
+                                <label for="username" class="form-label">Nom d'utilisateur</label>
                                 <div class="input-group">
-                                    <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
-                                    <input type="text" name="username" class="form-control" required>
+                                    <span class="input-group-text">
+                                        <i class="bi bi-person-fill"></i>
+                                    </span>
+                                    <input type="text" name="username" id="username" class="form-control" 
+                                           required autocomplete="username" autofocus
+                                           placeholder="Entrez votre identifiant">
                                 </div>
                             </div>
                         
                             <!-- Mot de passe -->
                             <div class="mb-4">
-                                <label class="form-label">Mot de passe</label>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <label for="password" class="form-label mb-0">Mot de passe</label>
+                                    <a href="mailto:23543@isme.esp.mr" class="forgot-password small">
+                                        Mot de passe oublié?
+                                    </a>
+                                </div>
                                 <div class="input-group">
-                                    <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
-                                    <input type="password" name="password" id="password" class="form-control" required>
-                                    <button type="button" class="btn btn-outline-secondary" onclick="togglePassword()">
+                                    <span class="input-group-text">
+                                        <i class="bi bi-lock-fill"></i>
+                                    </span>
+                                    <input type="password" name="password" id="password" class="form-control" 
+                                           required autocomplete="current-password"
+                                           placeholder="Entrez votre mot de passe">
+                                    <button type="button" class="password-toggle" id="togglePassword" aria-label="Afficher/Masquer le mot de passe">
                                         <i class="bi bi-eye" id="eye-icon"></i>
                                     </button>
                                 </div>
                             </div>
 
-                            <!-- Actions -->
-                            <div class="d-grid gap-3 mb-4">
-                                <button type="submit" class="btn btn-primary btn-custom">
-                                    <i class="bi bi-box-arrow-in-right me-2"></i>Se connecter
-                                </button>
-                               
+                            <!-- Option Se souvenir de moi -->
+                            <div class="form-check mb-4">
+                                <input class="form-check-input" type="checkbox" id="rememberMe" name="remember">
+                                <label class="form-check-label text-light opacity-75" for="rememberMe">
+                                    Se souvenir de moi
+                                </label>
                             </div>
 
-                            <div class="text-center small">
-                                <a href="mailto:23543@isme.esp.mr" class="text-decoration-none">Mot de passe oublié ?</a>
+                            <!-- Bouton de connexion -->
+                            <div class="d-grid gap-2 mb-4">
+                                <button type="submit" class="btn btn-login" id="loginButton">
+                                    <span class="spinner-border spinner-border-sm loading-indicator" id="loadingIndicator" role="status"></span>
+                                    <i class="bi bi-box-arrow-in-right me-2"></i>Se connecter
+                                </button>
                             </div>
                         </form>
+                        
+                        <div class="login-footer">
+                            <p>© 2025 Institut Supérieur des Métiers de l'Énergie - Groupe Polytechnique</p>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Toast de notification -->
+    <div class="toast-container">
+        <div class="toast login-toast" role="alert" aria-live="assertive" aria-atomic="true" id="loginToast">
+            <div class="toast-header">
+                <strong class="me-auto">Notification</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body" id="toastMessage">
+                Connexion en cours...
+            </div>
+        </div>
+    </div>
+    
     <script>
-        function togglePassword() {
+        // Toggle Password Visibility
+        document.getElementById('togglePassword').addEventListener('click', function() {
             const passwordField = document.getElementById('password');
             const eyeIcon = document.getElementById('eye-icon');
             
@@ -141,8 +362,29 @@
                 eyeIcon.classList.remove('bi-eye-slash');
                 eyeIcon.classList.add('bi-eye');
             }
+        });
+        
+        // Form Submit Handler with Animation
+        document.getElementById('loginForm').addEventListener('submit', function(event) {
+            const loginButton = document.getElementById('loginButton');
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            
+            // Show loading animation
+            loginButton.disabled = true;
+            loadingIndicator.style.display = 'inline-block';
+        });
+
+        // Optional: Auto-hide alert messages after a delay
+        const loginAlert = document.getElementById('loginAlert');
+        if(!loginAlert.classList.contains('d-none')) {
+            setTimeout(function() {
+                loginAlert.classList.add('fade');
+                setTimeout(function() {
+                    loginAlert.classList.add('d-none');
+                }, 500);
+            }, 5000);
         }
-        </script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
