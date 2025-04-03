@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Édition de Reçu - LabManager</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root { --bs-primary: #0d6efd; }
+        .card { border-radius: 0.5rem; box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075); }
+        .card-header { background: var(--bs-primary); color: white; }
+        .datalist-items { max-height: 300px; overflow-y: auto; }
+        .stock-alert { color: #dc3545; font-weight: 600; animation: pulse 1s infinite; }
+        @keyframes pulse {
+            0% { opacity: 1; } 
+            50% { opacity: 0.5; } 
+            100% { opacity: 1; }
+        }
+        .is-invalid { border-color: #dc3545 !important; }
+    </style>
+</head>
+<body class="bg-light">
+    {% include 'nav.html' %}
+
+    <main class="container my-5">
+        <div class="card shadow">
+            <div class="card-header d-flex align-items-center">
+                <i class="fas fa-edit me-2 fs-4"></i>
+                <h2 class="h4 mb-0 flex-grow-1">Édition du Reçu #{{ recu.id_recu }}</h2>
+            </div>
+
+            <div class="card-body p-4">
+                <!-- En-tête Informations -->
+                <div class="row mb-4 g-4">
+                    <div class="row mb-4 g-4">
+                        <div class="col-md-6">
+                            <div class="card bg-light border-0 h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title mb-3 text-primary">Informations TP</h5>
+                                    <dl class="row mb-0">
+                                        <dt class="col-sm-4">TP:</dt>
+                                        <dd class="col-sm-8">{{ recu.nom_tp }}</dd>
+                                        <dt class="col-sm-4">Laboratoire:</dt>
+                                        <dd class="col-sm-8">{{ recu.nom_laboratoire }}</dd>
+                                        <dt class="col-sm-4">Matière:</dt>
+                                        <dd class="col-sm-8">{{ recu.nom_matiere }}</dd>
+                                    </dl>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-light border-0 h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title mb-3 text-primary">Session</h5>
+                                    <dl class="row mb-0">
+                                        <dt class="col-sm-4">Date:</dt>
+                                        <dd class="col-sm-8">{{ recu.heure_debut.strftime('%d/%m/%Y %H:%M') }}</dd>
+                                        <dt class="col-sm-4">Professeur:</dt>
+                                        <dd class="col-sm-8">{{ recu.professeur }}</dd>
+                                    </dl>
+                                </div>
+                            </div>
+                        </div>
+                    </div>                </div>
+
+                <form method="POST" id="editForm">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <!-- Section recherche -->
+                    <div class="row mb-4">
+                        <div class="col-lg-8">
+                            <label class="form-label fw-medium">Ajouter un article</label>
+                            <div class="datalist-container position-relative">
+                                <div class="input-group">
+                                    <input type="text" 
+                                           id="articleSearch" 
+                                           class="form-control form-control-lg" 
+                                           placeholder="Rechercher un article..."
+                                           autocomplete="off">
+                                    <button type="button" 
+                                            class="btn btn-primary" 
+                                            id="btnAddArticle"
+                                            disabled>
+                                        <i class="fas fa-plus me-2"></i>Ajouter
+                                    </button>
+                                </div>
+                                <div id="articleResults" class="datalist-items"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Liste des articles -->
+                    <div class="card mb-4 border">
+                        <div class="card-header bg-light py-3">
+                            <h5 class="mb-0 fw-bold text-primary">
+                                <i class="fas fa-list-ul me-2"></i>Articles utilisés
+                            </h5>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Article</th>
+                                            <th>Quantité utilisée</th>
+                                            <th>Dégradations</th>
+                                            <th>Stock initial</th>
+                                            <th>Stock restant</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="selectedArticles">
+                                        {% for article in existing_articles %}
+                                        <tr class="article-row" 
+                                            data-id="{{ article.id_article }}"
+                                            data-unit="{{ article.unite_mesure }}">
+                                            <td>
+                                                {{ article.nom_article }}
+                                                <input type="hidden" 
+                                                       name="articles[{{ loop.index0 }}][id]" 
+                                                       value="{{ article.id_article }}">
+                                            </td>
+                                            <td>
+                                                <input type="number" 
+                                                       name="articles[{{ loop.index0 }}][quantite]" 
+                                                       class="form-control quantite-input"
+                                                       value="{{ article.quantite }}"
+                                                       min="0">
+                                            </td>
+                                            <td>
+                                                <input type="number" 
+                                                       name="articles[{{ loop.index0 }}][degrade]" 
+                                                       class="form-control degrade-input"
+                                                       value="{{ article.degradation_quantite }}"
+                                                       min="0"
+                                                       required>
+                                            </td>
+                                            <td class="initial-stock">
+                                                {{ stock[article.id_article] + article.degradation_quantite }} {{ article.unite_mesure }}
+                                            </td>
+                                            <td class="remaining-stock">
+                                                <span class="{{ 'stock-alert' if stock[article.id_article] < article.degradation_quantite }}">
+                                                    {{ stock[article.id_article] - article.degradation_quantite }} {{ article.unite_mesure }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <button type="button" class="btn btn-danger btn-sm remove-btn">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ... (section observations et boutons identique) ... -->
+
+                     <!-- Observations -->
+                     <div class="mb-4">
+                        <label class="form-label fw-medium">Observations</label>
+                        <textarea name="observations" 
+                                  class="form-control" 
+                                  rows="3">{{ recu.observations or '' }}</textarea>
+                    </div>
+
+                    <!-- Boutons -->
+                    <div class="mt-4 d-flex justify-content-between">
+                        <a href="{{ url_for('liste_recus') }}" class="btn btn-secondary">
+                            <i class="fas fa-times me-2"></i>Annuler
+                        </a>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-save me-2"></i>Enregistrer
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <script>
+document.addEventListener('DOMContentLoaded', () => {
+    const availableArticles = {{ available_articles|tojson|safe }};
+    const existingArticles = {{ existing_articles|tojson|safe }};
+    const stockData = {{ stock|tojson|safe }};
+    let articleIndex = {{ existing_articles|length }};
+
+    function updateStock(row) {
+        const articleId = parseInt(row.dataset.id);
+        const degrade = parseInt(row.querySelector('.degrade-input').value) || 0;
+        const remaining = stockData[articleId] - degrade;
+
+        row.querySelector('.remaining-stock span').textContent = 
+            `${remaining} ${row.dataset.unit}`;
+
+        row.querySelector('.remaining-stock span').className = 
+            remaining < 0 ? 'stock-alert' : '';
+
+        row.querySelector('.degrade-input').classList.toggle('is-invalid', remaining < 0);
+    }
+
+    document.getElementById('articleSearch').addEventListener('input', function(e) {
+        const term = e.target.value.toLowerCase();
+        const existingIds = Array.from(document.querySelectorAll('.article-row'))
+                           .map(row => parseInt(row.dataset.id));
+
+        const results = availableArticles.filter(article => 
+            article.nom_article.toLowerCase().includes(term) &&
+            !existingIds.includes(article.id_article)
+        );
+
+        const resultsDiv = document.getElementById('articleResults');
+        resultsDiv.innerHTML = results.map(article => `
+            <div class="datalist-item" 
+                 data-id="${article.id_article}"
+                 data-name="${article.nom_article}"
+                 data-stock="${stockData[article.id_article]}"
+                 data-unit="${article.unite_mesure}">
+                ${article.nom_article} 
+                <span class="badge bg-primary float-end">
+                    ${stockData[article.id_article]} ${article.unite_mesure}
+                </span>
+            </div>
+        `).join('');
+    });
+
+    document.getElementById('articleResults').addEventListener('click', e => {
+        const item = e.target.closest('.datalist-item');
+        if (item) {
+            const maxDegrade = parseInt(item.dataset.stock);
+            const newRow = document.createElement('tr');
+            newRow.className = 'article-row';
+            newRow.dataset.id = item.dataset.id;
+            newRow.dataset.unit = item.dataset.unit;
+
+            newRow.innerHTML = `
+                <td>${item.dataset.name}</td>
+                <td>
+                    <input type="number" 
+                           name="articles[${articleIndex}][quantite]" 
+                           class="form-control quantite-input" 
+                           min="0">
+                </td>
+                <td>
+                    <input type="number" 
+                           name="articles[${articleIndex}][degrade]" 
+                           class="form-control degrade-input" 
+                           min="0" 
+                           max="${maxDegrade}"
+                           required>
+                </td>
+                <td class="initial-stock">${maxDegrade} ${item.dataset.unit}</td>
+                <td class="remaining-stock">
+                    <span>${maxDegrade} ${item.dataset.unit}</span>
+                </td>
+                <td>
+                    <button type="button" class="btn btn-danger btn-sm remove-btn">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+                <input type="hidden" 
+                       name="articles[${articleIndex}][id]" 
+                       value="${item.dataset.id}">
+            `;
+
+            newRow.querySelector('.degrade-input').addEventListener('input', () => updateStock(newRow));
+            newRow.querySelector('.remove-btn').addEventListener('click', () => newRow.remove());
+
+            document.getElementById('selectedArticles').appendChild(newRow);
+            articleIndex++;
+        }
+    });
+
+    document.querySelectorAll('.article-row').forEach(row => {
+        row.querySelector('.degrade-input').addEventListener('input', () => updateStock(row));
+        row.querySelector('.remove-btn').addEventListener('click', () => row.remove());
+    });
+});
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

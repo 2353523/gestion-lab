@@ -6,98 +6,110 @@
     <style>
         @page {
             size: A4;
-            margin: 1.5cm;
+            margin: 1cm; /* Réduction des marges de 1.5cm à 1cm */
             @top-center {
                 content: "{{ recu.nom_laboratoire }}";
-                font-size: 10pt;
+                font-size: 9pt; /* Réduction de la taille */
             }
             @bottom-center {
                 content: "Page " counter(page) " sur " counter(pages);
-                font-size: 9pt;
+                font-size: 8pt;
             }
         }
 
         body {
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            line-height: 1.6;
+            line-height: 1.4; /* Réduction de l'interligne */
             color: #333;
+            font-size: 10pt; /* Taille de base réduite */
         }
 
         .print-container {
             max-width: 21cm;
             margin: 0 auto;
-            padding: 2cm 0;
+            padding: 1cm 0; /* Réduction du padding */
         }
 
         .letterhead {
-            border-bottom: 3px solid #004a87;
-            margin-bottom: 1.5rem;
-            padding-bottom: 1rem;
+            border-bottom: 2px solid #004a87; /* Bordure réduite */
+            margin-bottom: 1rem; /* Espace réduit */
+            padding-bottom: 0.5rem;
         }
 
         .letterhead img {
-            max-height: 80px;
-            margin-bottom: 0.5rem;
+            max-height: 50px; /* Logo plus petit */
+            margin-bottom: 0.3rem;
         }
 
         .university-info {
-            font-size: 9pt;
+            font-size: 8pt;
             color: #666;
             text-align: center;
+            line-height: 1.2;
         }
 
         .receipt-title {
-            font-size: 24pt;
+            font-size: 18pt; /* Titre plus petit */
             color: #004a87;
             text-align: center;
-            margin: 2rem 0;
+            margin: 1rem 0; /* Marges réduites */
         }
 
         .receipt-meta {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 1rem;
-            margin-bottom: 2rem;
+            gap: 0.5rem; /* Espacement réduit */
+            margin-bottom: 1rem;
+        }
+        
+        .receipt-meta p {
+            margin: 0.2rem 0; /* Moins d'espace entre les paragraphes */
         }
 
         .receipt-table {
             width: 100%;
             border-collapse: collapse;
-            margin: 2rem 0;
+            margin: 1rem 0; /* Marge réduite */
         }
 
         .receipt-table th {
             background-color: #f8f9fa;
             border: 1px solid #dee2e6;
-            padding: 12px;
+            padding: 6px; /* Padding réduit */
             text-align: left;
             font-weight: 600;
+            font-size: 9pt;
         }
 
         .receipt-table td {
             border: 1px solid #dee2e6;
-            padding: 10px;
+            padding: 5px; /* Padding réduit */
+            font-size: 9pt;
         }
 
         .totals {
-            margin-top: 2rem;
-            padding: 1rem;
+            margin-top: 1rem;
+            padding: 0.5rem;
             background-color: #f8f9fa;
             border-radius: 4px;
         }
+        
+        .totals p {
+            margin: 0.2rem 0; /* Moins d'espace entre les paragraphes */
+        }
 
         .signature-area {
-            margin-top: 3rem;
-            padding-top: 2rem;
-            border-top: 2px solid #004a87;
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid #004a87; /* Bordure réduite */
         }
 
         .watermark {
             position: fixed;
             opacity: 0.1;
-            font-size: 80pt;
+            font-size: 70pt; /* Taille réduite */
             transform: rotate(-45deg);
-            top: 30%;
+            top: 35%;
             left: 20%;
             z-index: -1;
         }
@@ -106,6 +118,37 @@
             .no-print { display: none !important; }
             .print-container { padding: 0; }
             .watermark { display: block; }
+        }
+        
+        .observations-section {
+            margin: 0.8rem 0;
+            padding: 0.5rem;
+            background-color: #f8f9fa;
+            border-left: 3px solid #004a87;
+        }
+
+        .observations-section h3 {
+            margin-top: 0;
+            color: #004a87;
+            font-size: 10pt;
+            margin-bottom: 0.3rem;
+        }
+
+        .observations-section p {
+            white-space: pre-wrap;
+            margin: 0;
+            font-size: 8pt;
+            color: #666;
+        }
+        
+        /* Optimisation de l'espace pour les signatures */
+        .signature-area p {
+            margin: 0 0 0.3rem 0;
+            font-size: 9pt;
+        }
+        
+        .signature-area div[style*="height"] {
+            height: 50px !important; /* Zone de signature plus petite */
         }
     </style>
 </head>
@@ -120,7 +163,6 @@
             </div>
         </div>
 
-        
         <div class="watermark">VALIDÉ</div>
 
         <!-- Titre principal -->
@@ -170,16 +212,22 @@
             <p><strong>Total consommé:</strong> {{ articles|sum(attribute='quantite') }} unités</p>
             <p><strong>Total dégradé:</strong> {{ articles|sum(attribute='degradation_quantite') }} unités</p>
         </div>
+        {% if recu.observations %}
+        <div class="observations-section">
+            <h3>Observations</h3>
+            <p>{{ recu.observations }}</p>
+        </div>
+        {% endif %}
 
         <!-- Zone de signature -->
         <div class="signature-area">
             <div style="float: left; width: 45%;">
                 <p>Signature du responsable:</p>
-                <div style="height: 80px; border-bottom: 1px solid #000;"></div>
+                <div style="height: 50px; border-bottom: 1px solid #000;"></div>
             </div>
             <div style="float: right; width: 45%;">
                 <p>Cachet du laboratoire:</p>
-                <div style="height: 80px; border-bottom: 1px solid #000;"></div>
+                <div style="height: 50px; border-bottom: 1px solid #000;"></div>
             </div>
             <div style="clear: both;"></div>
         </div>

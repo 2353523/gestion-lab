@@ -75,11 +75,13 @@
                 </li>
                 
                 <!-- Analytics -->
+                {% if session.role == 'admin' %}
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('statistiques') }}">
                         <i class="fas fa-chart-bar me-2"></i>Statistiques
                     </a>
                 </li>
+                {% endif %}
             </ul>
             
             <!-- User Menu -->
@@ -118,6 +120,91 @@
         </div>
     </div>
 </nav>
+<div class="number-ticker" id="numberTicker">
+    <button class="ticker-control" id="tickerControl" title="Pause/Play">
+        <i class="fas fa-pause" id="controlIcon"></i>
+    </button>
+    <div class="ticker-container">
+        <div class="ticker-content" id="tickerContent">
+            <span class="number-item"><i class="fas fa-user-graduate"></i><span class="student-name">Mariem</span><span class="student-id">23516</span></span>
+            <span class="divider">•</span>
+            <span class="number-item"><i class="fas fa-user-graduate"></i><span class="student-name">HAWA</span><span class="student-id">23529</span></span>
+            <span class="divider">•</span>
+            <span class="number-item"><i class="fas fa-user-graduate"></i><span class="student-name">Diagana</span><span class="student-id">23535</span></span>
+            <span class="divider">•</span>
+            <span class="number-item"><i class="fas fa-user-graduate"></i><span class="student-name">Sidimouhamed</span><span class="student-id">23536</span></span>
+            <span class="divider">•</span>
+            <span class="number-item"><i class="fas fa-user-graduate"></i><span class="student-name">Sid'Ahmed</span><span class="student-id">23543</span></span>
+            <span class="divider">•</span>
+            <span class="number-item"><i class="fas fa-chalkboard-teacher"></i><span class="teacher-info">Encadré par Ahmed Sejaad</span></span>
+            <span class="divider">•</span>
+            
+            <!-- Répéter pour l'animation continue -->
+            <span class="number-item"><i class="fas fa-user-graduate"></i><span class="student-name">Mariem</span><span class="student-id">23516</span></span>
+            <span class="divider">•</span>
+            <span class="number-item"><i class="fas fa-user-graduate"></i><span class="student-name">HAWA</span><span class="student-id">23529</span></span>
+            <span class="divider">•</span>
+            <span class="number-item"><i class="fas fa-user-graduate"></i><span class="student-name">Diagana</span><span class="student-id">23535</span></span>
+            <span class="divider">•</span>
+            <span class="number-item"><i class="fas fa-user-graduate"></i><span class="student-name">Sidimouhamed</span><span class="student-id">23536</span></span>
+            <span class="divider">•</span>
+            <span class="number-item"><i class="fas fa-user-graduate"></i><span class="student-name">Sid'Ahmed</span><span class="student-id">23543</span></span>
+            <span class="divider">•</span>
+            <span class="number-item"><i class="fas fa-chalkboard-teacher"></i><span class="teacher-info">Encadré par Ahmed Sejaad</span></span>
+        </div>
+    </div>
+</div>
+<script>
+    // Animation pour l'icône flask
+    document.addEventListener('DOMContentLoaded', function() {
+        const pulseIcons = document.querySelectorAll('.pulse-icon');
+        pulseIcons.forEach(icon => {
+            icon.style.animation = 'pulse 2s infinite';
+        });
+        
+        // Appliquer une animation de brillance à chaque élément de manière séquentielle
+        const numberItems = document.querySelectorAll('.number-item');
+        numberItems.forEach((item, index) => {
+            item.style.animation = `shine 6s ${index * 1.5}s infinite`;
+        });
+        
+        // Contrôle du défilement (pause/play)
+        const tickerContent = document.getElementById('tickerContent');
+        const tickerControl = document.getElementById('tickerControl');
+        const controlIcon = document.getElementById('controlIcon');
+        let isPlaying = true;
+        
+        tickerControl.addEventListener('click', function() {
+            if (isPlaying) {
+                // Mettre en pause
+                tickerContent.style.animationPlayState = 'paused';
+                controlIcon.classList.remove('fa-pause');
+                controlIcon.classList.add('fa-play');
+            } else {
+                // Reprendre
+                tickerContent.style.animationPlayState = 'running';
+                controlIcon.classList.remove('fa-play');
+                controlIcon.classList.add('fa-pause');
+            }
+            isPlaying = !isPlaying;
+        });
+        
+        // Surbrillance au survol
+        numberItems.forEach(item => {
+            item.addEventListener('mouseover', function() {
+                if (isPlaying) {
+                    tickerContent.style.animationPlayState = 'paused';
+                }
+            });
+            
+            item.addEventListener('mouseout', function() {
+                if (isPlaying) {
+                    tickerContent.style.animationPlayState = 'running';
+                }
+            });
+        });
+    });
+</script>
 
 
 <style>
@@ -146,5 +233,156 @@
     /* Make navbar sticky */
     .sticky-top {
         z-index: 1030;
-    }
+    }<style>
+        /* Animation for the flask icon */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.5); }
+            100% { transform: scale(1); }
+        }
+        
+        .pulse-icon {
+            animation: pulse 2s infinite;
+        }
+        
+        /* Improve dropdown hover effects */
+        .dropdown-item:hover {
+            background-color: rgba(13, 110, 253, 0.5) !important;
+        }
+        
+        /* Active navigation item */
+        .nav-link.active {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+        
+        /* Make navbar sticky */
+        .sticky-top {
+            z-index: 1030;
+        }
+
+        /* BARRE AMÉLIORÉE */
+        .number-ticker {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: linear-gradient(90deg, #0d6efd, #0a58ca, #0d6efd);
+            background-size: 200% 100%;
+            animation: gradientBg 15s ease infinite;
+            color: white;
+            padding: 10px 0;
+            z-index: 1000;
+            box-shadow: 0 -3px 15px rgba(0, 0, 0, 0.3);
+            border-top: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        @keyframes gradientBg {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+    
+        .ticker-container {
+            overflow: hidden;
+            white-space: nowrap;
+            height: 34px;
+        }
+    
+        .ticker-content {
+            display: inline-block;
+            animation: ticker 55s linear infinite;
+            padding-right: 50px;
+        }
+    
+        .number-item {
+            display: inline-block;
+            padding: 0 25px;
+            font-weight: bold;
+            font-size: 1.2rem;
+            transition: transform 0.3s, color 0.3s;
+            position: relative;
+            margin: 0 5px;
+        }
+
+        .number-item:hover {
+            transform: translateY(-3px);
+            color: #f8f9fa;
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.7);
+        }
+    
+        .number-item i {
+            margin-right: 8px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .student-name {
+            font-weight: 600;
+        }
+
+        .student-id {
+            opacity: 0.9;
+            margin-left: 5px;
+        }
+
+        .divider {
+            display: inline-block;
+            width: 20px;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.5);
+            margin: 0 15px;
+            font-size: 1.5rem;
+        }
+
+        .teacher-info {
+            background-color: rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            padding: 3px 15px;
+            margin-left: 10px;
+        }
+
+        /* Animation pour le défilement */
+        @keyframes ticker {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+
+        /* Animation pour faire briller les éléments en séquence */
+        @keyframes shine {
+            0% { color: white; text-shadow: none; }
+            20% { color: #ffffff; text-shadow: 0 0 8px rgba(255, 255, 255, 0.8); }
+            100% { color: white; text-shadow: none; }
+        }
+
+        /* Animation pour simuler le contenu existant */
+        .content-container {
+            height: 90vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Bouton pour arrêter/démarrer l'animation */
+        .ticker-control {
+            position: absolute;
+            top: -20px;
+            right: 20px;
+            background-color: rgba(255, 255, 255, 0.9);
+            color: #0d6efd;
+            border: none;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .ticker-control:hover {
+            transform: scale(1.1);
+            box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.3);
+        }
 </style>

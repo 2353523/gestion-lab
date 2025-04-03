@@ -2312,7 +2312,185 @@ def imprimer_recu(id_recu):
     finally:
         cur.close()
 
-        
+@app.route('/recus/<int:id_recu>/editer', methods=['GET', 'POST'])
+def editer_recu(id_recu):
+    if 'user_id' not in session or session.get('role') != 'admin':
+        abort(403)
+
+    try:
+        with mysql.connection.cursor() as cur:
+            # Récupération des données existantes
+            cur.execute("""
+                SELECT 
+                    r.*,
+                    tp.id_tp,
+                    tp.nom_tp,
+                    tp.heure_debut,
+                    tp.id_laboratoire,
+                    l.nom_laboratoire,
+                    m.nom_matiere,
+                    tp.id_prof,
+                    CONCAT(p.prenom, ' ', p.nom) AS professeur
+                FROM recu r
+                JOIN tp ON r.id_tp = tp.id_tp
+                JOIN laboratoire l ON tp.id_laboratoire = l.id_laboratoire
+                JOIN matiere m ON tp.id_matiere = m.id_matiere
+                JOIN professeur p ON tp.id_prof = p.id_prof
+                WHERE r.id_recu = %s
+                FOR UPDATE
+            """, (id_recu,))
+            recu = cur.fetchone()
+
+            if not recu:
+                flash("Reçu introuvable", "danger")
+                return redirect(url_for('liste_recus'))
+            
+            # Récupération des articles existants
+            cur.execute("""
+                SELECT 
+                    a.id_article,
+                    a.nom_article,
+                    lr.quantite,
+                    lr.degradation_quantite,
+                    a.unite_mesure
+                FROM ligne_recu lr
+                JOIN article a ON lr.id_article = a.id_article
+                WHERE lr.id_recu = %s
+            """, (id_recu,))
+            existing_articles = cur.fetchall()
+
+            # Récupération du stock actuel
+            cur.execute("""
+                SELECT 
+                    a.id_article,
+                    SUM(sl.quantite) AS stock_dispo
+                FROM stock_laboratoire sl
+                JOIN stock_magasin sm ON sl.id_lot = sm.id_lot
+                JOIN article a ON sm.id_article = a.id_article
+                WHERE sl.id_laboratoire = %s
+                GROUP BY a.id_article
+            """, (recu['id_laboratoire'],))
+            stock_data = {row['id_article']: row['stock_dispo'] for row in cur.fetchall()}
+
+            # Calcul du stock ajusté
+            adjusted_stock = stock_data.copy()
+            for article in existing_articles:
+                adjusted_stock[article['id_article']] += article['degradation_quantite']
+
+            if request.method == 'POST':
+                try:
+                    observations = request.form.get('observations', '')
+                    articles_data = []
+                    seen_articles = set()
+                    index = 0
+
+                    # Extraction et validation
+                    while True:
+                        id_key = f'articles[{index}][id]'
+                        if id_key not in request.form:
+                            break
+                        
+                        article_id = int(request.form[id_key])
+                        quantite = int(request.form.get(f'articles[{index}][quantite]', 0))
+                        degrade = int(request.form.get(f'articles[{index}][degrade]', 0))
+
+                        # Validation
+                        if article_id in seen_articles:
+                            raise ValueError(f"Article {article_id} en double")
+                        seen_articles.add(article_id)
+
+                        if degrade > adjusted_stock.get(article_id, 0):
+                            raise ValueError(f"Dégradations trop importantes pour l'article {article_id}. Disponible: {adjusted_stock.get(article_id)}, Demandé: {degrade}")
+
+                        articles_data.append({
+                            'id': article_id,
+                            'quantite': quantite,
+                            'degrade': degrade
+                        })
+                        index += 1
+
+                    # Début transaction
+                    with mysql.connection.cursor() as trans_cursor:
+                        # Restauration stock original (dégradations seulement)
+                        for article in existing_articles:
+                            trans_cursor.execute("""
+                                UPDATE stock_laboratoire sl
+                                JOIN (
+                                    SELECT id_lot 
+                                    FROM stock_magasin 
+                                    WHERE id_article = %s 
+                                    ORDER BY date_expiration ASC 
+                                    LIMIT 1
+                                ) sm ON sl.id_lot = sm.id_lot
+                                SET sl.quantite = sl.quantite + %s
+                                WHERE sl.id_laboratoire = %s
+                            """, (article['id_article'], article['degradation_quantite'], recu['id_laboratoire']))
+
+                        # Suppression anciennes lignes
+                        trans_cursor.execute("DELETE FROM ligne_recu WHERE id_recu = %s", (id_recu,))
+
+                        # Insertion nouvelles lignes
+                        for article in articles_data:
+                            trans_cursor.execute("""
+                                INSERT INTO ligne_recu 
+                                (id_recu, id_article, quantite, degradation_quantite)
+                                VALUES (%s, %s, %s, %s)
+                            """, (id_recu, article['id'], article['quantite'], article['degrade']))
+
+                            # Mise à jour stock (dégradations seulement)
+                            trans_cursor.execute("""
+                                UPDATE stock_laboratoire sl
+                                JOIN (
+                                    SELECT id_lot 
+                                    FROM stock_magasin 
+                                    WHERE id_article = %s 
+                                    ORDER BY date_expiration ASC 
+                                    LIMIT 1
+                                ) sm ON sl.id_lot = sm.id_lot
+                                SET sl.quantite = sl.quantite - %s
+                                WHERE sl.id_laboratoire = %s
+                            """, (article['id'], article['degrade'], recu['id_laboratoire']))
+
+                        # Mise à jour observations
+                        trans_cursor.execute("""
+                            UPDATE recu 
+                            SET observations = %s 
+                            WHERE id_recu = %s
+                        """, (observations, id_recu))
+
+                        mysql.connection.commit()
+                        flash("Reçu mis à jour avec succès", "success")
+                        return redirect(url_for('detail_recu', id_recu=id_recu))
+
+                except Exception as e:
+                    mysql.connection.rollback()
+                    flash(f"Erreur de mise à jour : {str(e)}", "danger")
+
+            # Récupération articles disponibles
+            cur.execute("""
+                SELECT 
+                    a.id_article, 
+                    a.nom_article, 
+                    a.unite_mesure,
+                    SUM(sl.quantite) AS quantite_dispo
+                FROM article a
+                JOIN stock_magasin sm ON a.id_article = sm.id_article
+                JOIN stock_laboratoire sl ON sm.id_lot = sl.id_lot
+                WHERE sl.id_laboratoire = %s
+                GROUP BY a.id_article
+                HAVING quantite_dispo > 0
+            """, (recu['id_laboratoire'],))
+            available_articles = cur.fetchall()
+
+            return render_template('recus/editer.html',
+                                recu=recu,
+                                existing_articles=existing_articles,
+                                available_articles=available_articles,
+                                stock=adjusted_stock)
+
+    except Exception as e:
+        flash(f"Erreur critique : {str(e)}", "danger")
+        return redirect(url_for('liste_recus'))
 
 if __name__ == '__main__':
     # Création des utilisateurs dans un contexte d'application

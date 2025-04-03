@@ -377,295 +377,197 @@ body {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-      document.addEventListener('DOMContentLoaded', () => {
-    // Configuration principale
-    const Dashboard = {
-        // Sélecteurs DOM
-        elements: {
-            stats: {
-                totalTP: document.getElementById('totalTP'),
-                totalLabs: document.getElementById('totalLabs'),
-                totalTypes: document.getElementById('totalTypes'),
-                nextTP: document.getElementById('nextTP')
-            },
-            charts: {
-                workload: document.getElementById('workloadChart'),
-                type: document.getElementById('typeChart'),
-                timeline: document.getElementById('timelineChart')
-            },
-            periodSelect: document.getElementById('timelinePeriodSelect')
-        },
-
-        // Données initiales avec valeurs par défaut
-        data: {
-            labs: {
-                names: {{ lab_names|tojson|default([], true) }},
-                counts: {{ tp_counts|tojson|default([], true) }}
-            },
-            types: {
-                names: {{ types|tojson|default([], true) }},
-                data: {{ type_data|tojson|default([], true) }}
-            },
-            timeline: {
-                labels: {{ timeline_labels|tojson|default([], true) }},
-                counts: {{ timeline_counts|tojson|default([], true) }}
-            }
-        },
-
-        // Initialisation
-        init() {
-            this.validateData();
-            this.initStats();
-            this.initCharts();
-            this.initEventHandlers();
-            this.startLiveUpdates();
-        },
-
-        // Validation des données
-        validateData() {
-            // Normalisation des structures de données
-            this.data.labs.names = Array.isArray(this.data.labs.names) ? this.data.labs.names : [];
-            this.data.labs.counts = Array.isArray(this.data.labs.counts) ? this.data.labs.counts : [];
-            this.data.types.names = Array.isArray(this.data.types.names) ? this.data.types.names : [];
-            this.data.types.data = Array.isArray(this.data.types.data) ? this.data.types.data : [];
-            this.data.timeline.labels = Array.isArray(this.data.timeline.labels) ? this.data.timeline.labels : [];
-            this.data.timeline.counts = Array.isArray(this.data.timeline.counts) ? this.data.timeline.counts : [];
-        },
-
-        // Statistiques
-        initStats() {
-            this.setSafeText(this.elements.stats.totalTP, 
-                this.data.labs.counts.reduce((a, b) => a + (Number(b) || 0), 0)
-            );
-            this.setSafeText(this.elements.stats.totalLabs, this.data.labs.names.length);
-            this.setSafeText(this.elements.stats.totalTypes, this.data.types.names.length);
-        },
-
-        // Graphiques
-        initCharts() {
-            if (this.checkChartElement('workload')) {
-                this.initWorkloadChart();
-            }
-            if (this.checkChartElement('type')) {
-                this.initTypeChart();
-            }
-            if (this.checkChartElement('timeline')) {
-                this.initTimelineChart();
-                // Suppression de l'appel à addMovingAverage(4)
-            }
-        },
-
-        // Vérification élément DOM
-        checkChartElement(type) {
-            return !!this.elements.charts[type] && this.elements.charts[type].nodeName === 'CANVAS';
-        },
-
-        // Workload Chart
-        initWorkloadChart() {
-            new Chart(this.elements.charts.workload, {
-                type: 'bar',
+        document.addEventListener('DOMContentLoaded', () => {
+            const Dashboard = {
+                elements: {
+                    stats: {
+                        totalTP: document.getElementById('totalTP'),
+                        totalLabs: document.getElementById('totalLabs'),
+                        totalTypes: document.getElementById('totalTypes')
+                    },
+                    charts: {
+                        workload: document.getElementById('workloadChart'),
+                        type: document.getElementById('typeChart'),
+                        timeline: document.getElementById('timelineChart')
+                    }
+                },
+        
                 data: {
-                    labels: this.data.labs.names,
-                    datasets: [{
-                        label: 'TP par Laboratoire',
-                        data: this.data.labs.counts,
-                        backgroundColor: 'rgba(52, 152, 219, 0.8)',
-                        borderWidth: 0,
-                        borderRadius: 5
-                    }]
-                },
-                options: this.getCommonOptions({
-                    scales: {
-                        y: { title: { text: 'Nombre de TP' } }
-                    }
-                })
-            });
-        },
-
-        // Type Chart
-        initTypeChart() {
-            const colors = this.generateColors(this.data.types.names.length);
-            new Chart(this.elements.charts.type, {
-                type: 'bar',
-                data: {
-                    labels: this.data.labs.names,
-                    datasets: this.data.types.names.map((name, i) => ({
-                        label: name,
-                        data: this.data.types.data[i] || [],
-                        backgroundColor: colors[i] || '#cccccc',
-                        borderWidth: 0
-                    }))
-                },
-                options: this.getCommonOptions({
-                    scales: {
-                        x: { stacked: true },
-                        y: { stacked: true }
-                    }
-                })
-            });
-        },
-
-        // Timeline Chart
-        initTimelineChart() {
-            new Chart(this.elements.charts.timeline, {
-                type: 'line',
-                data: {
-                    labels: this.data.timeline.labels,
-                    datasets: [{
-                        label: 'Évolution Hebdomadaire',
-                        data: this.data.timeline.counts,
-                        borderColor: '#e74c3c',
-                        tension: 0.4,
-                        fill: false
-                    }]
-                },
-                options: this.getCommonOptions({
-                    scales: {
-                        x: { title: { text: 'Semaines' } },
-                        y: { title: { text: 'Nombre de TP' } }
-                    }
-                })
-            });
-        },
-
-        // Gestion des événements
-        initEventHandlers() {
-            this.initExportHandlers();
-            this.initPeriodSelector();
-        },
-
-        // Exportations
-        initExportHandlers() {
-            document.querySelectorAll('.export-btn').forEach(btn => {
-                btn.addEventListener('click', e => {
-                    e.stopPropagation();
-                    const chartType = e.currentTarget.id.replace('export', '').toLowerCase();
-                    this.showExportMenu(e.currentTarget, chartType);
-                });
-            });
-        },
-
-        // Sélecteur de période
-        initPeriodSelector() {
-            if (this.elements.periodSelect) {
-                this.elements.periodSelect.addEventListener('change', e => {
-                    this.updateTimelinePeriod(e.target.value);
-                });
-            }
-        },
-
-        // Fonction de calcul de moyenne mobile (gardée mais non utilisée)
-        calculateMovingAverage(data, period) {
-            return data.map((_, i) => {
-                if (i < period - 1) return null;
-                const slice = data.slice(i - period + 1, i + 1);
-                return (slice.reduce((a, b) => a + b, 0) / period).toFixed(1);
-            });
-        },
-
-        // Export direct en PNG
-        showExportMenu(button, chartType) {
-            // Export direct en PNG sans menu
-            this.handleExport(chartType, 'png');
-        },
-
-        // Gestion de l'export
-        handleExport(chartType, format) {
-            const chart = this.getChartInstance(chartType);
-            chart.config.options.backgroundColor = 'white';
-
-            if (!chart) return;
-            
-            // Uniquement PNG
-            this.exportPNG(chart, chartType);
-        },
-
-        // Export PNG avec fond blanc
-        exportPNG(chart, name) {
-            // Sauvegarder les paramètres actuels
-            const originalBackgroundColor = chart.options.plugins.tooltip.backgroundColor;
-            const originalPlugins = { ...chart.options.plugins };
-            
-            // Appliquer temporairement un fond blanc
-            chart.options.plugins = {
-                ...originalPlugins,
-                // Assurer que le graphique a un fond blanc à l'export
-                legend: {
-                    ...originalPlugins.legend,
-                    labels: {
-                        ...originalPlugins.legend?.labels,
-                        color: '#000000' // Texte noir sur fond blanc
+                    labs: {
+                        names: {{ lab_names|tojson|default([], true) }},
+                        counts: {{ tp_counts|tojson|default([], true) }}
+                    },
+                    types: {
+                        names: {{ types|tojson|default([], true) }},
+                        data: {{ type_data|tojson|default([], true) }}
+                    },
+                    timeline: {
+                        labels: {{ timeline_labels|tojson|default([], true) }},
+                        counts: {{ timeline_counts|tojson|default([], true) }}
                     }
                 },
-                background: {
-                    color: 'white'
+        
+                init() {
+                    this.validateData();
+                    this.initStats();
+                    this.initCharts();
+                    this.initEventHandlers();
+                },
+        
+                validateData() {
+                    // Normalisation des données
+                    this.data.labs.names = this.safeArray(this.data.labs.names);
+                    this.data.labs.counts = this.safeArray(this.data.labs.counts).map(Number);
+                    this.data.types.names = this.safeArray(this.data.types.names);
+                    this.data.types.data = this.safeArray(this.data.types.data);
+                    this.data.timeline.labels = this.safeArray(this.data.timeline.labels);
+                    this.data.timeline.counts = this.safeArray(this.data.timeline.counts).map(Number);
+                },
+        
+                safeArray(arr) {
+                    return Array.isArray(arr) ? arr : [];
+                },
+        
+                initStats() {
+                    this.elements.stats.totalTP.textContent = this.data.labs.counts.reduce((a, b) => a + b, 0);
+                    this.elements.stats.totalLabs.textContent = this.data.labs.names.length;
+                    this.elements.stats.totalTypes.textContent = this.data.types.names.length;
+                },
+        
+                initCharts() {
+                    this.initWorkloadChart();
+                    this.initTypeChart();
+                    this.initTimelineChart();
+                },
+        
+                initWorkloadChart() {
+                    new Chart(this.elements.charts.workload, {
+                        type: 'bar',
+                        data: {
+                            labels: this.data.labs.names,
+                            datasets: [{
+                                label: 'TP par Laboratoire',
+                                data: this.data.labs.counts,
+                                backgroundColor: 'rgba(52, 152, 219, 0.8)',
+                                borderRadius: 5
+                            }]
+                        },
+                        options: this.getCommonOptions({
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    title: { text: 'Nombre de TP' }
+                                }
+                            }
+                        })
+                    });
+                },
+        
+                initTypeChart() {
+                    const colors = this.generateColors(this.data.types.names.length);
+                    new Chart(this.elements.charts.type, {
+                        type: 'bar',
+                        data: {
+                            labels: this.data.labs.names,
+                            datasets: this.data.types.names.map((name, index) => ({
+                                label: name,
+                                data: this.data.types.data[index] || [],
+                                backgroundColor: colors[index] || '#ccc',
+                                borderWidth: 0
+                            }))
+                        },
+                        options: this.getCommonOptions({
+                            scales: {
+                                x: { stacked: true },
+                                y: {
+                                    stacked: true,
+                                    beginAtZero: true,
+                                    title: { text: 'Quantité' }
+                                }
+                            },
+                            plugins: {
+                                legend: { display: true }
+                            }
+                        })
+                    });
+                },
+        
+                initTimelineChart() {
+                    new Chart(this.elements.charts.timeline, {
+                        type: 'line',
+                        data: {
+                            labels: this.data.timeline.labels,
+                            datasets: [{
+                                label: 'Évolution des TP',
+                                data: this.data.timeline.counts,
+                                borderColor: '#e74c3c',
+                                tension: 0.4,
+                                fill: false
+                            }]
+                        },
+                        options: this.getCommonOptions({
+                            scales: {
+                                y: { beginAtZero: true }
+                            }
+                        })
+                    });
+                },
+        
+                initEventHandlers() {
+                    document.querySelectorAll('.export-btn').forEach(btn => {
+                        btn.addEventListener('click', e => {
+                            const chartId = e.target.id.replace('export', '').toLowerCase();
+                            this.exportChart(chartId);
+                        });
+                    });
+                },
+        
+                exportChart(chartType) {
+                    const chart = Chart.getChart(this.elements.charts[chartType]);
+                    if (!chart) return;
+        
+                    const originalBackground = chart.options.backgroundColor;
+                    chart.options.backgroundColor = 'white';
+                    
+                    const link = document.createElement('a');
+                    link.download = `${chartType}_export.png`;
+                    link.href = chart.toBase64Image('image/png', 1.0);
+                    link.click();
+                    
+                    chart.options.backgroundColor = originalBackground;
+                },
+        
+                generateColors(count) {
+                    return Array.from({length: count}, (_, i) => 
+                        `hsl(${(i * 360 / Math.max(1, count))}, 70%, 50%)`
+                    );
+                },
+        
+                getCommonOptions(custom = {}) {
+                    return {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: {
+                                    boxWidth: 12,
+                                    usePointStyle: true
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(44, 62, 80, 0.95)',
+                                padding: 10,
+                                cornerRadius: 6
+                            }
+                        },
+                        ...custom
+                    };
                 }
             };
-            
-            // Redessiner le graphique avec les nouvelles options
-            chart.update();
-            
-            // Générer l'image
-            const link = document.createElement('a');
-            link.download = `${name}_export.png`;
-            link.href = chart.toBase64Image('image/png', 1.0);
-            link.click();
-            
-            // Restaurer les paramètres d'origine
-            chart.options.plugins = originalPlugins;
-            chart.update();
-        },
-
-        // Utilitaires
-        setSafeText(element, value) {
-            if (element) element.textContent = value || 0;
-        },
-
-        generateColors(count) {
-            return Array.from({ length: count }, (_, i) => 
-                `hsl(${(i * 360 / Math.max(1, count))}, 70%, 50%)`
-            );
-        },
-
-        getCommonOptions(customOptions) {
-            return {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'top',
-                        labels: {
-                            usePointStyle: true,
-                            boxWidth: 12
-                        }
-                    },
-                    tooltip: {
-                        backgroundColor: 'rgba(44, 62, 80, 0.95)',
-                        padding: 10,
-                        cornerRadius: 6
-                    }
-                },
-                ...customOptions
-            };
-        },
-
-        getChartInstance(type) {
-            return Chart.getChart(this.elements.charts[type]);
-        },
-
-        // Mise à jour temps réel
-        startLiveUpdates() {
-            setInterval(() => {
-                const current = parseInt(this.elements.stats.nextTP?.textContent) || 0;
-                const newValue = Math.max(1, current + Math.floor(Math.random() * 3) - 1);
-                this.setSafeText(this.elements.stats.nextTP, newValue);
-            }, 10000);
-        }
-    };
-
-    // Initialisation
-    Dashboard.init();
-});
-    </script>
+        
+            Dashboard.init();
+        });
+        </script>
 </body>
 </html>
