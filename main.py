@@ -649,6 +649,8 @@ def liste_professeurs():
 
 @app.route('/professeurs/creer', methods=['GET', 'POST'])
 def creer_professeur():
+    if 'user_id' not in session or session.get('role') != 'admin':
+        abort(403)
     if request.method == 'POST':
         data = {
             'prenom': request.form['prenom'].strip(),
@@ -679,6 +681,8 @@ def creer_professeur():
 
 @app.route('/professeurs/editer/<int:id>', methods=['GET', 'POST'])
 def editer_professeur(id):
+    if 'user_id' not in session or session.get('role') != 'admin':
+        abort(403)
     cur = mysql.connection.cursor()
     try:
         if request.method == 'POST':
@@ -715,6 +719,8 @@ def editer_professeur(id):
 
 @app.route('/professeurs/supprimer/<int:id>', methods=['POST'])
 def supprimer_professeur(id):
+    if 'user_id' not in session or session.get('role') != 'admin':
+        abort(403)
     cur = mysql.connection.cursor()
     try:
         cur.execute("DELETE FROM professeur WHERE id_prof = %s", (id,))
@@ -738,6 +744,8 @@ def liste_matieres():
 
 @app.route('/matieres/creer', methods=['GET', 'POST'])
 def creer_matiere():
+    if 'user_id' not in session or session.get('role') != 'admin':
+        abort(403)
     if request.method == 'POST':
         nom_matiere = request.form['nom_matiere'].strip()
         niveau = request.form['niveau']  # Récupération du niveau
@@ -780,6 +788,8 @@ def creer_matiere():
 
 @app.route('/matieres/editer/<int:id>', methods=['GET', 'POST'])
 def editer_matiere(id):
+    if 'user_id' not in session or session.get('role') != 'admin':
+        abort(403)
     cur = mysql.connection.cursor()
     try:
         if request.method == 'POST':
@@ -829,6 +839,8 @@ def editer_matiere(id):
         
 @app.route('/matieres/supprimer/<int:id>', methods=['POST'])
 def supprimer_matiere(id):
+    if 'user_id' not in session or session.get('role') != 'admin':
+        abort(403)
     cur = mysql.connection.cursor()
     try:
         cur.execute("DELETE FROM matiere WHERE id_matiere = %s", (id,))
@@ -852,6 +864,8 @@ def liste_laboratoires():
 
 @app.route('/laboratoires/creer', methods=['GET', 'POST'])
 def creer_laboratoire():
+    if 'user_id' not in session or session.get('role') != 'admin':
+        abort(403)
     if request.method == 'POST':
         data = {
             'nom': request.form['nom_laboratoire'].strip(),
@@ -880,6 +894,8 @@ def creer_laboratoire():
 
 @app.route('/laboratoires/editer/<int:id>', methods=['GET', 'POST'])
 def editer_laboratoire(id):
+    if 'user_id' not in session or session.get('role') != 'admin':
+        abort(403)
     cur = mysql.connection.cursor()
     try:
         if request.method == 'POST':
@@ -914,6 +930,8 @@ def editer_laboratoire(id):
 
 @app.route('/laboratoires/supprimer/<int:id>', methods=['POST'])
 def supprimer_laboratoire(id):
+    if 'user_id' not in session or session.get('role') != 'admin':
+        abort(403)
     cur = mysql.connection.cursor()
     try:
         cur.execute("DELETE FROM laboratoire WHERE id_laboratoire = %s", (id,))
@@ -1524,18 +1542,7 @@ def stock_laboratoire(id_lab):
 
 @app.route('/parametres_stock')
 def parametres_stock():
-    """
-    Affiche l'interface de gestion des catégories et types d'articles.
-    Interface destinée uniquement aux administrateurs.
-    
-    Cette route récupère depuis la base de données:
-    - La liste complète des catégories
-    - La liste complète des types avec leurs catégories associées
-    pour permettre leur visualisation et gestion.
-    
-    Returns:
-        Response: Rendu du template de gestion des paramètres ou redirection
-    """
+  
     if 'user_id' not in session or session['role'] != 'admin':
         flash("Accès réservé aux administrateurs", "danger")
         return redirect(url_for('index'))
@@ -1573,16 +1580,7 @@ def parametres_stock():
 
 @app.route('/ajouter_categorie', methods=['POST'])
 def ajouter_categorie():
-    """
-    Traite l'ajout d'une nouvelle catégorie d'articles.
-    Accessible uniquement aux administrateurs via méthode POST.
-    
-    Vérifie l'unicité du nom de catégorie avant insertion
-    pour éviter les doublons.
-    
-    Returns:
-        Response: Redirection avec message de confirmation ou d'erreur
-    """
+ 
     if 'user_id' not in session or session['role'] != 'admin':
         flash("Accès réservé aux administrateurs", "danger")
         return redirect(url_for('index'))
@@ -1616,19 +1614,6 @@ def ajouter_categorie():
 
 @app.route('/editer_categorie/<int:id>', methods=['POST'])
 def editer_categorie(id):
-    """
-    Met à jour une catégorie existante identifiée par son ID.
-    Accessible uniquement aux administrateurs via méthode POST.
-    
-    Args:
-        id (int): Identifiant de la catégorie à modifier
-    
-    Vérifie l'existence de la catégorie et l'unicité du nouveau nom
-    avant d'effectuer la mise à jour.
-    
-    Returns:
-        Response: Redirection avec message de confirmation ou d'erreur
-    """
     if 'user_id' not in session or session['role'] != 'admin':
         flash("Accès réservé aux administrateurs", "danger")
         return redirect(url_for('index'))
@@ -1664,19 +1649,7 @@ def editer_categorie(id):
 
 @app.route('/supprimer_categorie/<int:id>', methods=['POST'])
 def supprimer_categorie(id):
-    """
-    Supprime une catégorie identifiée par son ID.
-    Accessible uniquement aux administrateurs via méthode POST.
-    
-    Args:
-        id (int): Identifiant de la catégorie à supprimer
-    
-    Vérifie l'absence de types associés avant de procéder à la suppression
-    pour maintenir l'intégrité référentielle.
-    
-    Returns:
-        Response: Redirection avec message de confirmation ou d'erreur
-    """
+   
     if 'user_id' not in session or session['role'] != 'admin':
         flash("Accès réservé aux administrateurs", "danger")
         return redirect(url_for('index'))
@@ -1707,16 +1680,7 @@ def supprimer_categorie(id):
 
 @app.route('/ajouter_type', methods=['POST'])
 def ajouter_type():
-    """
-    Traite l'ajout d'un nouveau type d'article.
-    Accessible uniquement aux administrateurs via méthode POST.
-    
-    Le type est associé à une catégorie existante et son nom
-    doit être unique au sein de cette catégorie.
-    
-    Returns:
-        Response: Redirection avec message de confirmation ou d'erreur
-    """
+  
     if 'user_id' not in session or session['role'] != 'admin':
         flash("Accès réservé aux administrateurs", "danger")
         return redirect(url_for('index'))
@@ -1759,19 +1723,7 @@ def ajouter_type():
 
 @app.route('/editer_type/<int:id>', methods=['POST'])
 def editer_type(id):
-    """
-    Met à jour un type existant identifié par son ID.
-    Accessible uniquement aux administrateurs via méthode POST.
-    
-    Args:
-        id (int): Identifiant du type à modifier
-    
-    Permet la modification du nom et/ou de la catégorie associée
-    avec vérification des contraintes d'unicité.
-    
-    Returns:
-        Response: Redirection avec message de confirmation ou d'erreur
-    """
+  
     if 'user_id' not in session or session['role'] != 'admin':
         flash("Accès réservé aux administrateurs", "danger")
         return redirect(url_for('index'))
@@ -1819,19 +1771,6 @@ def editer_type(id):
 
 @app.route('/supprimer_type/<int:id>', methods=['POST'])
 def supprimer_type(id):
-    """
-    Supprime un type identifié par son ID.
-    Accessible uniquement aux administrateurs via méthode POST.
-    
-    Args:
-        id (int): Identifiant du type à supprimer
-    
-    Vérifie l'absence d'articles associés avant de procéder à la suppression
-    pour maintenir l'intégrité référentielle.
-    
-    Returns:
-        Response: Redirection avec message de confirmation ou d'erreur
-    """
     if 'user_id' not in session or session['role'] != 'admin':
         flash("Accès réservé aux administrateurs", "danger")
         return redirect(url_for('index'))
@@ -1864,6 +1803,8 @@ def supprimer_type(id):
 def statistiques():
     if 'user_id' not in session:
         return redirect(url_for('login'))
+    if 'user_id' not in session or session.get('role') != 'admin':
+        abort(403)
 
     try:
         cur = mysql.connection.cursor()
@@ -2492,6 +2433,9 @@ def editer_recu(id_recu):
         flash(f"Erreur critique : {str(e)}", "danger")
         return redirect(url_for('liste_recus'))
 
+
+def is_valid_password(password):
+    return len(password) >= 4 and any(c.isalpha() for c in password)
 # CRUD Utilisateurs (Admin seulement)
 @app.route('/admin/utilisateurs')
 def liste_utilisateurs():
@@ -2521,6 +2465,10 @@ def creer_utilisateur():
         
         if not username or not password:
             flash("Tous les champs obligatoires doivent être remplis", "danger")
+            return redirect(url_for('creer_utilisateur'))
+        
+        if not is_valid_password(password):
+            flash("Le mot de passe doit contenir au moins 4 caractères et une lettre", "danger")
             return redirect(url_for('creer_utilisateur'))
         
         cur = mysql.connection.cursor()
@@ -2559,6 +2507,10 @@ def editer_utilisateur(id):
             if not username:
                 flash("Le nom d'utilisateur est obligatoire", "danger")
                 return redirect(url_for('editer_utilisateur', id=id))
+            if new_password:
+                if not is_valid_password(new_password):
+                    flash("Le mot de passe doit contenir au moins 4 caractères et une lettre", "danger")
+                    return redirect(url_for('editer_utilisateur', id=id))
             
             # Vérifier si le nom d'utilisateur est déjà pris
             cur.execute("SELECT id FROM utilisateur WHERE username = %s AND id != %s", (username, id))
@@ -2647,6 +2599,13 @@ def profil():
             
             updates = []
             params = []
+
+
+            if new_password:
+                if not is_valid_password(new_password):
+                    flash("Le mot de passe doit contenir au moins 4 caractères et une lettre", "danger")
+                    return redirect(url_for('editer_utilisateur', id=id))
+            
             
             # Mise à jour du nom d'utilisateur
             if new_username and new_username != user['username']:
