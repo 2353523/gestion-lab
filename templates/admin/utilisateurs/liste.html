@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion Lab - Utilisateurs</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding-top: 0;
+        }
+        .card {
+            border-radius: 15px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+        .card:hover {
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+        }
+        .card-header {
+            border-radius: 15px 15px 0 0 !important;
+            padding: 1.25rem;
+        }
+        .table {
+            vertical-align: middle;
+        }
+        .btn-action {
+            border-radius: 50px;
+            padding: 0.375rem 0.75rem;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+        .btn-action:hover {
+            transform: translateY(-2px);
+        }
+        .badge {
+            font-size: 0.85rem;
+            padding: 0.5em 0.85em;
+            border-radius: 50px;
+        }
+        .search-box {
+            position: relative;
+        }
+        .search-box .form-control {
+            padding-left: 2.5rem;
+            border-radius: 50px;
+        }
+        .search-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6c757d;
+            z-index: 5;
+        }
+    </style>
+</head>
+<body>
+    {% include 'nav.html' %}
+
+    <main class="container py-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h3 class="mb-0">
+                    <i class="fas fa-users me-2"></i> Gestion des utilisateurs
+                </h3>
+                <a href="{{ url_for('creer_utilisateur') }}" class="btn btn-light">
+                    <i class="fas fa-plus-circle me-2"></i>Nouvel utilisateur
+                </a>
+            </div>
+            
+            <div class="card-body">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                                <i class="fas {% if category == 'success' %}fa-check-circle{% else %}fa-exclamation-circle{% endif %} me-2"></i>
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="search-box">
+                            <i class="fas fa-search search-icon"></i>
+                            <input type="text" id="searchInput" class="form-control" placeholder="Rechercher un utilisateur...">
+                        </div>
+                    </div>
+                    <div class="col-md-6 d-flex justify-content-md-end mt-3 mt-md-0">
+                        <div class="btn-group">
+                            <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-filter me-1"></i> Filtrer par rôle
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="#" onclick="filterTable('')">Tous</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="filterTable('admin')">Admin</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="filterTable('user')">Utilisateur</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover" id="usersTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th scope="col" class="text-center">#</th>
+                                <th scope="col">
+                                    <i class="fas fa-user me-1"></i> Nom d'utilisateur
+                                </th>
+                                <th scope="col">
+                                    <i class="fas fa-tag me-1"></i> Rôle
+                                </th>
+                                <th scope="col" class="text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for utilisateur in utilisateurs %}
+                                <tr data-role="{{ utilisateur.role.lower() }}">
+                                    <td class="text-center">{{ utilisateur.id }}</td>
+                                    <td>{{ utilisateur.username }}</td>
+                                    <td>
+                                        <span class="badge bg-{{ 'danger' if utilisateur.role == 'admin' else 'info' }}">
+                                            {{ utilisateur.role }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex justify-content-center gap-2">
+                                            <a href="{{ url_for('editer_utilisateur', id=utilisateur.id) }}" class="btn btn-warning btn-action">
+                                                <i class="fas fa-edit"></i> Éditer
+                                            </a>
+                                            <form action="{{ url_for('supprimer_utilisateur', id=utilisateur.id) }}" method="POST" class="d-inline">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <button type="button" class="btn btn-danger btn-action delete-btn" data-id="{{ utilisateur.id }}" data-username="{{ utilisateur.username }}">
+                                                    <i class="fas fa-trash-alt"></i> Supprimer
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-4">
+                                        <div class="alert alert-info mb-0">
+                                            <i class="fas fa-info-circle me-2"></i> Aucun utilisateur trouvé
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer text-muted">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-users me-2"></i>Total: <span id="userCount">{{ utilisateurs|length }}</span> utilisateur(s)</span>
+                    <a href="#" class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-file-export me-1"></i> Exporter
+                    </a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal de confirmation de suppression -->
+    <div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i class="fas fa-exclamation-triangle me-2"></i>Confirmation</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Êtes-vous sûr de vouloir supprimer l'utilisateur <strong id="deleteUsername"></strong> ?</p>
+                    <p class="text-danger mb-0"><i class="fas fa-exclamation-circle me-2"></i>Cette action est irréversible.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <form id="deleteForm" method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-danger">Supprimer</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Recherche dans le tableau
+        document.getElementById('searchInput').addEventListener('input', function() {
+            const searchText = this.value.toLowerCase();
+            const rows = document.querySelectorAll('#usersTable tbody tr');
+            let count = 0;
+            
+            rows.forEach(row => {
+                const username = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
+                const role = row.querySelector('td:nth-child(3)').textContent.toLowerCase();
+                const visible = username.includes(searchText) || role.includes(searchText);
+                
+                row.style.display = visible ? '' : 'none';
+                if (visible) count++;
+            });
+            
+            document.getElementById('userCount').textContent = count;
+        });
+
+        // Filtrer par rôle
+        function filterTable(role) {
+            const rows = document.querySelectorAll('#usersTable tbody tr');
+            let count = 0;
+            
+            rows.forEach(row => {
+                if (!role || row.getAttribute('data-role') === role) {
+                    row.style.display = '';
+                    count++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+            
+            document.getElementById('userCount').textContent = count;
+        }
+
+        // Modal de confirmation de suppression
+        const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+        const deleteButtons = document.querySelectorAll('.delete-btn');
+        
+        deleteButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const userId = this.getAttribute('data-id');
+                const username = this.getAttribute('data-username');
+                
+                document.getElementById('deleteUsername').textContent = username;
+                document.getElementById('deleteForm').action = "{{ url_for('supprimer_utilisateur', id=0) }}".replace('0', userId);
+                
+                deleteModal.show();
+            });
+        });
+    </script>
+</body>
+</html>

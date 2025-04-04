@@ -2492,6 +2492,206 @@ def editer_recu(id_recu):
         flash(f"Erreur critique : {str(e)}", "danger")
         return redirect(url_for('liste_recus'))
 
+# CRUD Utilisateurs (Admin seulement)
+@app.route('/admin/utilisateurs')
+def liste_utilisateurs():
+    if 'user_id' not in session or session.get('role') != 'admin':
+        abort(403)
+    
+    cur = mysql.connection.cursor()
+    try:
+        cur.execute("SELECT id, username, role FROM utilisateur ORDER BY username")
+        utilisateurs = cur.fetchall()
+        return render_template('admin/utilisateurs/liste.html', utilisateurs=utilisateurs)
+    except Exception as e:
+        flash(f"Erreur base de données : {str(e)}", "danger")
+        return redirect(url_for('index'))
+    finally:
+        cur.close()
+
+@app.route('/admin/utilisateurs/creer', methods=['GET', 'POST'])
+def creer_utilisateur():
+    if 'user_id' not in session or session.get('role') != 'admin':
+        abort(403)
+    
+    if request.method == 'POST':
+        username = request.form['username'].strip()
+        password = request.form['password'].strip()
+        role = request.form.get('role', 'user')
+        
+        if not username or not password:
+            flash("Tous les champs obligatoires doivent être remplis", "danger")
+            return redirect(url_for('creer_utilisateur'))
+        
+        cur = mysql.connection.cursor()
+        try:
+            cur.execute("SELECT id FROM utilisateur WHERE username = %s", (username,))
+            if cur.fetchone():
+                flash("Ce nom d'utilisateur est déjà pris", "danger")
+                return redirect(url_for('creer_utilisateur'))
+            
+            hashed_pw = generate_password_hash(password)
+            cur.execute("INSERT INTO utilisateur (username, password, role) VALUES (%s, %s, %s)",
+                       (username, hashed_pw, role))
+            mysql.connection.commit()
+            flash("Utilisateur créé avec succès", "success")
+            return redirect(url_for('liste_utilisateurs'))
+        except Exception as e:
+            mysql.connection.rollback()
+            flash(f"Erreur : {str(e)}", "danger")
+        finally:
+            cur.close()
+    
+    return render_template('admin/utilisateurs/creer.html')
+
+@app.route('/admin/utilisateurs/editer/<int:id>', methods=['GET', 'POST'])
+def editer_utilisateur(id):
+    if 'user_id' not in session or session.get('role') != 'admin':
+        abort(403)
+    
+    cur = mysql.connection.cursor()
+    try:
+        if request.method == 'POST':
+            username = request.form['username'].strip()
+            role = request.form.get('role', 'user')
+            new_password = request.form.get('new_password', '').strip()
+            
+            if not username:
+                flash("Le nom d'utilisateur est obligatoire", "danger")
+                return redirect(url_for('editer_utilisateur', id=id))
+            
+            # Vérifier si le nom d'utilisateur est déjà pris
+            cur.execute("SELECT id FROM utilisateur WHERE username = %s AND id != %s", (username, id))
+            if cur.fetchone():
+                flash("Ce nom d'utilisateur est déjà pris", "danger")
+                return redirect(url_for('editer_utilisateur', id=id))
+            
+            # Mettre à jour les champs
+            update_fields = []
+            params = []
+            if username:
+                update_fields.append("username = %s")
+                params.append(username)
+            if role:
+                update_fields.append("role = %s")
+                params.append(role)
+            if new_password:
+                hashed_pw = generate_password_hash(new_password)
+                update_fields.append("password = %s")
+                params.append(hashed_pw)
+            
+            params.append(id)
+            query = "UPDATE utilisateur SET " + ", ".join(update_fields) + " WHERE id = %s"
+            cur.execute(query, tuple(params))
+            mysql.connection.commit()
+            flash("Utilisateur mis à jour avec succès", "success")
+            return redirect(url_for('liste_utilisateurs'))
+        
+        # Récupérer les données utilisateur
+        cur.execute("SELECT id, username, role FROM utilisateur WHERE id = %s", (id,))
+        utilisateur = cur.fetchone()
+        if not utilisateur:
+            flash("Utilisateur introuvable", "danger")
+            return redirect(url_for('liste_utilisateurs'))
+        return render_template('admin/utilisateurs/editer.html', utilisateur=utilisateur)
+    
+    except Exception as e:
+        mysql.connection.rollback()
+        flash(f"Erreur : {str(e)}", "danger")
+        return redirect(url_for('liste_utilisateurs'))
+    finally:
+        cur.close()
+
+@app.route('/admin/utilisateurs/supprimer/<int:id>', methods=['POST'])
+def supprimer_utilisateur(id):
+    if 'user_id' not in session or session.get('role') != 'admin':
+        abort(403)
+    
+    if session.get('user_id') == id:
+        flash("Vous ne pouvez pas supprimer votre propre compte", "danger")
+        return redirect(url_for('liste_utilisateurs'))
+    
+    cur = mysql.connection.cursor()
+    try:
+        cur.execute("DELETE FROM utilisateur WHERE id = %s", (id,))
+        mysql.connection.commit()
+        flash("Utilisateur supprimé avec succès", "success")
+    except Exception as e:
+        mysql.connection.rollback()
+        flash(f"Erreur : {str(e)}", "danger")
+    finally:
+        cur.close()
+    return redirect(url_for('liste_utilisateurs'))
+
+
+# ... (Configuration initiale et connexion MySQL)
+
+# Route profil utilisateur
+@app.route('/profil', methods=['GET', 'POST'])
+def profil():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    user_id = session['user_id']
+    cur = mysql.connection.cursor()
+    
+    try:
+        if request.method == 'POST':
+            current_password = request.form.get('current_password', '').strip()
+            new_username = request.form.get('username', '').strip()
+            new_password = request.form.get('new_password', '').strip()
+            confirm_password = request.form.get('confirm_password', '').strip()
+            
+            cur.execute("SELECT * FROM utilisateur WHERE id = %s", (user_id,))
+            user = cur.fetchone()
+            
+            updates = []
+            params = []
+            
+            # Mise à jour du nom d'utilisateur
+            if new_username and new_username != user['username']:
+                cur.execute("SELECT id FROM utilisateur WHERE username = %s", (new_username,))
+                if cur.fetchone():
+                    flash("Ce nom d'utilisateur est déjà pris", "danger")
+                else:
+                    updates.append("username = %s")
+                    params.append(new_username)
+            
+            # Mise à jour du mot de passe
+            if new_password:
+                if not check_password_hash(user['password'], current_password):
+                    flash("Mot de passe actuel incorrect", "danger")
+                elif new_password != confirm_password:
+                    flash("Les mots de passe ne correspondent pas", "danger")
+                else:
+                    updates.append("password = %s")
+                    params.append(generate_password_hash(new_password))
+            
+            if updates:
+                query = "UPDATE utilisateur SET " + ", ".join(updates) + " WHERE id = %s"
+                params.append(user_id)
+                cur.execute(query, tuple(params))
+                mysql.connection.commit()
+                flash("Profil mis à jour avec succès", "success")
+                session['username'] = new_username if new_username else session['username']
+            
+            return redirect(url_for('profil'))
+        
+        cur.execute("SELECT id, username, role FROM utilisateur WHERE id = %s", (user_id,))
+        user = cur.fetchone()
+        return render_template('profil.html', user=user)
+
+    except Exception as e:
+        mysql.connection.rollback()
+        flash(f"Erreur lors de la mise à jour : {str(e)}", "danger")
+        return redirect(url_for('profil'))
+    finally:
+        cur.close()
+
+# Gestion des utilisateurs (Admin seulement)
+
+# ... (Routes pour créer/modifier/supprimer des utilisateurs similaires à précédemment)
+
 if __name__ == '__main__':
     # Création des utilisateurs dans un contexte d'application
     with app.app_context():

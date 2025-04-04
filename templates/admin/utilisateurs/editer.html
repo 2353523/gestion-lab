@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Éditer utilisateur</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-light">
+
+    <!-- Barre de navigation -->
+    {% include 'nav.html' %}
+    
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-8 col-md-10">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-primary text-white">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-person-gear me-2 fs-4"></i>
+                            <h4 class="mb-0">Éditer l'utilisateur</h4>
+                        </div>
+                    </div>
+                    
+                    <div class="card-body p-4">
+                        {% with messages = get_flashed_messages(with_categories=true) %}
+                            {% if messages %}
+                                {% for category, message in messages %}
+                                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                                        {{ message }}
+                                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
+                                    </div>
+                                {% endfor %}
+                            {% endif %}
+                        {% endwith %}
+
+                        <form method="POST" class="needs-validation" novalidate>
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            
+                            <div class="mb-4">
+                                <label for="username" class="form-label fw-bold">
+                                    <i class="bi bi-person me-1"></i>Nom d'utilisateur
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-at"></i></span>
+                                    <input type="text" class="form-control" id="username" name="username" value="{{ utilisateur.username }}" required>
+                                    <div class="invalid-feedback">
+                                        Veuillez saisir un nom d'utilisateur.
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label for="new_password" class="form-label fw-bold">
+                                    <i class="bi bi-key me-1"></i>Nouveau mot de passe
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-shield-lock"></i></span>
+                                    <input type="password" class="form-control" id="new_password" name="new_password" 
+                                           placeholder="Laisser vide pour ne pas changer">
+                                    <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                </div>
+                                <div class="form-text text-muted">
+                                    <i class="bi bi-info-circle me-1"></i>Laissez ce champ vide si vous ne souhaitez pas modifier le mot de passe.
+                                </div>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label for="role" class="form-label fw-bold">
+                                    <i class="bi bi-person-badge me-1"></i>Rôle
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-shield"></i></span>
+                                    <select class="form-select" id="role" name="role" required>
+                                        <option value="user" {% if utilisateur.role == 'user' %}selected{% endif %}>
+                                            Utilisateur standard
+                                        </option>
+                                        <option value="admin" {% if utilisateur.role == 'admin' %}selected{% endif %}>
+                                            Administrateur
+                                        </option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                                <a href="{{ url_for('liste_utilisateurs') }}" class="btn btn-outline-secondary">
+                                    <i class="bi bi-x-circle me-1"></i>Annuler
+                                </a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-check2-circle me-1"></i>Mettre à jour
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Validation et affichage du mot de passe -->
+    <script>
+        // Validation des formulaires
+        (function() {
+            'use strict';
+            
+            const forms = document.querySelectorAll('.needs-validation');
+            
+            Array.prototype.slice.call(forms).forEach(function(form) {
+                form.addEventListener('submit', function(event) {
+                    if (!form.checkValidity()) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    form.classList.add('was-validated');
+                }, false);
+            });
+            
+            // Affichage/masquage du mot de passe
+            const togglePassword = document.getElementById('togglePassword');
+            const passwordInput = document.getElementById('new_password');
+            
+            togglePassword.addEventListener('click', function() {
+                const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                passwordInput.setAttribute('type', type);
+                this.querySelector('i').classList.toggle('bi-eye');
+                this.querySelector('i').classList.toggle('bi-eye-slash');
+            });
+        })();
+    </script>
+</body>
+</html>
