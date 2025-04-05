@@ -3,205 +3,370 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Liste des Laboratoires</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Gestion des Laboratoires | ISME</title>
+    <!-- Bootstrap 5.3 au lieu de 5.1 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        :root {
+            --bs-primary: #0d6efd;
+            --bs-success: #198754;
+            --bs-info: #0dcaf0;
+            --bs-primary-rgb: 13, 110, 253;
+        }
+
+        .card {
+            border: none;
+            box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.15) !important;
+            border-radius: 1rem;
+            overflow: hidden;
+        }
+
         .card-header {
-            background: linear-gradient(135deg, #0d6efd, #0b5ed7);
-            border-radius: 12px 12px 0 0 !important;
+            background: linear-gradient(135deg, var(--bs-primary), #0b5ed7);
+            color: white;
+            padding: 1.5rem 2rem;
+            border-bottom: none;
+        }
+
+        .badge-tp {
+            background-color: var(--bs-success);
+            color: white;
+            padding: 0.5rem 0.8rem;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+
+        .lab-row {
+            transition: all 0.3s ease;
+        }
+
+        .lab-row:hover {
+            background-color: rgba(var(--bs-primary-rgb), 0.08);
+            transform: translateY(-2px);
+        }
+
+        .view-switcher .btn {
+            border-radius: 20px;
+            padding: 0.375rem 1.2rem;
+            transition: all 0.3s ease;
+        }
+
+        .view-switcher .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.1);
         }
         
-        /* Styles des boutons d'action */
-        .btn-action {
-            width: 36px;
-            height: 36px;
+        .action-buttons .btn {
+            border-radius: 0.5rem;
+            transition: all 0.2s ease;
+        }
+        
+        .action-buttons .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 3px 5px rgba(0,0,0,0.1);
+        }
+        
+        .search-container {
+            position: relative;
+            margin-bottom: 1.5rem;
+        }
+        
+        .search-container i {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6c757d;
+        }
+        
+        #liveSearch {
+            padding-left: 2.5rem;
+            border-radius: 0.75rem;
+        }
+        
+        .empty-state {
+            padding: 3rem 1rem;
+            text-align: center;
+        }
+        
+        .empty-state i {
+            font-size: 4rem;
+            color: #6c757d;
+            margin-bottom: 1.5rem;
+            animation: pulse 2s infinite ease-in-out;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .stats-container {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .stat-card {
+            flex: 1;
+            min-width: 200px;
+            background: white;
+            border-radius: 0.75rem;
+            padding: 1.2rem;
+            box-shadow: 0 0.25rem 0.75rem rgba(0,0,0,0.08);
+            border-left: 4px solid var(--bs-primary);
+        }
+        
+        .capacity-badge {
+            background-color: #e9ecef;
+            color: #495057;
+            padding: 0.35rem 0.75rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
             display: inline-flex;
             align-items: center;
-            justify-content: center;
-            margin-bottom: 0;
         }
         
-        .stock-btn {
-            width: auto;
-            padding: 6px 12px;
-        }
-        
-        .btn-delete {
-            width: 32px;
-            height: 32px;
-            padding: 0;
-            font-size: 14px;
-        }
-        
-        /* Optimisation du tableau pour grands écrans */
-        .table-container {
-            margin: 0 auto;
-            max-width: 100%;
-        }
-        
-        .table-laboratoires {
-            width: 100%;
-            table-layout: fixed;
-        }
-        
-        .table-laboratoires th:first-child,
-        .table-laboratoires td:first-child {
-            width: 50%;
-        }
-        
-        .table-laboratoires th:nth-child(2),
-        .table-laboratoires td:nth-child(2) {
-            width: 20%;
-        }
-        
-        .table-laboratoires th:last-child,
-        .table-laboratoires td:last-child {
-            width: 30%;
-        }
-        
-        /* Styles responsives */
-        @media (min-width: 768px) {
-            .action-container {
-                display: flex;
-                justify-content: flex-end;
-                gap: 8px;
-            }
-        }
-        
-        @media (max-width: 767px) {
-            .action-container {
-                display: flex;
-                flex-direction: row;
-                flex-wrap: wrap;
-                justify-content: flex-end;
-                gap: 6px;
-            }
-            
-            .table-laboratoires {
-                table-layout: auto;
-            }
-            
-            .table-laboratoires th:first-child,
-            .table-laboratoires td:first-child,
-            .table-laboratoires th:nth-child(2),
-            .table-laboratoires td:nth-child(2),
-            .table-laboratoires th:last-child,
-            .table-laboratoires td:last-child {
-                width: auto;
-            }
-            
-            .table-responsive {
-                overflow-x: auto;
-            }
-        }
-        
-        @media (max-width: 460px) {
-            .delete-form {
-                display: inline-block;
-            }
+        .capacity-badge i {
+            margin-right: 0.5rem;
+            color: #6c757d;
         }
     </style>
 </head>
 <body class="bg-light">
     {% include 'nav.html' %}
-    <div class="content">
-        {% block content %}{% endblock %}
-    </div>
     
-    <main class="container py-4">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} alert-dismissible fade show mb-4 shadow-sm">
-                        <div class="d-flex align-items-center">
-                            <i class="fas fa-info-circle me-3"></i>
-                            <div>{{ message }}</div>
+    <main class="container py-5">
+        <div class="card mb-4">
+            <div class="card-header">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                    <div>
+                        <h2 class="mb-1 d-flex align-items-center">
+                            <i class="fas fa-microscope me-2"></i>
+                            {% if active_filter %}Laboratoires Actifs{% else %}Tous les Laboratoires{% endif %}
+                        </h2>
+                        <div class="d-flex align-items-center mt-2 text-white-50">
+                            <i class="fas fa-calendar-day me-2"></i>
+                            <span>
+                                {% if active_filter %}
+                                    {{ now.strftime('%A %d %B %Y')|capitalize }}
+                                {% else %}
+                                    Vue d'ensemble complète
+                                {% endif %}
+                            </span>
                         </div>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
-        <div class="card shadow">
-            <div class="card-header text-white">
-                <div class="d-flex justify-content-between align-items-center flex-wrap">
-                    <h3 class="mb-2 mb-md-0">
-                        <i class="fas fa-microscope me-2"></i>Liste des Laboratoires
-                    </h3>
-                    {% if session.role == 'admin' %}
-                    <a href="{{ url_for('creer_laboratoire') }}" class="btn btn-success">
-                        <i class="fas fa-plus me-2"></i>Nouveau
-                    </a>
-                    {% endif %}
+                    <div class="d-flex flex-column flex-sm-row align-items-sm-center gap-3">
+                        <div class="view-switcher">
+                            <a href="{{ url_for('laboratoires_actifs') }}" 
+                               class="btn {% if active_filter %}btn-light{% else %}btn-outline-light{% endif %}">
+                                <i class="fas fa-flask me-2"></i>Actifs aujourd'hui
+                            </a>
+                            <a href="{{ url_for('tous_les_laboratoires') }}" 
+                               class="btn {% if not active_filter %}btn-light{% else %}btn-outline-light{% endif %}">
+                                <i class="fas fa-list me-2"></i>Tous
+                            </a>
+                        </div>
+                        {% if session.role == 'admin' %}
+                        <a href="{{ url_for('creer_laboratoire') }}" class="btn btn-success">
+                            <i class="fas fa-plus me-2"></i>Nouveau Laboratoire
+                        </a>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
             
             <div class="card-body p-4">
                 {% if laboratoires %}
-                    <div class="table-container">
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle table-laboratoires">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Nom</th>
-                                        <th>Capacité</th>
-                                        <th class="text-end">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for lab in laboratoires %}
-                                    <tr>
-                                        <td class="fw-semibold">{{ lab.nom_laboratoire }}</td>
-                                        <td>{{ lab.capacite }} places</td>
-    
-                                        <td>
-                                            <div class="action-container">
-                                                <!-- Bouton Gérer le stock -->
-                                                <a href="{{ url_for('stock_laboratoire', id_lab=lab.id_laboratoire) }}" 
-                                                   class="btn btn-info btn-action stock-btn"
-                                                   title="Gérer le stock">
-                                                    <i class="fas fa-boxes me-1"></i><span class="d-none d-md-inline">Stock</span>
-                                                </a>
-    
-                                                {% if session.role == 'admin' %}
-                                                <a href="{{ url_for('editer_laboratoire', id=lab.id_laboratoire) }}" 
-                                                   class="btn btn-warning btn-action"
-                                                   title="Modifier">
-                                                    <i class="fas fa-edit"></i>
-                                                </a>
-                                                
-                                                <form method="POST" 
-                                                      action="{{ url_for('supprimer_laboratoire', id=lab.id_laboratoire) }}"
-                                                      class="delete-form d-inline-block">
-                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                    <button type="submit" 
-                                                            class="btn btn-danger btn-action btn-delete"
-                                                            title="Supprimer"
-                                                            onclick="return confirm('Supprimer ce laboratoire définitivement ?')">
-                                                        <i class="fas fa-trash-alt"></i>
-                                                    </button>
-                                                </form>
-                                                {% endif %}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
+                    <div class="search-container">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="liveSearch" class="form-control form-control-lg shadow-sm" placeholder="Rechercher un laboratoire...">
+                    </div>
+                    
+                    <!-- Statistiques rapides -->
+                    <div class="stats-container">
+                        <div class="stat-card">
+                            <div class="text-muted mb-1">Total Laboratoires</div>
+                            <div class="d-flex align-items-center">
+                                <div class="fs-2 fw-bold me-2">{{ laboratoires|length }}</div>
+                                <span class="badge bg-primary">{{ '100%' if active_filter else '' }}</span>
+                            </div>
                         </div>
+
+                        {% if active_filter %}
+                        <div class="stat-card" style="border-left-color: var(--bs-info);">
+                            <div class="text-muted mb-1">TPs En Cours</div>
+                            <div class="fs-2 fw-bold">
+                                {% set total_tps = 0 %}
+                                {% for lab in laboratoires %}
+                                    {% set total_tps = total_tps + tp_counts[lab.id_laboratoire] %}
+                                {% endfor %}
+                                {{ total_tps }} TPs
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="table-responsive shadow-sm">
+                        <table class="table table-hover align-middle mb-0" id="laboratoiresTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-3">Nom</th>
+                                    <th>Capacité</th>
+                                    {% if active_filter %}<th class="text-center">TP du Jour </th>{% endif %}
+                                    <th class="text-end pe-3">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for lab in laboratoires %}
+                                <tr class="lab-row">
+                                    <td class="fw-semibold ps-3">
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-vial text-primary me-2"></i>
+                                            {{ lab.nom_laboratoire }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="capacity-badge">
+                                            <i class="fas fa-users"></i>
+                                            {{ lab.capacite }} places
+                                        </span>
+                                    </td>
+                                    {% if active_filter %}
+                                    <td class="text-center">
+                                        <span class="badge-tp">
+                                            <i class="fas fa-flask me-2"></i>
+                                            {{ tp_counts[lab.id_laboratoire] }} TP
+                                        </span>
+                                    </td>
+                                    {% endif %}
+                                    <td class="text-end pe-3">
+                                        <div class="d-flex gap-2 justify-content-end action-buttons">
+                                            <a href="{{ url_for('stock_laboratoire', id_lab=lab.id_laboratoire) }}" 
+                                               class="btn btn-outline-info" data-bs-toggle="tooltip" title="Gestion du stock">
+                                                <i class="fas fa-boxes me-2"></i>Stock
+                                            </a>
+                                            {% if session.role == 'admin' %}
+                                            <a href="{{ url_for('editer_laboratoire', id=lab.id_laboratoire) }}" 
+                                               class="btn btn-outline-warning" data-bs-toggle="tooltip" title="Modifier">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-outline-danger" 
+                                                    data-bs-toggle="modal" data-bs-target="#deleteModal{{ lab.id_laboratoire }}"
+                                                    title="Supprimer">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                            
+                                            <!-- Modal de confirmation -->
+                                            <div class="modal fade" id="deleteModal{{ lab.id_laboratoire }}" tabindex="-1" aria-hidden="true">
+                                                <div class="modal-dialog modal-dialog-centered">
+                                                    <div class="modal-content">
+                                                        <div class="modal-header bg-danger text-white">
+                                                            <h5 class="modal-title">Confirmation de suppression</h5>
+                                                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                        </div>
+                                                        <div class="modal-body">
+                                                            <p>Êtes-vous sûr de vouloir supprimer le laboratoire <strong>{{ lab.nom_laboratoire }}</strong> ?</p>
+                                                            <p class="text-danger"><i class="fas fa-exclamation-triangle me-2"></i>Cette action est irréversible.</p>
+                                                        </div>
+                                                        <div class="modal-footer">
+                                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                                                            <form method="POST" action="{{ url_for('supprimer_laboratoire', id=lab.id_laboratoire) }}">
+                                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                                <button type="submit" class="btn btn-danger">
+                                                                    <i class="fas fa-trash-alt me-2"></i>Confirmer la suppression
+                                                                </button>
+                                                            </form>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
                     </div>
                 {% else %}
-                    <div class="alert alert-info mb-0 shadow-sm">
-                        <i class="fas fa-info-circle me-2"></i>
-                        Aucun laboratoire enregistré
+                    <div class="empty-state">
+                        <i class="fas {% if active_filter %}fa-flask-vial{% else %}fa-building-circle-exclamation{% endif %}"></i>
+                        <h3 class="text-muted mb-3">
+                            {% if active_filter %}
+                            Aucun laboratoire actif aujourd'hui
+                            {% else %}
+                            Aucun laboratoire enregistré
+                            {% endif %}
+                        </h3>
+                        <p class="text-muted mb-4">
+                            {% if active_filter %}
+                            Aucun TP n'est programmé pour le {{ now.strftime('%d/%m/%Y') }}
+                            {% else %}
+                            Commencez par ajouter un nouveau laboratoire
+                            {% endif %}
+                        </p>
+                        {% if session.role == 'admin' and not active_filter %}
+                        <a href="{{ url_for('creer_laboratoire') }}" class="btn btn-primary btn-lg">
+                            <i class="fas fa-plus me-2"></i>Ajouter un laboratoire
+                        </a>
+                        {% endif %}
                     </div>
                 {% endif %}
+            </div>
+            
+            <div class="card-footer bg-light py-3">
+                <div class="d-flex justify-content-between align-items-center text-muted">
+                    <span>
+                        <i class="fas fa-sync-alt me-2"></i>
+                        Actualisé à {{ now.strftime('%H:%M') }}
+                    </span>
+                    <span>
+                        <i class="fas fa-database me-2"></i>
+                        Version 2.1.0 - LabManager
+                    </span>
+                </div>
             </div>
         </div>
     </main>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialiser les tooltips
+            const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+            const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+            
+            // Fonction de recherche
+            const searchInput = document.getElementById('liveSearch');
+            if (searchInput) {
+                const filterTable = (value) => {
+                    const rows = document.querySelectorAll('#laboratoiresTable tbody tr');
+                    let matchCount = 0;
+                    
+                    rows.forEach(row => {
+                        const text = row.textContent.toLowerCase();
+                        const matches = text.includes(value.toLowerCase());
+                        row.style.display = matches ? '' : 'none';
+                        if (matches) matchCount++;
+                    });
+                    
+                    // Mise à jour des statistiques si filtrées
+                    const statCards = document.querySelectorAll('.stat-card');
+                    if (statCards.length > 0) {
+                        statCards[0].querySelector('.fs-2').textContent = matchCount;
+                    }
+                };
+
+                searchInput.addEventListener('input', (e) => filterTable(e.target.value));
+                
+                // Focus sur la recherche au chargement
+                setTimeout(() => searchInput.focus(), 500);
+            }
+        });
+    </script>
 </body>
 </html>

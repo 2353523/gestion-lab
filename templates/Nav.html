@@ -68,7 +68,7 @@
                         </a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><h6 class="dropdown-header">Infrastructure</h6></li>
-                        <li><a class="dropdown-item" href="{{ url_for('liste_laboratoires') }}">
+                        <li><a class="dropdown-item" href="{{url_for('laboratoires_actifs') }}">
                             <i class="fas fa-microscope me-2"></i>Laboratoires
                         </a></li>
                     </ul>
@@ -213,182 +213,159 @@
 
 
 <style>
-    /* Animation for the flask icon */
-    @keyframes pulse {
-        0% { transform: scale(1); }
-        50% { transform: scale(1.15); }
-        100% { transform: scale(1); }
-    }
-    
-    .pulse-icon {
-        animation: pulse 2s infinite;
-    }
-    
-    /* Improve dropdown hover effects */
-    .dropdown-item:hover {
-        background-color: rgba(13, 110, 253, 0.5) !important;
-    }
-    
-    /* Active navigation item */
-    .nav-link.active {
-        background-color: rgba(255, 255, 255, 0.1);
-        border-radius: 4px;
-    }
-    
-    /* Make navbar sticky */
-    .sticky-top {
-        z-index: 1030;
-    }
+/* Animation for the flask icon */
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+    100% { transform: scale(1); }
+}
 
-        /* Animation for the flask icon */
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.5); }
-            100% { transform: scale(1); }
-        }
-        
-        .pulse-icon {
-            animation: pulse 2s infinite;
-        }
-        
-        /* Improve dropdown hover effects */
-        .dropdown-item:hover {
-            background-color: rgba(13, 110, 253, 0.5) !important;
-        }
-        
-        /* Active navigation item */
-        .nav-link.active {
-            background-color: rgba(255, 255, 255, 0.1);
-            border-radius: 4px;
-        }
-        
-        /* Make navbar sticky */
-        .sticky-top {
-            z-index: 1030;
-        }
+.pulse-icon {
+    animation: pulse 2s infinite;
+}
 
-        /* BARRE AMÉLIORÉE */
-        .number-ticker {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            background: linear-gradient(90deg, #0d6efd, #0a58ca, #0d6efd);
-            background-size: 200% 100%;
-            animation: gradientBg 15s ease infinite;
-            color: white;
-            padding: 10px 0;
-            z-index: 1000;
-            box-shadow: 0 -3px 15px rgba(0, 0, 0, 0.3);
-            border-top: 2px solid rgba(255, 255, 255, 0.3);
-        }
+/* Second pulse animation (keeping both for compatibility) */
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.5); }
+    100% { transform: scale(1); }
+}
 
-        @keyframes gradientBg {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-        }
-    
-        .ticker-container {
-            overflow: hidden;
-            white-space: nowrap;
-            height: 34px;
-        }
-    
-        .ticker-content {
-            display: inline-block;
-            animation: ticker 55s linear infinite;
-            padding-right: 50px;
-        }
-    
-        .number-item {
-            display: inline-block;
-            padding: 0 25px;
-            font-weight: bold;
-            font-size: 1.2rem;
-            transition: transform 0.3s, color 0.3s;
-            position: relative;
-            margin: 0 5px;
-        }
+/* Improve dropdown hover effects */
+.dropdown-item:hover {
+    background-color: rgba(13, 110, 253, 0.5) !important;
+}
 
-        .number-item:hover {
-            transform: translateY(-3px);
-            color: #f8f9fa;
-            text-shadow: 0 0 5px rgba(255, 255, 255, 0.7);
-        }
-    
-        .number-item i {
-            margin-right: 8px;
-            color: rgba(255, 255, 255, 0.8);
-        }
+/* Active navigation item */
+.nav-link.active {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
 
-        .student-name {
-            font-weight: 600;
-        }
+/* Make navbar sticky */
+.sticky-top {
+    z-index: 1030;
+}
 
-        .student-id {
-            opacity: 0.9;
-            margin-left: 5px;
-        }
+/* BARRE VRAIMENT TRANSPARENTE */
+.number-ticker {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.2);
+    color: #000;
+    padding: 10px 0;
+    z-index: 1000;
+    box-shadow: 0 -1px 10px rgba(0, 0, 0, 0.05);
+    border-top: 1px solid rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+}
 
-        .divider {
-            display: inline-block;
-            width: 20px;
-            text-align: center;
-            color: rgba(255, 255, 255, 0.5);
-            margin: 0 15px;
-            font-size: 1.5rem;
-        }
+.ticker-container {
+    overflow: hidden;
+    white-space: nowrap;
+    height: 34px;
+}
 
-        .teacher-info {
-            background-color: rgba(255, 255, 255, 0.15);
-            border-radius: 20px;
-            padding: 3px 15px;
-            margin-left: 10px;
-        }
+.ticker-content {
+    display: inline-block;
+    animation: ticker 55s linear infinite;
+    padding-right: 50px;
+}
 
-        /* Animation pour le défilement */
-        @keyframes ticker {
-            0% { transform: translateX(100%); }
-            100% { transform: translateX(-100%); }
-        }
+.number-item {
+    display: inline-block;
+    padding: 0 25px;
+    font-weight: bold;
+    font-size: 1.2rem;
+    transition: all 0.3s ease;
+    position: relative;
+    margin: 0 5px;
+    color: #000;
+    text-shadow: 0 0 3px rgba(255, 255, 255, 0.7);
+}
 
-        /* Animation pour faire briller les éléments en séquence */
-        @keyframes shine {
-            0% { color: white; text-shadow: none; }
-            20% { color: #ffffff; text-shadow: 0 0 8px rgba(255, 255, 255, 0.8); }
-            100% { color: white; text-shadow: none; }
-        }
+.number-item:hover {
+    transform: translateY(-3px);
+    color: #0d6efd;
+}
 
-        /* Animation pour simuler le contenu existant */
-        .content-container {
-            height: 90vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+.number-item i {
+    margin-right: 8px;
+    color: #0d6efd;
+}
 
-        /* Bouton pour arrêter/démarrer l'animation */
-        .ticker-control {
-            position: absolute;
-            top: -20px;
-            right: 20px;
-            background-color: rgba(255, 255, 255, 0.9);
-            color: #0d6efd;
-            border: none;
-            border-radius: 50%;
-            width: 36px;
-            height: 36px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer;
-            box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.2);
-            transition: all 0.3s ease;
-        }
+.student-name {
+    font-weight: 600;
+}
 
-        .ticker-control:hover {
-            transform: scale(1.1);
-            box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.3);
-        }
+.student-id {
+    opacity: 0.8;
+    margin-left: 5px;
+    color: #333;
+}
+
+.divider {
+    display: inline-block;
+    width: 20px;
+    text-align: center;
+    color: rgba(0, 0, 0, 0.3);
+    margin: 0 15px;
+    font-size: 1.5rem;
+}
+
+.teacher-info {
+    background-color: rgba(13, 110, 253, 0.15);
+    border-radius: 20px;
+    padding: 3px 15px;
+    margin-left: 10px;
+}
+
+/* Animation pour le défilement */
+@keyframes ticker {
+    0% { transform: translateX(100%); }
+    100% { transform: translateX(-100%); }
+}
+
+/* Animation pour faire briller les éléments en séquence */
+@keyframes shine {
+    0% { color: #000; }
+    20% { color: #0d6efd; }
+    100% { color: #000; }
+}
+
+/* Animation pour simuler le contenu existant */
+.content-container {
+    height: 90vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Bouton pour arrêter/démarrer l'animation */
+.ticker-control {
+    position: absolute;
+    top: -20px;
+    right: 20px;
+    background: rgba(255, 255, 255, 0.7);
+    color: #0d6efd;
+    border: none;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    backdrop-filter: blur(3px);
+}
+
+.ticker-control:hover {
+    transform: scale(1.1);
+    background: rgba(255, 255, 255, 0.9);
+}
 </style>

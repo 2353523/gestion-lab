@@ -3,30 +3,172 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Liste des Matières - Gestion Lab</title>
+    <title>Liste des Matières | ISME</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .card-header {
-            background: linear-gradient(135deg, #0d6efd, #0b5ed7);
-            border-radius: 12px 12px 0 0 !important;
+        :root {
+            --primary-color: #0d6efd;
+            --primary-dark: #0b5ed7;
+            --secondary-color: #6c757d;
         }
+        
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+        }
+        
+        .card:hover {
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+        }
+        
+        .card-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            color: white;
+            border-radius: 12px 12px 0 0 !important;
+            padding: 1.2rem 1.5rem;
+            border-bottom: none;
+        }
+        
         .btn-action {
             width: 40px;
             height: 40px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
+            border-radius: 8px;
+            transition: all 0.2s ease;
         }
+        
+        .btn-action:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+        
+        .table {
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        
+        .table-hover tbody tr {
+            transition: all 0.2s ease;
+            border-radius: 8px;
+        }
+        
+        .table-hover tbody tr:hover {
+            transform: translateX(4px);
+            background-color: rgba(13, 110, 253, 0.05);
+        }
+        
+        .table td, .table th {
+            padding: 1rem;
+            vertical-align: middle;
+        }
+        
+        .table thead th {
+            font-weight: 600;
+            color: var(--secondary-color);
+            border-bottom: 2px solid #dee2e6;
+            padding-bottom: 0.75rem;
+        }
+        
+        .alert {
+            border-radius: 10px;
+            padding: 1rem 1.5rem;
+        }
+        
+        .search-container {
+            position: relative;
+            margin-bottom: 1.5rem;
+        }
+        
+        .search-input {
+            padding-left: 40px;
+            border-radius: 30px;
+            border: 1px solid #ced4da;
+            padding-top: 0.6rem;
+            padding-bottom: 0.6rem;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+        }
+        
+        .search-input:focus {
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+            border-color: var(--primary-color);
+        }
+        
+        .search-icon {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--secondary-color);
+        }
+        
+        .btn-filter {
+            border-radius: 30px;
+            padding-left: 1.2rem;
+            padding-right: 1.2rem;
+        }
+        
+        .filter-dropdown {
+            min-width: 15rem;
+        }
+        
+        .dropdown-item {
+            padding: 0.6rem 1.2rem;
+        }
+        
+        .empty-state {
+            padding: 3rem 0;
+            text-align: center;
+        }
+        
+        .empty-icon {
+            font-size: 3rem;
+            color: #adb5bd;
+            margin-bottom: 1rem;
+        }
+        
+        .pagination {
+            justify-content: center;
+            margin-top: 1.5rem;
+        }
+        
+        .page-link {
+            border-radius: 50%;
+            margin: 0 3px;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .badge {
+            font-size: 0.85rem;
+            padding: 0.5rem 0.75rem;
+            border-radius: 30px;
+        }
+
+        .badge-L1 { background-color: #198754; }
+        .badge-L2 { background-color: #0d6efd; }
+        .badge-L3 { background-color: #6f42c1; }
     </style>
 </head>
-<body class="bg-light">
+<body>
     <!-- Barre de navigation identique -->
     {% include 'nav.html' %}
     <div class="content">
         {% block content %}{% endblock %}
     </div>
-
 
     <main class="container py-4">
         <!-- Messages flash -->
@@ -44,68 +186,93 @@
             {% endif %}
         {% endwith %}
 
-        <!-- En-tête -->
-        <div class="card mb-4 shadow">
-            <div class="card-header text-white">
+        <div class="card shadow mb-4">
+            <div class="card-header">
                 <div class="d-flex justify-content-between align-items-center">
-                    <h3 class="mb-0">
+                    <h3 class="mb-0 fw-bold">
                         <i class="fas fa-book-open me-2"></i>Liste des Matières
                     </h3>
-                    {% if session.role == 'admin' %}
-                    <a href="{{ url_for('creer_matiere') }}" class="btn btn-success">
-                        <i class="fas fa-plus me-2"></i>Nouvelle Matière
-                    </a>
-                    {% endif %}
+                    <div>
+                        {% if session.role == 'admin' %}
+                        <a href="{{ url_for('creer_matiere') }}" class="btn btn-success">
+                            <i class="fas fa-plus me-2"></i>Nouvelle Matière
+                        </a>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
             
             <div class="card-body p-4">
+                <!-- Barre de recherche et filtres -->
+                <div class="row mb-4">
+                    <div class="col-md-6 mb-3 mb-md-0">
+                        <div class="search-container">
+                            <i class="fas fa-search search-icon"></i>
+                            <input type="text" id="searchInput" class="form-control search-input" 
+                                   placeholder="Rechercher une matière...">
+                        </div>
+                    </div>
+                    <div class="col-md-6 d-flex justify-content-md-end">
+                        <div class="dropdown">
+                            <button class="btn btn-outline-secondary btn-filter dropdown-toggle" type="button" 
+                                    id="filterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-filter me-2"></i>Filtrer
+                            </button>
+                            <ul class="dropdown-menu filter-dropdown shadow" aria-labelledby="filterDropdown">
+                                <li><h6 class="dropdown-header">Trier par</h6></li>
+                                <li><a class="dropdown-item" href="#" data-sort="nom">Nom (A-Z)</a></li>
+                                <li><a class="dropdown-item" href="#" data-sort="nom-desc">Nom (Z-A)</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><h6 class="dropdown-header">Filtrer par niveau</h6></li>
+                                <li><a class="dropdown-item" href="#" data-filter="all">Tous les niveaux</a></li>
+                                <li><a class="dropdown-item" href="#" data-filter="L1">L1 uniquement</a></li>
+                                <li><a class="dropdown-item" href="#" data-filter="L2">L2 uniquement</a></li>
+                                <li><a class="dropdown-item" href="#" data-filter="L3">L3 uniquement</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
                 {% if matieres %}
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle">
+                        <table class="table table-hover align-middle" id="matieresTable">
                             <thead class="table-light">
                                 <tr>
                                     <th>Nom de la matière</th>
-                                    <th>Niveau</th> <!-- Colonne ajoutée -->
+                                    <th>Niveau</th>
                                     <th class="text-end">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for matiere in matieres %}
-                                <tr>
+                                <tr data-niveau="{{ matiere.niveau }}">
                                     <td class="fw-semibold">{{ matiere.nom_matiere }}</td>
                                     <td>
-                                        <span class="badge bg-primary">
-                                            {% if matiere.niveau == 'L1' %}
-                                                L1
-                                            {% elif matiere.niveau == 'L2' %}
-                                                L2
-                                            {% elif matiere.niveau == 'L3' %}
-                                                L3
-                                            {% endif %}
+                                        <span class="badge badge-{{ matiere.niveau }}">
+                                            {{ matiere.niveau }}
                                         </span>
                                     </td>
+                                   
                                     <td class="text-end">
                                         <div class="d-flex gap-2 justify-content-end">
+                                            
                                             {% if session.role == 'admin' %}
                                             <a href="{{ url_for('editer_matiere', id=matiere.id_matiere) }}" 
                                                class="btn btn-warning btn-action"
                                                title="Modifier">
                                                 <i class="fas fa-edit"></i>
                                             </a>
-                                            {% endif %}
                                             <form method="POST" 
                                                   action="{{ url_for('supprimer_matiere', id=matiere.id_matiere) }}">
-                                                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                  {% if session.role == 'admin' %}
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                                 <button type="submit" 
                                                         class="btn btn-danger btn-action"
                                                         title="Supprimer"
-                                                        onclick="return confirm('Supprimer cette matière définitivement ?')">
+                                                        onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette matière ? Cette action est irréversible.')">
                                                     <i class="fas fa-trash"></i>
                                                 </button>
-                                                {% endif %}
                                             </form>
+                                            {% endif %}
                                         </div>
                                     </td>
                                 </tr>
@@ -113,10 +280,35 @@
                             </tbody>
                         </table>
                     </div>
+                    
+                    <!-- Pagination (optionnelle) -->
+                    <nav aria-label="Navigation des pages">
+                        <ul class="pagination">
+                            <li class="page-item disabled">
+                                <a class="page-link" href="#" aria-label="Précédent">
+                                    <i class="fas fa-chevron-left"></i>
+                                </a>
+                            </li>
+                            <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                            <li class="page-item"><a class="page-link" href="#">2</a></li>
+                            <li class="page-item"><a class="page-link" href="#">3</a></li>
+                            <li class="page-item">
+                                <a class="page-link" href="#" aria-label="Suivant">
+                                    <i class="fas fa-chevron-right"></i>
+                                </a>
+                            </li>
+                        </ul>
+                    </nav>
                 {% else %}
-                    <div class="alert alert-info mb-0 shadow-sm">
-                        <i class="fas fa-info-circle me-2"></i>
-                        Aucune matière enregistrée
+                    <div class="empty-state">
+                        <i class="fas fa-book empty-icon"></i>
+                        <h4>Aucune matière enregistrée</h4>
+                        <p class="text-muted">Commencez par ajouter une nouvelle matière</p>
+                        {% if session.role == 'admin' %}
+                        <a href="{{ url_for('creer_matiere') }}" class="btn btn-primary mt-3">
+                            <i class="fas fa-plus me-2"></i>Ajouter une matière
+                        </a>
+                        {% endif %}
                     </div>
                 {% endif %}
             </div>
@@ -124,5 +316,108 @@
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Script pour la recherche et le filtrage -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Recherche en temps réel
+            const searchInput = document.getElementById('searchInput');
+            const table = document.getElementById('matieresTable');
+            
+            if (searchInput && table) {
+                searchInput.addEventListener('keyup', function() {
+                    const searchTerm = this.value.toLowerCase();
+                    const rows = table.querySelectorAll('tbody tr');
+                    
+                    rows.forEach(row => {
+                        const nomMatiere = row.cells[0].textContent.toLowerCase();
+                        const niveau = row.cells[1].textContent.toLowerCase();
+                        
+                        const match = nomMatiere.includes(searchTerm) || 
+                                      niveau.includes(searchTerm);
+                        
+                        row.style.display = match ? '' : 'none';
+                    });
+                    
+                    // Afficher message si aucun résultat
+                    const visibleRows = table.querySelectorAll('tbody tr:not([style*="display: none"])');
+                    const tbody = table.querySelector('tbody');
+                    
+                    // Supprimer message "aucun résultat" s'il existe déjà
+                    const existingNoResults = tbody.querySelector('.no-results');
+                    if (existingNoResults) {
+                        tbody.removeChild(existingNoResults);
+                    }
+                    
+                    // Ajouter message si aucun résultat
+                    if (visibleRows.length === 0 && searchTerm !== '') {
+                        const noResultsRow = document.createElement('tr');
+                        noResultsRow.className = 'no-results';
+                        noResultsRow.innerHTML = `
+                            <td colspan="5" class="text-center py-4">
+                                <i class="fas fa-search me-2"></i>
+                                Aucune matière trouvée pour "<strong>${searchTerm}</strong>"
+                            </td>
+                        `;
+                        tbody.appendChild(noResultsRow);
+                    }
+                });
+            }
+            
+            // Tri des colonnes
+            const sortLinks = document.querySelectorAll('[data-sort]');
+            sortLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const sortBy = this.getAttribute('data-sort');
+                    const tbody = table.querySelector('tbody');
+                    const rows = Array.from(tbody.querySelectorAll('tr'));
+                    
+                    rows.sort((a, b) => {
+                        let aValue = a.cells[0].textContent.trim();
+                        let bValue = b.cells[0].textContent.trim();
+                        
+                        if (sortBy === 'nom-desc') {
+                            return bValue.localeCompare(aValue);
+                        } else {
+                            return aValue.localeCompare(bValue);
+                        }
+                    });
+                    
+                    // Vider et remplir le tbody avec les lignes triées
+                    while (tbody.firstChild) {
+                        tbody.removeChild(tbody.firstChild);
+                    }
+                    
+                    rows.forEach(row => {
+                        tbody.appendChild(row);
+                    });
+                });
+            });
+            
+            // Filtrage par niveau
+            const filterLinks = document.querySelectorAll('[data-filter]');
+            filterLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const filterValue = this.getAttribute('data-filter');
+                    const rows = table.querySelectorAll('tbody tr');
+                    
+                    rows.forEach(row => {
+                        if (filterValue === 'all') {
+                            row.style.display = '';
+                        } else {
+                            const rowNiveau = row.getAttribute('data-niveau');
+                            row.style.display = (rowNiveau === filterValue) ? '' : 'none';
+                        }
+                    });
+                    
+                    // Mettre à jour le texte du bouton de filtre
+                    const filterButton = document.getElementById('filterDropdown');
+                    filterButton.innerHTML = `<i class="fas fa-filter me-2"></i>${filterValue === 'all' ? 'Filtrer' : 'Niveau: ' + filterValue}`;
+                });
+            });
+        });
+    </script>
 </body>
 </html>

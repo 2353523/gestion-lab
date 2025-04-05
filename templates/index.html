@@ -205,6 +205,11 @@
         .icon-animate:hover {
             transform: rotate(15deg);
         }
+          /* Animation de fondu */
+    .alert.fade-out {
+        opacity: 0;
+        transition: opacity 1s ease-out;
+    }
     </style>
 </head>
 <body class="bg-light">
@@ -252,18 +257,18 @@
     </div>
     <main class="container py-4">
         {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} alert-dismissible fade show mb-4 shadow-sm">
-                        <div class="d-flex align-items-center">
-                            <i class="fas fa-info-circle me-3"></i>
-                            <div>{{ message }}</div>
-                        </div>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show mb-4 shadow-sm auto-close-alert">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-info-circle me-3"></i>
+                        <div>{{ message }}</div>
                     </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
 
         {% if show_welcome %}
         <div id="welcome-overlay" class="welcome-overlay">
@@ -534,6 +539,20 @@
                 $('#niveau_filter, #statut_filter').val('');
                 filterTable();
             });
+
+             // Fermeture automatique après 1 minute (60000 ms)
+    document.querySelectorAll('.auto-close-alert').forEach(alert => {
+        setTimeout(() => {
+            // Déclenche l'animation de fondu
+            alert.classList.add('fade-out');
+            
+            // Supprime l'élément après l'animation
+            setTimeout(() => {
+                alert.remove();
+            }, 1000);
+            
+        }, 59000); // Commence 1 seconde avant la fin pour l'animation
+    });
         });
     </script>
 </body>

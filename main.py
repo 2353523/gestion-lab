@@ -640,12 +640,40 @@ def convert_timedelta(td):
 
 # CRUD Professeurs
 @app.route('/professeurs')
-def liste_professeurs():
+def liste_professeurs():  # <-- Nom original de la fonction
+    cur = mysql.connection.cursor()
+    
+    # Version avec filtre actif
+    cur.execute("""
+        SELECT p.*, COUNT(tp.id_tp) as tp_count 
+        FROM professeur p
+        LEFT JOIN tp ON p.id_prof = tp.id_prof 
+            AND DATE(tp.heure_debut) = CURDATE()
+        GROUP BY p.id_prof
+        HAVING tp_count > 0
+        ORDER BY p.nom, p.prenom
+    """)
+    
+    professeurs = cur.fetchall()
+    tp_counts = {prof['id_prof']: prof['tp_count'] for prof in professeurs}
+    cur.close()
+    
+    return render_template('professeurs/liste.html',
+                         professeurs=professeurs,
+                         tp_counts=tp_counts,
+                         now=datetime.now(),
+                         active_filter=True)
+
+@app.route('/professeurs/all')
+def tous_les_professeurs():
     cur = mysql.connection.cursor()
     cur.execute("SELECT * FROM professeur ORDER BY nom, prenom")
     professeurs = cur.fetchall()
     cur.close()
-    return render_template('professeurs/liste.html', professeurs=professeurs)
+    return render_template('professeurs/liste.html', 
+                         professeurs=professeurs,
+                         all_profs=True,
+                         now=datetime.now())
 
 @app.route('/professeurs/creer', methods=['GET', 'POST'])
 def creer_professeur():
@@ -854,13 +882,38 @@ def supprimer_matiere(id):
     return redirect(url_for('liste_matieres'))
 
 # CRUD Laboratoires
-@app.route('/laboratoires')
-def liste_laboratoires():
+@app.route('/laboratoires/actifs')
+def laboratoires_actifs():
+    cur = mysql.connection.cursor()
+    cur.execute("""
+        SELECT l.*, COUNT(tp.id_tp) as tp_count 
+        FROM laboratoire l
+        LEFT JOIN tp ON l.id_laboratoire = tp.id_laboratoire 
+            AND DATE(tp.heure_debut) = CURDATE()
+        GROUP BY l.id_laboratoire
+        HAVING tp_count > 0
+        ORDER BY l.nom_laboratoire
+    """)
+    laboratoires = cur.fetchall()
+    tp_counts = {lab['id_laboratoire']: lab['tp_count'] for lab in laboratoires}
+    cur.close()
+    return render_template('laboratoires/liste.html',
+                         laboratoires=laboratoires,
+                         tp_counts=tp_counts,
+                         active_filter=True,
+                         now=datetime.now())
+
+@app.route('/laboratoires/all')
+def tous_les_laboratoires():
     cur = mysql.connection.cursor()
     cur.execute("SELECT * FROM laboratoire ORDER BY nom_laboratoire")
     laboratoires = cur.fetchall()
     cur.close()
-    return render_template('laboratoires/liste.html', laboratoires=laboratoires)
+    return render_template('laboratoires/liste.html',
+                         laboratoires=laboratoires,
+                         active_filter=False,
+                         now=datetime.now())
+
 
 @app.route('/laboratoires/creer', methods=['GET', 'POST'])
 def creer_laboratoire():
@@ -884,7 +937,7 @@ def creer_laboratoire():
             """, (data['nom'], data['capacite']))
             mysql.connection.commit()
             flash("Laboratoire créé avec succès", "success")
-            return redirect(url_for('liste_laboratoires'))
+            return redirect(url_for('laboratoires_actifs'))
         except Exception as e:
             mysql.connection.rollback()
             flash(f"Erreur: {str(e)}", "danger")
@@ -915,7 +968,7 @@ def editer_laboratoire(id):
             """, (data['nom'], data['capacite'], id))
             mysql.connection.commit()
             flash("Modifications enregistrées", "success")
-            return redirect(url_for('liste_laboratoires'))
+            return redirect(url_for('laboratoires_actifs'))
 
         cur.execute("SELECT * FROM laboratoire WHERE id_laboratoire = %s", (id,))
         laboratoire = cur.fetchone()
@@ -924,7 +977,7 @@ def editer_laboratoire(id):
     except Exception as e:
         mysql.connection.rollback()
         flash(f"Erreur: {str(e)}", "danger")
-        return redirect(url_for('liste_laboratoires'))
+        return redirect(url_for('laboratoires_actifs'))
     finally:
         cur.close()
 
@@ -942,7 +995,7 @@ def supprimer_laboratoire(id):
         flash(f"Erreur: {str(e)} - Des TP utilisent ce laboratoire", "danger")
     finally:
         cur.close()
-    return redirect(url_for('liste_laboratoires'))
+    return redirect(url_for('laboratoires_actifs'))
 
 from datetime import datetime, time, timedelta
 
