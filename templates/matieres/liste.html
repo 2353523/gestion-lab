@@ -22,11 +22,6 @@
             border: none;
             border-radius: 12px;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-            transition: all 0.3s ease;
-        }
-        
-        .card:hover {
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
         }
         
         .card-header {
@@ -34,9 +29,9 @@
             color: white;
             border-radius: 12px 12px 0 0 !important;
             padding: 1.2rem 1.5rem;
-            border-bottom: none;
         }
         
+        /* Correction des boutons */
         .btn-action {
             width: 40px;
             height: 40px;
@@ -44,46 +39,51 @@
             align-items: center;
             justify-content: center;
             border-radius: 8px;
-            transition: all 0.2s ease;
+            transition: 
+                background-color 0.2s ease,
+                box-shadow 0.2s ease !important;
+            transform-origin: center;
         }
         
         .btn-action:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+            transform: scale(1.08);
+            z-index: 2;
         }
         
+        .btn-action:active {
+            transform: scale(0.95) !important;
+            transition: none !important;
+        }
+        
+        /* Correction du tableau */
         .table {
             border-collapse: separate;
             border-spacing: 0;
         }
         
         .table-hover tbody tr {
-            transition: all 0.2s ease;
-            border-radius: 8px;
+            transition: background-color 0.3s ease;
+            position: relative;
+            background: white;
         }
         
         .table-hover tbody tr:hover {
-            transform: translateX(4px);
-            background-color: rgba(13, 110, 253, 0.05);
+            box-shadow: inset 4px 0 0 var(--primary-color);
+            background-color: rgba(13, 110, 253, 0.04) !important;
         }
         
         .table td, .table th {
             padding: 1rem;
             vertical-align: middle;
+            background: inherit;
         }
         
-        .table thead th {
-            font-weight: 600;
-            color: var(--secondary-color);
-            border-bottom: 2px solid #dee2e6;
-            padding-bottom: 0.75rem;
+        .table-responsive {
+            overflow: overlay;
+            padding-bottom: 2px;
         }
         
-        .alert {
-            border-radius: 10px;
-            padding: 1rem 1.5rem;
-        }
-        
+        /* Autres styles */
         .search-container {
             position: relative;
             margin-bottom: 1.5rem;
@@ -92,38 +92,7 @@
         .search-input {
             padding-left: 40px;
             border-radius: 30px;
-            border: 1px solid #ced4da;
-            padding-top: 0.6rem;
-            padding-bottom: 0.6rem;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
             transition: all 0.3s ease;
-        }
-        
-        .search-input:focus {
-            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-            border-color: var(--primary-color);
-        }
-        
-        .search-icon {
-            position: absolute;
-            left: 15px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--secondary-color);
-        }
-        
-        .btn-filter {
-            border-radius: 30px;
-            padding-left: 1.2rem;
-            padding-right: 1.2rem;
-        }
-        
-        .filter-dropdown {
-            min-width: 15rem;
-        }
-        
-        .dropdown-item {
-            padding: 0.6rem 1.2rem;
         }
         
         .empty-state {
@@ -131,36 +100,35 @@
             text-align: center;
         }
         
-        .empty-icon {
-            font-size: 3rem;
-            color: #adb5bd;
-            margin-bottom: 1rem;
-        }
-        
-        .pagination {
-            justify-content: center;
-            margin-top: 1.5rem;
-        }
-        
-        .page-link {
-            border-radius: 50%;
-            margin: 0 3px;
-            width: 40px;
-            height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
         .badge {
             font-size: 0.85rem;
             padding: 0.5rem 0.75rem;
             border-radius: 30px;
         }
+        
+        /* Stabilisation des animations */
+        .table-hover tbody tr {
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+        }
+        
+        .btn-action {
+            will-change: transform;
+            backface-visibility: hidden;
+        }
+        
+        /* Correction du scroll */
+        .table-responsive::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        .table-responsive::-webkit-scrollbar-thumb {
+            background: rgba(0,0,0,0.1);
+            border-radius: 4px;
+        }
 
-        .badge-L1 { background-color: #198754; }
-        .badge-L2 { background-color: #0d6efd; }
-        .badge-L3 { background-color: #6f42c1; }
+        
     </style>
 </head>
 <body>
@@ -415,6 +383,18 @@
                     // Mettre à jour le texte du bouton de filtre
                     const filterButton = document.getElementById('filterDropdown');
                     filterButton.innerHTML = `<i class="fas fa-filter me-2"></i>${filterValue === 'all' ? 'Filtrer' : 'Niveau: ' + filterValue}`;
+                });
+            });
+
+            document.querySelectorAll('.btn-action').forEach(btn => {
+                btn.addEventListener('touchstart', function(e) {
+                    e.preventDefault();
+                    this.style.transform = 'scale(0.95)';
+                });
+                
+                btn.addEventListener('touchend', function(e) {
+                    e.preventDefault();
+                    this.style.transform = '';
                 });
             });
         });

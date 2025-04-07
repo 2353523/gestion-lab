@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestion des Laboratoires | ISME</title>
-    <!-- Bootstrap 5.3 au lieu de 5.1 -->
+    <!-- Bootstrap 5.3 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -134,6 +134,85 @@
             margin-right: 0.5rem;
             color: #6c757d;
         }
+        
+        /* Stabilisation du modal */
+        .modal-delete {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .modal-dialog {
+            max-width: 500px;
+            margin: 1.75rem auto;
+        }
+        
+        .modal-content {
+            position: relative;
+            border: none;
+            border-radius: 0.5rem;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        }
+        
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(2px);
+        }
+        
+        /* Styles pour la pagination */
+        .pagination-container {
+            margin-top: 1.5rem;
+            display: flex;
+            justify-content: center;
+        }
+        
+        .pagination {
+            box-shadow: 0 0.25rem 0.5rem rgba(0,0,0,0.05);
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+        
+        .page-item:first-child .page-link {
+            border-top-left-radius: 0.5rem;
+            border-bottom-left-radius: 0.5rem;
+        }
+        
+        .page-item:last-child .page-link {
+            border-top-right-radius: 0.5rem;
+            border-bottom-right-radius: 0.5rem;
+        }
+        
+        .page-link {
+            padding: 0.6rem 1rem;
+            font-weight: 500;
+            border: none;
+            color: #495057;
+            transition: all 0.2s ease;
+        }
+        
+        .page-link:hover {
+            background-color: rgba(var(--bs-primary-rgb), 0.1);
+            color: var(--bs-primary);
+            z-index: 1;
+        }
+        
+        .page-item.active .page-link {
+            background-color: var(--bs-primary);
+            color: white;
+            box-shadow: 0 0.25rem 0.5rem rgba(var(--bs-primary-rgb), 0.3);
+        }
+        
+        .page-info {
+            color: #6c757d;
+            font-size: 0.9rem;
+            text-align: center;
+            margin-top: 0.75rem;
+        }
     </style>
 </head>
 <body class="bg-light">
@@ -191,7 +270,7 @@
                         <div class="stat-card">
                             <div class="text-muted mb-1">Total Laboratoires</div>
                             <div class="d-flex align-items-center">
-                                <div class="fs-2 fw-bold me-2">{{ laboratoires|length }}</div>
+                                <div class="fs-2 fw-bold me-2" id="totalLabCount">{{ laboratoires|length }}</div>
                                 <span class="badge bg-primary">{{ '100%' if active_filter else '' }}</span>
                             </div>
                         </div>
@@ -220,9 +299,9 @@
                                     <th class="text-end pe-3">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody id="tableBody">
                                 {% for lab in laboratoires %}
-                                <tr class="lab-row">
+                                <tr class="lab-row" data-page="1">
                                     <td class="fw-semibold ps-3">
                                         <div class="d-flex align-items-center">
                                             <i class="fas fa-vial text-primary me-2"></i>
@@ -254,36 +333,11 @@
                                                class="btn btn-outline-warning" data-bs-toggle="tooltip" title="Modifier">
                                                 <i class="fas fa-edit"></i>
                                             </a>
-                                            <button type="button" class="btn btn-outline-danger" 
-                                                    data-bs-toggle="modal" data-bs-target="#deleteModal{{ lab.id_laboratoire }}"
+                                            <button type="button" class="btn btn-outline-danger delete-btn" 
+                                                    data-id="{{ lab.id_laboratoire }}" data-name="{{ lab.nom_laboratoire }}"
                                                     title="Supprimer">
                                                 <i class="fas fa-trash-alt"></i>
                                             </button>
-                                            
-                                            <!-- Modal de confirmation -->
-                                            <div class="modal fade" id="deleteModal{{ lab.id_laboratoire }}" tabindex="-1" aria-hidden="true">
-                                                <div class="modal-dialog modal-dialog-centered">
-                                                    <div class="modal-content">
-                                                        <div class="modal-header bg-danger text-white">
-                                                            <h5 class="modal-title">Confirmation de suppression</h5>
-                                                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                        </div>
-                                                        <div class="modal-body">
-                                                            <p>Êtes-vous sûr de vouloir supprimer le laboratoire <strong>{{ lab.nom_laboratoire }}</strong> ?</p>
-                                                            <p class="text-danger"><i class="fas fa-exclamation-triangle me-2"></i>Cette action est irréversible.</p>
-                                                        </div>
-                                                        <div class="modal-footer">
-                                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                                                            <form method="POST" action="{{ url_for('supprimer_laboratoire', id=lab.id_laboratoire) }}">
-                                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                                <button type="submit" class="btn btn-danger">
-                                                                    <i class="fas fa-trash-alt me-2"></i>Confirmer la suppression
-                                                                </button>
-                                                            </form>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
                                             {% endif %}
                                         </div>
                                     </td>
@@ -291,6 +345,29 @@
                                 {% endfor %}
                             </tbody>
                         </table>
+                    </div>
+                    
+                    <!-- Pagination -->
+                    <div class="pagination-container" id="paginationContainer">
+                        <nav aria-label="Navigation des laboratoires">
+                            <ul class="pagination" id="pagination">
+                                <li class="page-item disabled" id="prevPageBtn">
+                                    <a class="page-link" href="#" aria-label="Précédent">
+                                        <i class="fas fa-angle-left"></i>
+                                    </a>
+                                </li>
+                                <li class="page-item active"><a class="page-link" href="#" data-page="1">1</a></li>
+                                <!-- Les autres pages seront générées dynamiquement par JavaScript -->
+                                <li class="page-item" id="nextPageBtn">
+                                    <a class="page-link" href="#" aria-label="Suivant">
+                                        <i class="fas fa-angle-right"></i>
+                                    </a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                    <div class="page-info" id="pageInfo">
+                        Affichage <span id="startEntry">1</span> à <span id="endEntry">10</span> sur <span id="totalEntries">{{ laboratoires|length }}</span> laboratoires
                     </div>
                 {% else %}
                     <div class="empty-state">
@@ -324,14 +401,44 @@
                         <i class="fas fa-sync-alt me-2"></i>
                         Actualisé à {{ now.strftime('%H:%M') }}
                     </span>
-                    <span>
-                        <i class="fas fa-database me-2"></i>
-                        Version 2.1.0 - LabManager
-                    </span>
+                    <div>
+                        <label for="rowsPerPage" class="me-2">Par page:</label>
+                        <select id="rowsPerPage" class="form-select form-select-sm d-inline-block" style="width: auto;">
+                            <option value="5">5</option>
+                            <option value="10" selected>10</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                        </select>
+                    </div>
                 </div>
             </div>
         </div>
     </main>
+
+    <!-- Modal unique de confirmation de suppression -->
+    <div class="modal fade" id="deleteLabModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">Confirmation de suppression</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Êtes-vous sûr de vouloir supprimer le laboratoire <strong id="labNameToDelete"></strong> ?</p>
+                    <p class="text-danger"><i class="fas fa-exclamation-triangle me-2"></i>Cette action est irréversible.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <form id="deleteLabForm" method="POST" action="">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash-alt me-2"></i>Confirmer la suppression
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
@@ -340,31 +447,213 @@
             const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
             const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
             
-            // Fonction de recherche
+            // Initialiser le modal de suppression
+            const deleteModal = new bootstrap.Modal(document.getElementById('deleteLabModal'), {
+                keyboard: false,
+                backdrop: 'static'
+            });
+            
+            // Gérer les boutons de suppression
+            document.querySelectorAll('.delete-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const labId = this.getAttribute('data-id');
+                    const labName = this.getAttribute('data-name');
+                    
+                    document.getElementById('labNameToDelete').textContent = labName;
+                    document.getElementById('deleteLabForm').action = "{{ url_for('supprimer_laboratoire', id=0) }}".replace('0', labId);
+                    
+                    deleteModal.show();
+                });
+            });
+            
+            // Variables pour la pagination
+            let currentPage = 1;
+            let rowsPerPage = 10;
+            let filteredRows = [];
+            const tableBody = document.getElementById('tableBody');
+            const rowsSelect = document.getElementById('rowsPerPage');
+            
+            // Fonction pour mettre à jour le nombre d'entrées par page
+            rowsSelect.addEventListener('change', function() {
+                rowsPerPage = parseInt(this.value);
+                currentPage = 1; // Revenir à la première page après changement
+                updatePagination();
+            });
+            
+            // Fonction pour gérer la recherche
             const searchInput = document.getElementById('liveSearch');
             if (searchInput) {
-                const filterTable = (value) => {
-                    const rows = document.querySelectorAll('#laboratoiresTable tbody tr');
-                    let matchCount = 0;
-                    
-                    rows.forEach(row => {
-                        const text = row.textContent.toLowerCase();
-                        const matches = text.includes(value.toLowerCase());
-                        row.style.display = matches ? '' : 'none';
-                        if (matches) matchCount++;
-                    });
-                    
-                    // Mise à jour des statistiques si filtrées
-                    const statCards = document.querySelectorAll('.stat-card');
-                    if (statCards.length > 0) {
-                        statCards[0].querySelector('.fs-2').textContent = matchCount;
-                    }
-                };
-
-                searchInput.addEventListener('input', (e) => filterTable(e.target.value));
+                searchInput.addEventListener('input', function(e) {
+                    const searchTerm = e.target.value.toLowerCase();
+                    filterTable(searchTerm);
+                });
                 
                 // Focus sur la recherche au chargement
                 setTimeout(() => searchInput.focus(), 500);
+            }
+            
+            // Fonction pour filtrer la table
+            function filterTable(searchTerm) {
+                const rows = document.querySelectorAll('#tableBody tr');
+                filteredRows = [];
+                
+                rows.forEach(row => {
+                    const text = row.textContent.toLowerCase();
+                    const matches = text.includes(searchTerm);
+                    if (matches) {
+                        filteredRows.push(row);
+                    }
+                    row.style.display = 'none'; // Cacher toutes les lignes
+                });
+                
+                // Mettre à jour le compteur
+                document.getElementById('totalLabCount').textContent = filteredRows.length;
+                document.getElementById('totalEntries').textContent = filteredRows.length;
+                
+                currentPage = 1; // Revenir à la première page après filtre
+                updatePagination();
+            }
+            
+            // Fonction pour initialiser les données de pagination
+            function initializePagination() {
+                const rows = document.querySelectorAll('#tableBody tr');
+                filteredRows = Array.from(rows);
+                updatePagination();
+            }
+            
+            // Fonction pour mettre à jour la pagination
+            function updatePagination() {
+                // Calculer le nombre total de pages
+                const totalPages = Math.ceil(filteredRows.length / rowsPerPage);
+                
+                // Mettre à jour l'UI de pagination
+                const paginationUl = document.getElementById('pagination');
+                
+                // Réinitialiser la pagination sauf les boutons de navigation
+                let paginationHTML = `
+                    <li class="page-item ${currentPage === 1 ? 'disabled' : ''}" id="prevPageBtn">
+                        <a class="page-link" href="#" aria-label="Précédent">
+                            <i class="fas fa-angle-left"></i>
+                        </a>
+                    </li>
+                `;
+                
+                // Logique pour n'afficher qu'un nombre limité de pages
+                const maxPagesToShow = 5;
+                let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+                let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+                
+                if (endPage - startPage + 1 < maxPagesToShow) {
+                    startPage = Math.max(1, endPage - maxPagesToShow + 1);
+                }
+                
+                // Ajouter lien première page si nécessaire
+                if (startPage > 1) {
+                    paginationHTML += `<li class="page-item"><a class="page-link" href="#" data-page="1">1</a></li>`;
+                    if (startPage > 2) {
+                        paginationHTML += `<li class="page-item disabled"><a class="page-link" href="#">...</a></li>`;
+                    }
+                }
+                
+                // Générer les liens de pagination
+                for (let i = startPage; i <= endPage; i++) {
+                    paginationHTML += `
+                        <li class="page-item ${i === currentPage ? 'active' : ''}">
+                            <a class="page-link" href="#" data-page="${i}">${i}</a>
+                        </li>
+                    `;
+                }
+                
+                // Ajouter lien dernière page si nécessaire
+                if (endPage < totalPages) {
+                    if (endPage < totalPages - 1) {
+                        paginationHTML += `<li class="page-item disabled"><a class="page-link" href="#">...</a></li>`;
+                    }
+                    paginationHTML += `<li class="page-item"><a class="page-link" href="#" data-page="${totalPages}">${totalPages}</a></li>`;
+                }
+                
+                paginationHTML += `
+                    <li class="page-item ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}" id="nextPageBtn">
+                        <a class="page-link" href="#" aria-label="Suivant">
+                            <i class="fas fa-angle-right"></i>
+                        </a>
+                    </li>
+                `;
+                
+                paginationUl.innerHTML = paginationHTML;
+                
+                // Masquer la pagination s'il n'y a qu'une seule page
+                const paginationContainer = document.getElementById('paginationContainer');
+                paginationContainer.style.display = totalPages <= 1 ? 'none' : 'flex';
+                
+                // Mettre à jour les informations de page
+                const startEntry = filteredRows.length > 0 ? (currentPage - 1) * rowsPerPage + 1 : 0;
+                const endEntry = Math.min(startEntry + rowsPerPage - 1, filteredRows.length);
+                
+                document.getElementById('startEntry').textContent = startEntry;
+                document.getElementById('endEntry').textContent = endEntry;
+                document.getElementById('pageInfo').style.display = filteredRows.length > 0 ? 'block' : 'none';
+                
+                // Attacher les événements de clic
+                attachPaginationEvents();
+                
+                // Afficher les lignes de la page actuelle
+                showCurrentPageRows();
+            }
+            
+            // Fonction pour attacher les événements de pagination
+            function attachPaginationEvents() {
+                document.querySelectorAll('#pagination .page-link[data-page]').forEach(link => {
+                    link.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        currentPage = parseInt(this.getAttribute('data-page'));
+                        updatePagination();
+                    });
+                });
+                
+                // Gérer les boutons précédent/suivant
+                const prevBtn = document.getElementById('prevPageBtn');
+                if (prevBtn) {
+                    prevBtn.querySelector('a').addEventListener('click', function(e) {
+                        e.preventDefault();
+                        if (currentPage > 1) {
+                            currentPage--;
+                            updatePagination();
+                        }
+                    });
+                }
+                
+                const nextBtn = document.getElementById('nextPageBtn');
+                if (nextBtn) {
+                    nextBtn.querySelector('a').addEventListener('click', function(e) {
+                        e.preventDefault();
+                        const totalPages = Math.ceil(filteredRows.length / rowsPerPage);
+                        if (currentPage < totalPages) {
+                            currentPage++;
+                            updatePagination();
+                        }
+                    });
+                }
+            }
+            
+            // Fonction pour afficher les lignes de la page actuelle
+            function showCurrentPageRows() {
+                // Calculer les indices de début et de fin
+                const startIndex = (currentPage - 1) * rowsPerPage;
+                const endIndex = Math.min(startIndex + rowsPerPage, filteredRows.length);
+                
+                // Cacher toutes les lignes
+                filteredRows.forEach(row => row.style.display = 'none');
+                
+                // Afficher uniquement les lignes de la page actuelle
+                for (let i = startIndex; i < endIndex; i++) {
+                    filteredRows[i].style.display = '';
+                }
+            }
+            
+            // Initialiser la pagination au chargement de la page
+            if (document.getElementById('tableBody')) {
+                initializePagination();
             }
         });
     </script>

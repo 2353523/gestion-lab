@@ -3,27 +3,23 @@ from datetime import datetime, time, timedelta
 from flask import Flask, render_template, request, redirect, url_for, flash, session, abort,render_template_string,Response  
 from flask_mysqldb import MySQL
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask import session
 from flask_session import Session 
 from flask_wtf.csrf import CSRFProtect
-import mysql.connector
 import locale
 from collections import defaultdict
 from dateutil.relativedelta import relativedelta
 
 
-
-
 app = Flask(__name__)
 csrf = CSRFProtect(app)
-app.secret_key = os.environ.get('SECRET_KEY') or 'une_phrase_secrete_complexe_ici'  # Ex: 'azerty1234!@#$567890' 
-# Configuration de session (ajoutez ceci après app.secret_key)
+app.secret_key = os.environ.get('SECRET_KEY') or 'sidahmed43'  
+# Configuration de session 
 app.config.update(
     SESSION_TYPE='filesystem',
-    SESSION_FILE_DIR='/tmp/flask_sessions',  # Créez ce dossier
+    SESSION_FILE_DIR='/tmp/flask_sessions',  
     SESSION_COOKIE_NAME='lab_session',
     SESSION_COOKIE_HTTPONLY=True,
-    SESSION_COOKIE_SECURE=False,  # True en production
+    SESSION_COOKIE_SECURE=False, 
     PERMANENT_SESSION_LIFETIME=timedelta(hours=2)
 )
 Session(app)
@@ -34,8 +30,7 @@ app.config['MYSQL_PASSWORD'] = ''
 app.config['MYSQL_DB'] = 'gestion_lab'
 app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
 
-mysql = MySQL(app)  # <-- Déplacer cette ligne ICI
-
+mysql = MySQL(app)  
 
 
 def get_tp_status(start_time, end_time):
@@ -90,8 +85,6 @@ def create_default_users():
         finally:
             cur.close()
 
-# Supprimez la première définition de create_default_users() (lignes 42 à 60)
-# Gardez seulement la deuxième définition (à partir de la ligne 62)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -153,6 +146,8 @@ def verify_access():
 def logout():
     session.clear()
     return redirect(url_for('login'))
+
+
 @app.before_request
 def verify_access():
     excluded = ['login', 'static', 'logout']
@@ -160,14 +155,36 @@ def verify_access():
     if request.endpoint in excluded:
         return
     
-    # Debug session
-    print(f"Session vérifiée: {dict(session)}")
-    
+    # Vérifier si l'utilisateur est connecté
     if 'user_id' not in session:
         print("Redirection vers login - Session invalide")
         return redirect(url_for('login'))
     
-    # Garder la session active
+    # Vérifier si l'utilisateur existe toujours dans la base de données
+    user_id = session['user_id']
+    cur = mysql.connection.cursor()
+    cur.execute("SELECT id FROM utilisateur WHERE id = %s", (user_id,))
+    user_exists = cur.fetchone()
+    cur.close()
+    
+    if not user_exists:
+        session.clear()
+        flash("Votre compte a été supprimé.", "danger")
+        return redirect(url_for('login'))
+    
+    # Vérifier les droits admin pour les routes concernées
+    admin_only_routes = [
+        'creer_professeur', 'supprimer_professeur',
+        'creer_matiere', 'supprimer_matiere',
+        'creer_laboratoire', 'supprimer_laboratoire',
+        'liste_utilisateurs', 'creer_utilisateur', 
+        'editer_utilisateur', 'supprimer_utilisateur'
+    ]
+    
+    if request.endpoint in admin_only_routes and session.get('role') != 'admin':
+        abort(403, description="Accès réservé aux administrateurs")
+    
+    # Maintenir la session active
     session.permanent = True
     session.modified = True
 
@@ -273,6 +290,7 @@ def index():
 
 @app.route('/supprimer_tp/<int:id>', methods=['POST'])
 def supprimer_tp(id):
+    lab_id = request.args.get('lab_id', None, type=int)
     redirect_week = request.args.get('redirect_week', 0, type=int)
     
     cur = mysql.connection.cursor()
@@ -286,7 +304,7 @@ def supprimer_tp(id):
     finally:
         cur.close()
     
-    return redirect(url_for('index', week_offset=redirect_week))
+    return redirect(url_for('emploi', lab_id=lab_id, week_offset=redirect_week))
 
 CRENEAUX = {
         'P1': ('08:00', '09:30'),
@@ -482,6 +500,7 @@ def editer_tp(id):
         'P5': ('17:00', '18:30')
     }
 
+    lab_id = request.args.get('lab_id', None, type=int)
     redirect_week = request.args.get('redirect_week', 0, type=int)
     from_emploi = 'redirect_week' in request.args
     
@@ -594,7 +613,7 @@ def editer_tp(id):
 
     except Exception as e:
         flash(f"Erreur système : {str(e)}", "danger")
-        return redirect(url_for('emploi', week_offset=redirect_week))
+        return redirect(url_for('emploi', lab_id=lab_id, week_offset=redirect_week))
     finally:
         cur.close()
 
@@ -640,7 +659,7 @@ def convert_timedelta(td):
 
 # CRUD Professeurs
 @app.route('/professeurs')
-def liste_professeurs():  # <-- Nom original de la fonction
+def liste_professeurs():  
     cur = mysql.connection.cursor()
     
     # Version avec filtre actif
@@ -1796,7 +1815,6 @@ def editer_type(id):
             flash("La catégorie sélectionnée n'existe pas", "danger")
             return redirect(url_for('parametres_stock'))
         
-        # Vérification de l'unicité (sauf pour l'élément en cours)
         cur.execute("""
             SELECT * FROM type 
             WHERE nom_type = %s AND id_categorie = %s AND id_type != %s
@@ -1830,8 +1848,6 @@ def supprimer_type(id):
     
     try:
         cur = mysql.connection.cursor()
-        
-        # Vérification des dépendances
         cur.execute("SELECT COUNT(*) as nb_articles FROM article WHERE id_type = %s", (id,))
         result = cur.fetchone()
         
@@ -1861,9 +1877,6 @@ def statistiques():
 
     try:
         cur = mysql.connection.cursor()
-
-        # Statistiques laboratoires
-        # Remplacer la requête existante par :
         cur.execute("""
             SELECT 
                 l.id_laboratoire,
@@ -1894,9 +1907,6 @@ def statistiques():
             GROUP BY l.id_laboratoire, t.nom_type
         """)
         lab_types_data = cur.fetchall()
-
-
-       # Préparation données graphique
         types = sorted({lt['type_article'] for lt in lab_types_data if lt['type_article']}) 
         # Remplacer la boucle de traitement par :
         lab_types_dict = defaultdict(dict)
@@ -1924,8 +1934,6 @@ def statistiques():
             ORDER BY semaine
         """)
         timeline_data = cur.fetchall()
-        # Structurer les données pour Chart.js
-       # Remplacer le traitement des mois par des semaines
         timeline_dict = {item['semaine']: item['nb_tp'] for item in timeline_data}
 
         end_date = datetime.now()
@@ -1971,8 +1979,6 @@ def statistiques():
     finally:
         cur.close()
 
-
-# === Routes pour la gestion des reçus ===
 def nl2br(value):
     return value.replace('\n', '<br>') if value else ''
 
@@ -2700,9 +2706,6 @@ def profil():
     finally:
         cur.close()
 
-# Gestion des utilisateurs (Admin seulement)
-
-# ... (Routes pour créer/modifier/supprimer des utilisateurs similaires à précédemment)
 
 if __name__ == '__main__':
     # Création des utilisateurs dans un contexte d'application

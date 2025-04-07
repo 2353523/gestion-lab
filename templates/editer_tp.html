@@ -56,6 +56,8 @@
 
                         <form method="POST" class="needs-validation" novalidate>
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="redirect_week" value="{{ redirect_week }}">
+                            <input type="hidden" name="lab_id" value="{{ lab_id }}">
                             {% if tp %}<input type="hidden" name="redirect_week" value="{{ redirect_week }}">{% endif %}
                         
                             <div class="row g-4">
@@ -163,8 +165,8 @@
                                         <button type="submit" class="btn btn-success btn-lg px-5">
                                             <i class="fas fa-save me-2"></i>Enregistrer
                                         </button>
-                                        <a href="{{ url_for('emploi', week_offset=redirect_week) if tp else url_for('index') }}" 
-                                           class="btn btn-outline-secondary btn-lg px-5">
+                                        <a href="{{ url_for('emploi', lab_id=lab_id, week_offset=redirect_week) if tp else url_for('index') }}" 
+                                            class="btn btn-outline-secondary btn-lg px-5">
                                             <i class="fas fa-times me-2"></i>Annuler
                                         </a>
                                     </div>

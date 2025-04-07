@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestion des Professeurs | ISME</title>
-    <!-- Bootstrap 5.3 au lieu de 5.1 pour les dernières fonctionnalités -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -107,6 +106,56 @@
         .empty-state i {
             animation: pulse 2s infinite ease-in-out;
         }
+        
+        /* Fix pour le modal de confirmation */
+        .modal {
+            animation: none !important;
+        }
+        
+        .modal-dialog {
+            margin: 1.75rem auto;
+            transform: translate(0, 0) !important;
+            transition: transform 0.1s ease-out, opacity 0.15s linear !important;
+        }
+        
+        .modal-content {
+            transform: none !important;
+            transition: none !important;
+        }
+        
+        .modal-backdrop {
+            opacity: 0.5 !important;
+        }
+        
+        /* Style pour la pagination */
+        .pagination {
+            margin-top: 1.5rem;
+            margin-bottom: 0;
+            justify-content: center;
+        }
+        
+        .pagination .page-item .page-link {
+            border-radius: 0.5rem;
+            margin: 0 0.25rem;
+            color: var(--bs-primary);
+            transition: all 0.2s ease;
+        }
+        
+        .pagination .page-item.active .page-link {
+            background-color: var(--bs-primary);
+            border-color: var(--bs-primary);
+        }
+        
+        .pagination .page-item .page-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+            z-index: 3;
+        }
+        
+        .pagination-info {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
     </style>
 </head>
 <body class="bg-light">
@@ -148,7 +197,7 @@
                                <i class="fas fa-users me-2"></i>Tous
                             </a>
                         </div>
-                        <span class="badge bg-light text-dark fs-5 px-3 py-2">
+                        <span class="badge bg-light text-dark fs-5 px-3 py-2" id="professeursCount">
                             {{ professeurs|length }} professeur{% if professeurs|length > 1 %}s{% endif %}
                         </span>
                     </div>
@@ -216,31 +265,6 @@
                                                 title="Supprimer">
                                             <i class="fas fa-trash"></i>
                                         </button>
-                                        
-                                        <!-- Modal de confirmation -->
-                                        <div class="modal fade" id="deleteModal{{ prof.id_prof }}" tabindex="-1" aria-hidden="true">
-                                            <div class="modal-dialog modal-dialog-centered">
-                                                <div class="modal-content">
-                                                    <div class="modal-header bg-danger text-white">
-                                                        <h5 class="modal-title">Confirmation de suppression</h5>
-                                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                    </div>
-                                                    <div class="modal-body">
-                                                        <p>Êtes-vous sûr de vouloir supprimer définitivement le professeur <strong>{{ prof.prenom }} {{ prof.nom|upper }}</strong> ?</p>
-                                                        <p class="text-danger"><i class="fas fa-exclamation-triangle me-2"></i>Cette action est irréversible.</p>
-                                                    </div>
-                                                    <div class="modal-footer">
-                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                                                        <form method="POST" action="{{ url_for('supprimer_professeur', id=prof.id_prof) }}" class="d-inline">
-                                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                            <button type="submit" class="btn btn-danger">
-                                                                <i class="fas fa-trash me-2"></i>Confirmer la suppression
-                                                            </button>
-                                                        </form>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
                                         {% endif %}
                                     </div>
                                 </td>
@@ -249,6 +273,51 @@
                         </tbody>
                     </table>
                 </div>
+                
+                <!-- Pagination -->
+                <div class="mt-4" id="paginationContainer">
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center">
+                        <div class="pagination-info mb-3 mb-md-0" id="paginationInfo">
+                            <!-- Rempli dynamiquement par JavaScript -->
+                        </div>
+                        
+                        <nav aria-label="Pagination des professeurs">
+                            <ul class="pagination" id="pagination">
+                                <!-- Rempli dynamiquement par JavaScript -->
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+                
+                <!-- Modals de confirmation (placés hors du tableau pour éviter les conflits) -->
+                {% if session.role == 'admin' %}
+                    {% for prof in professeurs %}
+                    <div class="modal fade" id="deleteModal{{ prof.id_prof }}" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content">
+                                <div class="modal-header bg-danger text-white">
+                                    <h5 class="modal-title">Confirmation de suppression</h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p>Êtes-vous sûr de vouloir supprimer définitivement le professeur <strong>{{ prof.prenom }} {{ prof.nom|upper }}</strong> ?</p>
+                                    <p class="text-danger"><i class="fas fa-exclamation-triangle me-2"></i>Cette action est irréversible.</p>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                                    <form method="POST" action="{{ url_for('supprimer_professeur', id=prof.id_prof) }}" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn btn-danger">
+                                            <i class="fas fa-trash me-2"></i>Confirmer la suppression
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% endif %}
+                
                 {% else %}
                 <div class="empty-state text-center">
                     <i class="fas {% if active_filter %}fa-user-clock{% else %}fa-user-slash{% endif %}"></i>
@@ -282,7 +351,16 @@
                         <i class="fas fa-sync-alt me-2"></i>
                         Actualisé à {{ now.strftime('%H:%M') }}
                     </span>
-                    
+                    <div class="d-flex align-items-center">
+                        <span class="me-3">Afficher</span>
+                        <select id="itemsPerPage" class="form-select form-select-sm" style="width: 80px;">
+                            <option value="10" selected>10</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                        <span class="ms-3">par page</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -303,22 +381,198 @@
             const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
             const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
             
+            // Référence à la table des professeurs et aux éléments liés à la pagination
+            const table = document.getElementById('professeursTable');
+            const tbody = table ? table.querySelector('tbody') : null;
+            const rows = tbody ? Array.from(tbody.querySelectorAll('tr')) : [];
+            const itemsPerPageSelect = document.getElementById('itemsPerPage');
+            const paginationContainer = document.getElementById('paginationContainer');
+            const paginationInfo = document.getElementById('paginationInfo');
+            const paginationElement = document.getElementById('pagination');
+            
+            // Paramètres de pagination
+            let currentPage = 1;
+            let itemsPerPage = 10;
+            let totalItems = rows.length;
+            let totalPages = Math.ceil(totalItems / itemsPerPage);
+            
+            // Fonction pour mettre à jour l'affichage des lignes selon la page
+            function updateRows() {
+                if (!rows.length) return;
+                
+                const startIndex = (currentPage - 1) * itemsPerPage;
+                const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+                
+                // Cacher toutes les lignes
+                rows.forEach(row => row.style.display = 'none');
+                
+                // Afficher les lignes de la page actuelle
+                for (let i = startIndex; i < endIndex; i++) {
+                    if (rows[i]) rows[i].style.display = '';
+                }
+                
+                // Mettre à jour l'info de pagination
+                updatePaginationInfo(startIndex, endIndex);
+                
+                // Mettre à jour la pagination
+                renderPagination();
+            }
+            
+            // Fonction pour mettre à jour l'information de pagination
+            function updatePaginationInfo(startIndex, endIndex) {
+                if (!paginationInfo) return;
+                
+                paginationInfo.innerHTML = `
+                    Affichage de <strong>${startIndex + 1}</strong> à 
+                    <strong>${endIndex}</strong> sur 
+                    <strong>${totalItems}</strong> professeurs
+                `;
+            }
+            
+            // Fonction pour rendre la pagination
+            function renderPagination() {
+                if (!paginationElement) return;
+                
+                // Vider l'élément de pagination
+                paginationElement.innerHTML = '';
+                
+                // Créer le bouton "Précédent"
+                const prevButton = document.createElement('li');
+                prevButton.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
+                prevButton.innerHTML = `<a class="page-link" href="#" aria-label="Précédent"><i class="fas fa-chevron-left"></i></a>`;
+                if (currentPage > 1) {
+                    prevButton.querySelector('a').addEventListener('click', function(e) {
+                        e.preventDefault();
+                        goToPage(currentPage - 1);
+                    });
+                }
+                paginationElement.appendChild(prevButton);
+                
+                // Calculer les pages à afficher
+                let startPage = Math.max(1, currentPage - 2);
+                let endPage = Math.min(startPage + 4, totalPages);
+                startPage = Math.max(1, endPage - 4);
+                
+                // Afficher la première page et les points de suspension si nécessaire
+                if (startPage > 1) {
+                    const firstPageItem = document.createElement('li');
+                    firstPageItem.className = 'page-item';
+                    firstPageItem.innerHTML = `<a class="page-link" href="#">1</a>`;
+                    firstPageItem.querySelector('a').addEventListener('click', function(e) {
+                        e.preventDefault();
+                        goToPage(1);
+                    });
+                    paginationElement.appendChild(firstPageItem);
+                    
+                    if (startPage > 2) {
+                        const ellipsisItem = document.createElement('li');
+                        ellipsisItem.className = 'page-item disabled';
+                        ellipsisItem.innerHTML = `<span class="page-link">...</span>`;
+                        paginationElement.appendChild(ellipsisItem);
+                    }
+                }
+                
+                // Afficher les pages numérotées
+                for (let i = startPage; i <= endPage; i++) {
+                    const pageItem = document.createElement('li');
+                    pageItem.className = `page-item ${i === currentPage ? 'active' : ''}`;
+                    pageItem.innerHTML = `<a class="page-link" href="#">${i}</a>`;
+                    pageItem.querySelector('a').addEventListener('click', function(e) {
+                        e.preventDefault();
+                        goToPage(i);
+                    });
+                    paginationElement.appendChild(pageItem);
+                }
+                
+                // Afficher les points de suspension et la dernière page si nécessaire
+                if (endPage < totalPages) {
+                    if (endPage < totalPages - 1) {
+                        const ellipsisItem = document.createElement('li');
+                        ellipsisItem.className = 'page-item disabled';
+                        ellipsisItem.innerHTML = `<span class="page-link">...</span>`;
+                        paginationElement.appendChild(ellipsisItem);
+                    }
+                    
+                    const lastPageItem = document.createElement('li');
+                    lastPageItem.className = 'page-item';
+                    lastPageItem.innerHTML = `<a class="page-link" href="#">${totalPages}</a>`;
+                    lastPageItem.querySelector('a').addEventListener('click', function(e) {
+                        e.preventDefault();
+                        goToPage(totalPages);
+                    });
+                    paginationElement.appendChild(lastPageItem);
+                }
+                
+                // Créer le bouton "Suivant"
+                const nextButton = document.createElement('li');
+                nextButton.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
+                nextButton.innerHTML = `<a class="page-link" href="#" aria-label="Suivant"><i class="fas fa-chevron-right"></i></a>`;
+                if (currentPage < totalPages) {
+                    nextButton.querySelector('a').addEventListener('click', function(e) {
+                        e.preventDefault();
+                        goToPage(currentPage + 1);
+                    });
+                }
+                paginationElement.appendChild(nextButton);
+            }
+            
+            // Fonction pour aller à une page spécifique
+            function goToPage(page) {
+                currentPage = page;
+                updateRows();
+                window.scrollTo(0, table.offsetTop - 100);
+            }
+            
+            // Initialisation de la pagination si des lignes existent
+            if (rows.length > 0) {
+                // Gestionnaire d'événement pour le changement d'items par page
+                if (itemsPerPageSelect) {
+                    itemsPerPageSelect.addEventListener('change', function() {
+                        itemsPerPage = parseInt(this.value);
+                        totalPages = Math.ceil(totalItems / itemsPerPage);
+                        currentPage = 1; // Retour à la première page
+                        updateRows();
+                    });
+                }
+                
+                // Initialiser l'affichage
+                updateRows();
+            } else if (paginationContainer) {
+                // Masquer le conteneur de pagination s'il n'y a pas de données
+                paginationContainer.style.display = 'none';
+            }
+            
             // Fonction de recherche
             const searchInput = document.getElementById('liveSearch');
             if (searchInput) {
                 const filterTable = (value) => {
-                    const rows = document.querySelectorAll('#professeursTable tbody tr');
+                    const isSearching = value.trim() !== '';
                     let matchCount = 0;
                     
-                    rows.forEach(row => {
-                        const text = row.textContent.toLowerCase();
-                        const matches = text.includes(value.toLowerCase());
-                        row.style.display = matches ? '' : 'none';
-                        if (matches) matchCount++;
-                    });
+                    if (isSearching) {
+                        // Mode recherche
+                        rows.forEach(row => {
+                            const text = row.textContent.toLowerCase();
+                            const matches = text.includes(value.toLowerCase());
+                            row.style.display = matches ? '' : 'none';
+                            if (matches) matchCount++;
+                        });
+                        
+                        // Masquer la pagination en mode recherche
+                        if (paginationContainer) {
+                            paginationContainer.style.display = 'none';
+                        }
+                    } else {
+                        // Mode pagination
+                        if (paginationContainer) {
+                            paginationContainer.style.display = '';
+                        }
+                        updateRows();
+                        matchCount = totalItems;
+                    }
                     
                     // Mettre à jour le compteur
-                    const counter = document.querySelector('.badge.bg-light');
+                    const counter = document.getElementById('professeursCount');
                     if (counter) {
                         const plural = matchCount > 1 ? 's' : '';
                         counter.textContent = `${matchCount} professeur${plural}`;
@@ -330,6 +584,29 @@
                 // Focus sur la recherche au chargement
                 setTimeout(() => searchInput.focus(), 500);
             }
+            
+            // Fix pour les modals de suppression
+            const deleteModals = document.querySelectorAll('.modal');
+            deleteModals.forEach(modal => {
+                modal.addEventListener('show.bs.modal', function (event) {
+                    // Arrêter toutes les animations des éléments parents
+                    const rows = document.querySelectorAll('.professor-row');
+                    rows.forEach(row => {
+                        row.style.transition = 'none';
+                        row.style.transform = 'none';
+                    });
+                });
+                
+                modal.addEventListener('hidden.bs.modal', function (event) {
+                    // Réactiver les animations une fois le modal fermé
+                    setTimeout(() => {
+                        const rows = document.querySelectorAll('.professor-row');
+                        rows.forEach(row => {
+                            row.style.transition = 'all 0.3s ease';
+                        });
+                    }, 300);
+                });
+            });
         });
     </script>
 </body>
