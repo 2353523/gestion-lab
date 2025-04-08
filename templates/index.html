@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -29,6 +30,7 @@
             --transition-speed: 0.25s;
             --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12);
             --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+            
         }
     
         /* Structure de base modernisée */
@@ -210,9 +212,132 @@
         opacity: 0;
         transition: opacity 1s ease-out;
     }
+    .chemistry-canvas {
+  mix-blend-mode: soft-light; /* Mode de fusion doux */
+  backdrop-filter: blur(var(--blur-intensity)); /* Flou d'arrière-plan */
+}
+/* Animation de fond chimique */
+.chemistry-background {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    opacity: 1;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+/* Atomes - Style corrigé */
+.atom {
+    position: absolute;
+    border-radius: 50%;
+    /* Solution simple : remplacer le background complexe par une couleur solide avec légère transparence */
+    background-color: rgba(20, 89, 168, 0.747);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.953);
+    animation: float var(--float-duration) infinite ease-in-out;
+    animation-delay: var(--delay);
+}
+
+/* Orbites des atomes */
+.orbit {
+    position: absolute;
+    border-radius: 50%;
+    /* Correction de la couleur de bordure pour meilleure visibilité */
+    border: 1px solid rgba(0, 0, 0, 0.13);
+    transform: translate(-50%, -50%);
+    animation: orbit var(--orbit-duration) linear infinite;
+}
+
+/* Électrons */
+.electron {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    background-color: #ef0b0b;
+    border-radius: 50%;
+    box-shadow: 0 0 6px 1px var(--electron-color);
+    animation: electron var(--electron-duration) linear infinite;
+    animation-delay: var(--delay);
+}
+    
+    /* Molécules */
+    .molecule {
+        position: absolute;
+        animation: float var(--float-duration) infinite ease-in-out;
+        animation-delay: var(--delay);
+    }
+
+    .bond {
+    position: absolute;
+    /* Solution simple : remplacer le gradient par une couleur solide */
+    background-color: rgba(180, 210, 255, 0.3);
+    transform-origin: left center;
+}
+    
+/* Formules chimiques - Style corrigé */
+.formula {
+    position: absolute;
+    font-family: 'Courier New', monospace;
+    /* Couleur plus visible */
+    color: rgba(70, 90, 140, 0.3);
+    font-size: 24px;
+    transform: rotate(var(--rotate));
+    animation: float var(--float-duration) infinite ease-in-out;
+    animation-delay: var(--delay);
+}
+    @keyframes float {
+        0%, 100% {
+            transform: translateY(0) translateX(0) rotate(0deg);
+        }
+        25% {
+            transform: translateY(-20px) translateX(10px) rotate(3deg);
+        }
+        50% {
+            transform: translateY(15px) translateX(-15px) rotate(-2deg);
+        }
+        75% {
+            transform: translateY(20px) translateX(5px) rotate(2deg);
+        }
+    }
+    
+    /* Animation d'orbite */
+    @keyframes orbit {
+        from {
+            transform: translate(-50%, -50%) rotate(0deg);
+        }
+        to {
+            transform: translate(-50%, -50%) rotate(360deg);
+        }
+    }
+    
+    /* Animation d'électron */
+    @keyframes electron {
+        0% {
+            transform: rotate(0deg) translateX(var(--electron-distance));
+        }
+        100% {
+            transform: rotate(360deg) translateX(var(--electron-distance));
+        }
+    }
+    
+    /* Animation de pulsation */
+    @keyframes pulse {
+        0%, 100% {
+            transform: scale(1);
+            opacity: 0.8;
+        }
+        50% {
+            transform: scale(1.1);
+            opacity: 1;
+        }
+    }
     </style>
 </head>
 <body class="bg-light">
+    <!-- Arrière-plan chimique -->
+    <div id="chemistry-background" class="chemistry-background"></div>
     <!-- Barre de navigation -->
     {% include 'nav.html' %}
     <div class="content">
@@ -488,59 +613,62 @@
     <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
 
     <script>
-        // Gestion du message de bienvenue
-        function closeWelcome() {
-            const welcomeOverlay = document.getElementById('welcome-overlay');
-            if (welcomeOverlay) {
-                welcomeOverlay.classList.add('hide');
-                setTimeout(() => {
-                    welcomeOverlay.remove();
-                }, 300);
-            }
+document.addEventListener('DOMContentLoaded', function() {
+    // ====== 1. FONCTIONNALITÉS DE L'INTERFACE UTILISATEUR ======
+    
+    // Gestion du message de bienvenue
+    function closeWelcome() {
+        const welcomeOverlay = document.getElementById('welcome-overlay');
+        if (welcomeOverlay) {
+            welcomeOverlay.classList.add('hide');
+            setTimeout(() => {
+                welcomeOverlay.remove();
+            }, 300);
+        }
+    }
+    
+    const welcomeOverlay = document.getElementById('welcome-overlay');
+    if (welcomeOverlay) {
+        setTimeout(closeWelcome, 3000);
+        welcomeOverlay.addEventListener('click', function(e) {
+            if (e.target === this) closeWelcome();
+        });
+    }
+
+    // Configuration DataTable (si jQuery et DataTable sont disponibles)
+    if (typeof $ !== 'undefined' && $.fn.DataTable) {
+        var table = $('#tableTP').DataTable({
+            language: {
+                search: "Rechercher:",
+                lengthMenu: "Afficher _MENU_ entrées",
+                info: "Affichage de _START_ à _END_ sur _TOTAL_ entrées",
+                paginate: {
+                    first: "Premier",
+                    previous: "Précédent",
+                    next: "Suivant",
+                    last: "Dernier"
+                }
+            },
+            columnDefs: [
+                { orderable: false, targets: [7] }
+            ]
+        });
+
+        // Gestion des filtres
+        function filterTable() {
+            var niveau = $('#niveau_filter').val();
+            var statut = $('#statut_filter').val();
+            table.columns(4).search(niveau).columns(6).search(statut).draw();
         }
 
-        document.addEventListener('DOMContentLoaded', function() {
-            const welcomeOverlay = document.getElementById('welcome-overlay');
-            
-            if (welcomeOverlay) {
-                setTimeout(closeWelcome, 3000);
-                welcomeOverlay.addEventListener('click', function(e) {
-                    if (e.target === this) closeWelcome();
-                });
-            }
+        $('#niveau_filter, #statut_filter').on('change', filterTable);
+        $('#reset_filters').on('click', function() {
+            $('#niveau_filter, #statut_filter').val('');
+            filterTable();
+        });
+    }
 
-            // Configuration DataTable
-            var table = $('#tableTP').DataTable({
-                language: {
-                    search: "Rechercher:",
-                    lengthMenu: "Afficher _MENU_ entrées",
-                    info: "Affichage de _START_ à _END_ sur _TOTAL_ entrées",
-                    paginate: {
-                        first: "Premier",
-                        previous: "Précédent",
-                        next: "Suivant",
-                        last: "Dernier"
-                    }
-                },
-                columnDefs: [
-                    { orderable: false, targets: [7] }
-                ]
-            });
-
-            // Gestion des filtres
-            function filterTable() {
-                var niveau = $('#niveau_filter').val();
-                var statut = $('#statut_filter').val();
-                table.columns(4).search(niveau).columns(6).search(statut).draw();
-            }
-
-            $('#niveau_filter, #statut_filter').on('change', filterTable);
-            $('#reset_filters').on('click', function() {
-                $('#niveau_filter, #statut_filter').val('');
-                filterTable();
-            });
-
-             // Fermeture automatique après 1 minute (60000 ms)
+    // Fermeture automatique des alertes après 1 minute
     document.querySelectorAll('.auto-close-alert').forEach(alert => {
         setTimeout(() => {
             // Déclenche l'animation de fondu
@@ -550,10 +678,267 @@
             setTimeout(() => {
                 alert.remove();
             }, 1000);
-            
         }, 59000); // Commence 1 seconde avant la fin pour l'animation
     });
-        });
+    
+    // ====== 2. ANIMATION D'ARRIÈRE-PLAN CHIMIQUE ======
+    
+    const background = document.getElementById('chemistry-background');
+    if (!background) return; // Vérifier si l'élément existe
+    
+    // Couleurs pour les éléments chimiques
+    const colors = {
+        atoms: [
+            '#7fbfff', // Bleu pastel
+            '#ff9f9f', // Rouge pastel
+            '#a0e6c3', // Vert pastel
+            '#d4b8ff', // Violet pastel
+            '#ffd699', // Orange pastel
+            '#b3e0dc', // Turquoise pastel
+            '#ffb399'  // Saumon clair
+        ],
+        electrons: [
+            '#3498db',  // Bleu clair
+            '#5dade2',  // Bleu-cyan
+            '#58d68d',  // Vert clair
+            '#f4d03f'   // Jaune
+        ],
+        bonds: [
+            'rgba(52, 152, 219, 0.4)',  // Bleu
+            'rgba(231, 76, 60, 0.4)',   // Rouge
+            'rgba(46, 204, 113, 0.4)',  // Vert
+            'rgba(155, 89, 182, 0.4)'   // Violet
+        ]
+    };
+    
+    // Formules chimiques à afficher
+    const formulas = ['H₂O', 'CO₂', 'CH₄', 'C₂H₅OH', 'H₂SO₄', 'NaCl', 'O₃', 'NH₃'];
+    
+    // Fonction pour obtenir une valeur aléatoire dans une plage
+    function random(min, max) {
+        return Math.random() * (max - min) + min;
+    }
+    
+    // Fonction pour obtenir un élément aléatoire d'un tableau
+    function randomItem(array) {
+        return array[Math.floor(Math.random() * array.length)];
+    }
+    
+    // Créer des atomes individuels
+// Cette fonction remplace la création d'atomes dans le script existant
+function createAtoms(count) {
+    for (let i = 0; i < count; i++) {
+        // Créer l'atome
+        const atom = document.createElement('div');
+        atom.className = 'atom';
+        
+        // Propriétés de l'atome
+        const size = random(15, 40);
+        const posX = random(0, 100);
+        const posY = random(0, 100);
+        const floatDuration = random(15, 30);
+        const delay = random(0, 10);
+        
+        // Appliquer les styles correctement
+        atom.style.width = `${size}px`;
+        atom.style.height = `${size}px`;
+        atom.style.left = `${posX}%`;
+        atom.style.top = `${posY}%`;
+        atom.style.setProperty('--float-duration', `${floatDuration}s`);
+        atom.style.setProperty('--delay', `-${delay}s`);
+        
+        // Ajouter des orbites (1 à 3)
+        const orbitCount = Math.floor(random(1, 4));
+        for (let j = 0; j < orbitCount; j++) {
+            const orbit = document.createElement('div');
+            orbit.className = 'orbit';
+            
+            // Propriétés de l'orbite
+            const orbitSize = size * (j + 1.5);
+            const orbitDuration = random(5, 12);
+            
+            // Appliquer les styles
+            orbit.style.width = `${orbitSize}px`;
+            orbit.style.height = `${orbitSize}px`;
+            orbit.style.left = `${size / 2}px`;
+            orbit.style.top = `${size / 2}px`;
+            orbit.style.setProperty('--orbit-duration', `${orbitDuration}s`);
+            
+            // Ajouter un électron à l'orbite
+            if (Math.random() > 0.3) {
+                const electron = document.createElement('div');
+                electron.className = 'electron';
+                
+                // Propriétés de l'électron
+                const electronDuration = random(2, 4);
+                const electronColor = randomItem(colors.electrons);
+                const electronDistance = orbitSize / 2;
+                const electronDelay = random(0, 3);
+                
+                // Appliquer les styles
+                electron.style.setProperty('--electron-duration', `${electronDuration}s`);
+                electron.style.setProperty('--electron-color', electronColor);
+                electron.style.setProperty('--electron-distance', `${electronDistance}px`);
+                electron.style.setProperty('--delay', `-${electronDelay}s`);
+                
+                orbit.appendChild(electron);
+            }
+            
+            atom.appendChild(orbit);
+        }
+        
+        background.appendChild(atom);
+    }
+}// Créer des molécules complexes
+    function createMolecules(count) {
+        for (let i = 0; i < count; i++) {
+            const molecule = document.createElement('div');
+            molecule.className = 'molecule';
+            
+            // Propriétés de la molécule
+            const posX = random(10, 90);
+            const posY = random(10, 90);
+            const floatDuration = random(20, 35);
+            const delay = random(0, 15);
+            
+            // Appliquer les styles
+            molecule.style.left = `${posX}%`;
+            molecule.style.top = `${posY}%`;
+            molecule.style.setProperty('--float-duration', `${floatDuration}s`);
+            molecule.style.setProperty('--delay', `-${delay}s`);
+            
+            // Configuration de la molécule
+            const centerX = 50;
+            const centerY = 50;
+            const radius = random(30, 50);
+            const atomCount = Math.floor(random(30, 60));
+            
+            // Atome central
+            const centerAtom = document.createElement('div');
+            centerAtom.className = 'atom';
+            const centerSize = random(15, 25);
+            const centerColor = randomItem(colors.atoms);
+            
+            centerAtom.style.width = `${centerSize}px`;
+            centerAtom.style.height = `${centerSize}px`;
+            centerAtom.style.left = `${centerX - centerSize/2}px`;
+            centerAtom.style.top = `${centerY - centerSize/2}px`;
+            centerAtom.style.setProperty('--atom-color', centerColor);
+            molecule.appendChild(centerAtom);
+            
+            // Atomes périphériques et liaisons
+            for (let j = 0; j < atomCount; j++) {
+                const angle = (j / atomCount) * Math.PI * 2;
+                const x = centerX + Math.cos(angle) * radius;
+                const y = centerY + Math.sin(angle) * radius;
+                
+                // Atome périphérique
+                const outerAtom = document.createElement('div');
+                outerAtom.className = 'atom';
+                const outerSize = random(10, 20);
+                const outerColor = randomItem(colors.atoms);
+                
+                outerAtom.style.width = `${outerSize}px`;
+                outerAtom.style.height = `${outerSize}px`;
+                outerAtom.style.left = `${x - outerSize/2}px`;
+                outerAtom.style.top = `${y - outerSize/2}px`;
+                outerAtom.style.setProperty('--atom-color', outerColor);
+                molecule.appendChild(outerAtom);
+                
+                // Liaison chimique
+                const bond = document.createElement('div');
+                bond.className = 'bond';
+                const bondColor = randomItem(colors.bonds);
+                const bondLength = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
+                const bondAngle = Math.atan2(y - centerY, x - centerX) * 180 / Math.PI;
+                
+                bond.style.width = `${bondLength}px`;
+                bond.style.height = `${random(1.5, 3)}px`;
+                bond.style.left = `${centerX}px`;
+                bond.style.top = `${centerY}px`;
+                bond.style.transform = `rotate(${bondAngle}deg)`;
+                bond.style.setProperty('--bond-color', bondColor);
+                molecule.appendChild(bond);
+                
+                // Double liaison (parfois)
+                if (Math.random() > 0.7) {
+                    const doubleBond = document.createElement('div');
+                    doubleBond.className = 'bond';
+                    doubleBond.style.width = `${bondLength}px`;
+                    doubleBond.style.height = `${random(1.5, 3)}px`;
+                    doubleBond.style.left = `${centerX}px`;
+                    doubleBond.style.top = `${centerY + 4}px`;
+                    doubleBond.style.transform = `rotate(${bondAngle}deg)`;
+                    doubleBond.style.setProperty('--bond-color', bondColor);
+                    molecule.appendChild(doubleBond);
+                }
+            }
+            
+            background.appendChild(molecule);
+        }
+    }
+    
+    // Créer des formules chimiques flottantes
+    function createFormulas(count) {
+        for (let i = 0; i < count; i++) {
+            const formula = document.createElement('div');
+            formula.className = 'formula';
+            formula.textContent = randomItem(formulas);
+            
+            const posX = random(5, 95);
+            const posY = random(5, 95);
+            const rotate = random(-15, 15);
+            const floatDuration = random(20, 40);
+            const delay = random(0, 20);
+            
+            formula.style.left = `${posX}%`;
+            formula.style.top = `${posY}%`;
+            formula.style.setProperty('--rotate', `${rotate}deg`);
+            formula.style.setProperty('--float-duration', `${floatDuration}s`);
+            formula.style.setProperty('--delay', `-${delay}s`);
+            
+            background.appendChild(formula);
+        }
+    }
+    
+    // Initialiser l'animation
+    function initChemistryBackground() {
+        // Nettoyer le fond existant
+        background.innerHTML = '';
+        
+        // Déterminer le nombre d'éléments en fonction de la taille de l'écran
+        const width = window.innerWidth;
+        let atomCount, moleculeCount, formulaCount;
+        
+        if (width < 768) {
+            atomCount = 8;
+            moleculeCount = 20;
+            formulaCount = 50;
+        } else {
+            atomCount = 50;
+            moleculeCount = 0;
+            formulaCount = 100;
+        }
+        
+        // Créer les éléments
+        createAtoms(atomCount);
+        createMolecules(moleculeCount);
+        createFormulas(formulaCount);
+    }
+    
+    // Initialiser l'animation
+    initChemistryBackground();
+    
+    // Redimensionnement pour la réactivité
+    window.addEventListener('resize', function() {
+        // Réinitialiser après redimensionnement avec délai
+        clearTimeout(window.resizedFinished);
+        window.resizedFinished = setTimeout(initChemistryBackground, 250);
+    });
+    
+    // Régénérer périodiquement pour éviter les problèmes de performance
+    setInterval(initChemistryBackground, 120000); // Toutes les 2 minutes
+});
     </script>
 </body>
 </html>
