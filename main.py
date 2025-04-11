@@ -8,6 +8,13 @@ from flask_wtf.csrf import CSRFProtect
 import locale
 from collections import defaultdict
 from dateutil.relativedelta import relativedelta
+from itsdangerous import URLSafeTimedSerializer
+import secrets
+import smtplib
+import re
+from flask_mail import Mail, Message
+
+
 
 
 app = Flask(__name__)
@@ -29,8 +36,25 @@ app.config['MYSQL_USER'] = 'root'
 app.config['MYSQL_PASSWORD'] = ''
 app.config['MYSQL_DB'] = 'gestion_lab'
 app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
+app.config['MAIL_SUPPRESS_SEND'] = False  # Activer l'envoi réel
+app.config['MAIL_DEBUG'] = False
 
-mysql = MySQL(app)  
+mysql = MySQL(app)
+
+# Configuration Email
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = '23543@isme.esp.mr' # Votre email Gmail
+app.config['MAIL_PASSWORD'] = 'ltgmlrfujdrmhjvq'# Mot de passe d'application
+app.config['MAIL_DEFAULT_SENDER'] ='LabManager <23543@isme.esp.mr>'
+app.config['MAIL_SUPPRESS_SEND'] = False  # Activer l'envoi réel
+app.config['MAIL_DEBUG'] = True  # Afficher les logs SMTP dans la console
+
+
+
+  
+mail = Mail(app)
 
 
 def get_tp_status(start_time, end_time):
@@ -53,29 +77,34 @@ def create_default_users():
             cur.execute("SHOW TABLES LIKE 'utilisateur'")
             if not cur.fetchone():
                 cur.execute("""
-                    CREATE TABLE utilisateur (
-                        id INT PRIMARY KEY AUTO_INCREMENT,
-                        username VARCHAR(50) UNIQUE NOT NULL,
-                        password VARCHAR(255) NOT NULL,
-                        role ENUM('admin', 'user') NOT NULL DEFAULT 'user'
-                    )
-                """)
+                CREATE TABLE utilisateur (
+                    id INT PRIMARY KEY AUTO_INCREMENT,
+                    username VARCHAR(50) UNIQUE NOT NULL,
+                    email VARCHAR(255) UNIQUE NOT NULL,
+                    password VARCHAR(255) NOT NULL,
+                    role ENUM('admin', 'user') NOT NULL DEFAULT 'user'
+                      )
+                 """)
                 print("Table utilisateur créée")
 
             # Créer admin
             cur.execute("SELECT * FROM utilisateur WHERE username = 'admin'")
             if not cur.fetchone():
-                hashed_pw = generate_password_hash('admin123')
-                cur.execute("INSERT INTO utilisateur (username, password, role) VALUES (%s, %s, 'admin')",
-                          ('admin', hashed_pw))
-                print("Admin créé")
+              hashed_pw = generate_password_hash('admin123')
+              cur.execute("""
+                INSERT INTO utilisateur (username, email, password, role) 
+                VALUES (%s, %s, %s, 'admin')
+            """, ('admin', 'admin@example.com', hashed_pw))
+              print("Admin créé")
 
             # Créer user
             cur.execute("SELECT * FROM utilisateur WHERE username = 'user'")
             if not cur.fetchone():
                 hashed_pw = generate_password_hash('user123')
-                cur.execute("INSERT INTO utilisateur (username, password) VALUES (%s, %s)",
-                          ('user', hashed_pw))
+                cur.execute("""
+                    INSERT INTO utilisateur (username, email, password) 
+                    VALUES (%s, %s, %s)
+                """, ('user', 'user@example.com', hashed_pw))
                 print("User créé")
 
             mysql.connection.commit()
@@ -90,11 +119,11 @@ def create_default_users():
 def login():
     if request.method == 'POST':
         try:
-            username = request.form['username']
+            email = request.form['email']  # Changé de username à email
             password = request.form['password']
             
             cur = mysql.connection.cursor()
-            cur.execute("SELECT * FROM utilisateur WHERE username = %s", (username,))
+            cur.execute("SELECT * FROM utilisateur WHERE email = %s", (email,))
             user = cur.fetchone()
             cur.close()
             
@@ -103,6 +132,7 @@ def login():
                 if check_password_hash(user['password'], password):
                     session.clear()
                     session['user_id'] = user['id']
+                    session['email'] = user['email']
                     session['username'] = user['username']
                     session['role'] = user['role']
                     session['show_welcome'] = True
@@ -150,7 +180,7 @@ def logout():
 
 @app.before_request
 def verify_access():
-    excluded = ['login', 'static', 'logout']
+    excluded = ['login', 'static', 'logout','forgot_password','verify_code', 'reset_password']
     
     if request.endpoint in excluded:
         return
@@ -178,7 +208,7 @@ def verify_access():
         'creer_matiere', 'supprimer_matiere',
         'creer_laboratoire', 'supprimer_laboratoire',
         'liste_utilisateurs', 'creer_utilisateur', 
-        'editer_utilisateur', 'supprimer_utilisateur'
+        'editer_utilisateur', 'supprimer_utilisateur',
     ]
     
     if request.endpoint in admin_only_routes and session.get('role') != 'admin':
@@ -2503,7 +2533,7 @@ def liste_utilisateurs():
     
     cur = mysql.connection.cursor()
     try:
-        cur.execute("SELECT id, username, role FROM utilisateur ORDER BY username")
+        cur.execute("SELECT id, username, email, role FROM utilisateur ORDER BY username")
         utilisateurs = cur.fetchall()
         return render_template('admin/utilisateurs/liste.html', utilisateurs=utilisateurs)
     except Exception as e:
@@ -2519,10 +2549,11 @@ def creer_utilisateur():
     
     if request.method == 'POST':
         username = request.form['username'].strip()
+        email = request.form['email'].strip()
         password = request.form['password'].strip()
         role = request.form.get('role', 'user')
         
-        if not username or not password:
+        if not all([username, email, password]):
             flash("Tous les champs obligatoires doivent être remplis", "danger")
             return redirect(url_for('creer_utilisateur'))
         
@@ -2532,14 +2563,16 @@ def creer_utilisateur():
         
         cur = mysql.connection.cursor()
         try:
-            cur.execute("SELECT id FROM utilisateur WHERE username = %s", (username,))
+            cur.execute("SELECT id FROM utilisateur WHERE username = %s OR email = %s", (username, email))
             if cur.fetchone():
-                flash("Ce nom d'utilisateur est déjà pris", "danger")
+                flash("Nom d'utilisateur ou email déjà utilisé", "danger")
                 return redirect(url_for('creer_utilisateur'))
             
             hashed_pw = generate_password_hash(password)
-            cur.execute("INSERT INTO utilisateur (username, password, role) VALUES (%s, %s, %s)",
-                       (username, hashed_pw, role))
+            cur.execute("""
+                INSERT INTO utilisateur (username, email, password, role)
+                VALUES (%s, %s, %s, %s)
+            """, (username, email, hashed_pw, role))
             mysql.connection.commit()
             flash("Utilisateur créé avec succès", "success")
             return redirect(url_for('liste_utilisateurs'))
@@ -2551,6 +2584,7 @@ def creer_utilisateur():
     
     return render_template('admin/utilisateurs/creer.html')
 
+
 @app.route('/admin/utilisateurs/editer/<int:id>', methods=['GET', 'POST'])
 def editer_utilisateur(id):
     if 'user_id' not in session or session.get('role') != 'admin':
@@ -2560,32 +2594,29 @@ def editer_utilisateur(id):
     try:
         if request.method == 'POST':
             username = request.form['username'].strip()
+            email = request.form['email'].strip()
             role = request.form.get('role', 'user')
             new_password = request.form.get('new_password', '').strip()
             
-            if not username:
-                flash("Le nom d'utilisateur est obligatoire", "danger")
+            if not all([username, email]):
+                flash("Les champs obligatoires doivent être remplis", "danger")
                 return redirect(url_for('editer_utilisateur', id=id))
-            if new_password:
-                if not is_valid_password(new_password):
-                    flash("Le mot de passe doit contenir au moins 4 caractères et une lettre", "danger")
-                    return redirect(url_for('editer_utilisateur', id=id))
             
-            # Vérifier si le nom d'utilisateur est déjà pris
-            cur.execute("SELECT id FROM utilisateur WHERE username = %s AND id != %s", (username, id))
+            if new_password and not is_valid_password(new_password):
+                flash("Le mot de passe doit contenir au moins 4 caractères et une lettre", "danger")
+                return redirect(url_for('editer_utilisateur', id=id))
+            
+            cur.execute("SELECT id FROM utilisateur WHERE (username = %s OR email = %s) AND id != %s", 
+                       (username, email, id))
             if cur.fetchone():
-                flash("Ce nom d'utilisateur est déjà pris", "danger")
+                flash("Nom d'utilisateur ou email déjà utilisé", "danger")
                 return redirect(url_for('editer_utilisateur', id=id))
             
-            # Mettre à jour les champs
             update_fields = []
             params = []
-            if username:
-                update_fields.append("username = %s")
-                params.append(username)
-            if role:
-                update_fields.append("role = %s")
-                params.append(role)
+            update_fields.extend(["username = %s", "email = %s", "role = %s"])
+            params.extend([username, email, role])
+            
             if new_password:
                 hashed_pw = generate_password_hash(new_password)
                 update_fields.append("password = %s")
@@ -2598,8 +2629,7 @@ def editer_utilisateur(id):
             flash("Utilisateur mis à jour avec succès", "success")
             return redirect(url_for('liste_utilisateurs'))
         
-        # Récupérer les données utilisateur
-        cur.execute("SELECT id, username, role FROM utilisateur WHERE id = %s", (id,))
+        cur.execute("SELECT id, username, email, role FROM utilisateur WHERE id = %s", (id,))
         utilisateur = cur.fetchone()
         if not utilisateur:
             flash("Utilisateur introuvable", "danger")
@@ -2647,9 +2677,12 @@ def profil():
     cur = mysql.connection.cursor()
     
     try:
+        cur.execute("SELECT * FROM utilisateur WHERE id = %s", (user_id,))
+        user = cur.fetchone()
         if request.method == 'POST':
             current_password = request.form.get('current_password', '').strip()
             new_username = request.form.get('username', '').strip()
+            new_email = request.form.get('email', '').strip()
             new_password = request.form.get('new_password', '').strip()
             confirm_password = request.form.get('confirm_password', '').strip()
             
@@ -2658,15 +2691,7 @@ def profil():
             
             updates = []
             params = []
-
-
-            if new_password:
-                if not is_valid_password(new_password):
-                    flash("Le mot de passe doit contenir au moins 4 caractères et une lettre", "danger")
-                    return redirect(url_for('editer_utilisateur', id=id))
             
-            
-            # Mise à jour du nom d'utilisateur
             if new_username and new_username != user['username']:
                 cur.execute("SELECT id FROM utilisateur WHERE username = %s", (new_username,))
                 if cur.fetchone():
@@ -2674,28 +2699,41 @@ def profil():
                 else:
                     updates.append("username = %s")
                     params.append(new_username)
+
+            # Vérification email
+            if new_email and new_email != user['email']:
+                cur.execute("SELECT id FROM utilisateur WHERE email = %s AND id != %s", 
+                           (new_email, user_id))
+                if cur.fetchone():
+                    flash("Cet email est déjà utilisé", "danger")
+                else:
+                    updates.append("email = %s")
+                    params.append(new_email)
+                    session['email'] = new_email
             
-            # Mise à jour du mot de passe
+            # Vérification mot de passe
             if new_password:
                 if not check_password_hash(user['password'], current_password):
                     flash("Mot de passe actuel incorrect", "danger")
                 elif new_password != confirm_password:
                     flash("Les mots de passe ne correspondent pas", "danger")
+                elif not is_valid_password(new_password):
+                    flash("Le mot de passe doit contenir au moins 4 caractères et une lettre", "danger")
                 else:
+                    hashed_pw = generate_password_hash(new_password)
                     updates.append("password = %s")
-                    params.append(generate_password_hash(new_password))
+                    params.append(hashed_pw)
             
             if updates:
-                query = "UPDATE utilisateur SET " + ", ".join(updates) + " WHERE id = %s"
                 params.append(user_id)
+                query = "UPDATE utilisateur SET " + ", ".join(updates) + " WHERE id = %s"
                 cur.execute(query, tuple(params))
                 mysql.connection.commit()
                 flash("Profil mis à jour avec succès", "success")
-                session['username'] = new_username if new_username else session['username']
             
             return redirect(url_for('profil'))
         
-        cur.execute("SELECT id, username, role FROM utilisateur WHERE id = %s", (user_id,))
+        cur.execute("SELECT id, username, email, role FROM utilisateur WHERE id = %s", (user_id,))
         user = cur.fetchone()
         return render_template('profil.html', user=user)
 
@@ -2706,6 +2744,146 @@ def profil():
     finally:
         cur.close()
 
+
+def send_password_reset_email(user_email, code):
+    try:
+        msg = Message(
+            "Réinitialisation de mot de passe - LabManager",
+            recipients=[user_email],
+            html=render_template('emails/reset_password.html', code=code)
+        )
+        
+        # Debug SMTP
+        with app.app_context():
+            mail.connect()
+            app.logger.info(f"Connexion SMTP établie à {app.config['MAIL_SERVER']}:{app.config['MAIL_PORT']}")
+            mail.send(msg)
+            app.logger.info(f"Email envoyé à {user_email} via {app.config['MAIL_USERNAME']}")
+
+    except smtplib.SMTPException as e:
+        app.logger.error(f"Erreur SMTP (code {e.smtp_code}): {e.smtp_error.decode()}")
+        raise
+    except Exception as e:
+        app.logger.error(f"Erreur générale: {str(e)}", exc_info=True)
+        raise
+
+
+# Initialiser le sérialiseur
+ts = URLSafeTimedSerializer(app.secret_key)
+
+def generate_verification_code(length=6):
+    return ''.join(secrets.choice('0123456789') for _ in range(length))
+
+# Route forgot_password corrigée
+@app.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        email = request.form['email'].strip().lower()
+        try:
+            cur = mysql.connection.cursor()
+            cur.execute("SELECT id, email FROM utilisateur WHERE email = %s", (email,))
+            user = cur.fetchone()
+            
+            if not user:
+                flash("Aucun compte associé à cet email", "warning")
+                return redirect(url_for('forgot_password'))
+
+            # Generate verification code
+            code = generate_verification_code()
+            
+            # Store code, email, and expiration time in session
+            session['reset_code'] = code
+            session['reset_email'] = email
+            session['reset_expires'] = datetime.now().timestamp() + 900  # 15 minutes
+            
+            # Send the code via email
+            send_password_reset_email(email, code)
+            
+            flash("Un code de vérification a été envoyé à votre adresse email.", "success")
+            return redirect(url_for('verify_code'))
+            
+        except Exception as e:
+            app.logger.error(f"Erreur : {str(e)}")
+            flash("Erreur lors de l'envoi du code de réinitialisation", "danger")
+        finally:
+            cur.close()
+
+    return render_template('forgot_password.html')
+
+
+@app.route('/verify-code', methods=['GET', 'POST'])
+def verify_code():
+    # Vérifier la présence du code en session
+    reset_code = session.get('reset_code')
+    reset_email = session.get('reset_email')
+    expires = session.get('reset_expires', 0)
+    
+    if not reset_code or not reset_email or datetime.now().timestamp() > expires:
+        flash("Le code a expiré ou est invalide", "danger")
+        return redirect(url_for('forgot_password'))
+    
+    if request.method == 'POST':
+        entered_code = request.form.get('code', '').strip()
+        
+        if entered_code == reset_code:
+            session['code_verified'] = True
+            return redirect(url_for('reset_password'))
+        else:
+            flash("Code incorrect", "danger")
+    
+    # Fichier template: templates/verify_code.html
+    return render_template('verify_code.html')
+
+@app.route('/reset-password', methods=['GET', 'POST'])
+def reset_password():
+    # Vérifier si l'utilisateur a validé le code
+    if not session.get('code_verified') or not session.get('reset_email'):
+        flash("Veuillez d'abord vérifier votre code", "danger")
+        return redirect(url_for('forgot_password'))
+
+    if request.method == 'POST':
+        new_password = request.form['new_password'].strip()
+        confirm_password = request.form['confirm_password'].strip()
+
+        # Validation des mots de passe
+        if not new_password or not confirm_password:
+            flash("Veuillez remplir tous les champs", "danger")
+            return redirect(url_for('reset_password'))
+        
+        if new_password != confirm_password:
+            flash("Les mots de passe ne correspondent pas", "danger")
+            return redirect(url_for('reset_password'))
+        
+        if not is_valid_password(new_password):
+            flash("Le mot de passe doit contenir au moins 4 caractères avec une lettre", "danger")
+            return redirect(url_for('reset_password'))
+
+        # Mise à jour du mot de passe
+        try:
+            cur = mysql.connection.cursor()
+            hashed_pw = generate_password_hash(new_password)
+            cur.execute(
+                "UPDATE utilisateur SET password = %s WHERE email = %s",
+                (hashed_pw, session['reset_email'])
+            )
+            mysql.connection.commit()
+
+            # Nettoyage de la session
+            session.pop('reset_code', None)
+            session.pop('reset_email', None)
+            session.pop('reset_expires', None)
+            session.pop('code_verified', None)
+
+            flash("Mot de passe mis à jour avec succès ! Vous pouvez maintenant vous connecter", "success")
+            return redirect(url_for('login'))
+
+        except Exception as e:
+            mysql.connection.rollback()
+            flash(f"Erreur lors de la mise à jour : {str(e)}", "danger")
+        finally:
+            cur.close()
+
+    return render_template('reset_password.html')
 
 if __name__ == '__main__':
     # Création des utilisateurs dans un contexte d'application
