@@ -7,169 +7,157 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        /* Styles optimisés */
         .card-header {
             background: linear-gradient(135deg, #0d6efd, #0b5ed7);
             border-radius: 12px 12px 0 0;
         }
-        .card {
-            border-radius: 12px;
-            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+        
+        .ghs-picto {
+            width: 32px;
+            height: 32px;
+            object-fit: contain;
+            transition: transform 0.2s;
         }
-        .btn-group .btn {
-            border-radius: 8px;
-            transition: all 0.2s ease;
+        
+        .ghs-picto:hover {
+            transform: scale(1.5);
+            z-index: 1000;
         }
-        .btn-success:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0, 200, 0, 0.2);
-        }
-        .btn-warning:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(255, 193, 7, 0.2);
-        }
-        .badge {
-            min-width: 60px;
-            padding: 8px 12px;
-        }
+        
         .filter-box {
             background: #f8f9fa;
             border-radius: 10px;
-            padding: 1.5rem;
-            margin-bottom: 2rem;
         }
-        .filter-group {
-            margin-bottom: 1rem;
-        }
-        .filter-label {
-            font-weight: 500;
-            margin-bottom: 0.5rem;
-            color: #495057;
-        }
-        .list-group-item:hover {
-            background-color: #f8f9fa;
-            transform: translateX(5px);
+        
+        .item-entry {
             transition: all 0.3s ease;
         }
     </style>
 </head>
 <body class="bg-light">
-    <!-- Barre de navigation -->
     {% include 'nav.html' %}
-    <div class="content">
-        {% block content %}{% endblock %}
-    </div>
 
     <main class="container mt-4">
         <div class="card shadow">
-            <div class="card-header bg-primary text-white">
-                <h3 class="mb-0">
-                    <i class="fas fa-warehouse me-2"></i>
-                    Stock - {{ labo.nom_laboratoire }}
-                </h3>
+            <div class="card-header text-white">
+                <h3 class="mb-0"><i class="fas fa-flask me-2"></i>{{ labo.nom_laboratoire }}</h3>
             </div>
-            
+
             <div class="card-body">
                 <!-- Filtres -->
-                <div class="filter-box">
+                <div class="filter-box p-3 mb-4">
                     <div class="row g-3">
                         <div class="col-md-4">
-                            <label class="form-label">Catégorie</label>
                             <select id="filterCategorie" class="form-select">
-                                <option value="">Toutes</option>
+                                <option value="">Toutes catégories</option>
                                 {% for categorie in categories %}
-                                <option value="{{ categorie.id_categorie }}">
-                                    {{ categorie.nom_categorie }}
-                                </option>
+                                <option value="{{ categorie.id_categorie }}">{{ categorie.nom_categorie }}</option>
                                 {% endfor %}
                             </select>
                         </div>
+                        
                         <div class="col-md-4">
-                            <label class="form-label">Type</label>
                             <select id="filterType" class="form-select" disabled>
-                                <option value="">Tous</option>
+                                <option value="">Tous types</option>
                                 {% for type in types %}
-                                <option value="{{ type.id_type }}" 
-                                        data-categorie="{{ type.id_categorie }}">
+                                <option value="{{ type.id_type }}" data-categorie="{{ type.id_categorie }}">
                                     {{ type.nom_type }}
                                 </option>
                                 {% endfor %}
                             </select>
                         </div>
+                        
+                        <div class="col-md-4">
+                            <select id="filterDanger" class="form-select">
+                                <option value="">Tous articles</option>
+                                <option value="danger">Avec danger</option>
+                                <option value="safe">Sans danger</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Formulaire de gestion -->
-                <div class="mb-4">
-                    <h4 class="mb-3 border-bottom pb-2">Transactions</h4>
-                    <form method="POST">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-                        <div class="row g-3 align-items-end">
-                            <div class="col-md-4">
-                                <select name="article_id" 
-                                        id="selectArticle" 
-                                        class="form-select" 
-                                        required>
-                                    <option value="">Sélectionner un article...</option>
-                                    {% for article in articles %}
-                                    <option value="{{ article.id_article }}"
-                                            data-type="{{ article.id_type }}"
-                                            data-categorie="{{ article.id_categorie }}">
-                                        {{ article.nom_article }} ({{ article.unite_mesure }})
-                                    </option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="col-md-3">
-                                <input type="number" 
-                                       name="quantite"
-                                       class="form-control"
-                                       placeholder="Quantité"
-                                       min="1"
-                                       required>
-                            </div>
-                            <div class="col-md-5">
-                                <div class="btn-group w-100">
-                                    <button type="submit" 
-                                            name="action" 
-                                            value="ajouter"
-                                            class="btn btn-success">
-                                        <i class="fas fa-arrow-right me-2"></i>Ajouter
-                                    </button>
-                                    <button type="submit" 
-                                            name="action" 
-                                            value="retirer"
-                                            class="btn btn-warning">
-                                        <i class="fas fa-arrow-left me-2"></i>Retirer
-                                    </button>
-                                </div>
+                <!-- Formulaire de transaction -->
+                <form method="POST" class="mb-4 bg-light p-3 rounded">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-5">
+                            <select name="article_id" class="form-select" required>
+                                <option value="">Choisir un article...</option>
+                                {% for article in articles %}
+                                <option value="{{ article.id_article }}" 
+                                    data-type="{{ article.id_type }}"
+                                    data-categorie="{{ article.id_categorie }}">
+                                    {{ article.nom_article }} ({{ article.unite_mesure }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <input type="number" name="quantite" 
+                                   class="form-control" 
+                                   placeholder="Quantité" 
+                                   min="1" 
+                                   required>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="btn-group w-100">
+                                <button type="submit" name="action" value="ajouter" 
+                                        class="btn btn-success">
+                                    <i class="fas fa-box-circle-check me-2"></i>Ajouter
+                                </button>
+                                <button type="submit" name="action" value="retirer" 
+                                        class="btn btn-warning">
+                                    <i class="fas fa-box-archive me-2"></i>Retirer
+                                </button>
                             </div>
                         </div>
-                    </form>
-                </div>
+                    </div>
+                </form>
 
                 <!-- Liste du stock -->
-                <h4 class="mb-3 border-bottom pb-2">Inventaire</h4>
-                <div class="list-group">
+                <div id="stockList">
                     {% for item in stock %}
-                    <div class="list-group-item d-flex justify-content-between align-items-center py-3">
-                        <div>
-                            <div class="fw-bold">{{ item.nom_article }}</div>
-                            <small class="text-muted">
-                                {{ categories_dict[item.id_categorie] }} → 
-                                {{ types_dict[item.id_type] }} | 
-                                {{ item.unite_mesure }}
-                            </small>
+                    <div class="list-group-item item-entry mb-2 rounded" 
+                         data-categorie="{{ item.id_categorie }}"
+                         data-type="{{ item.id_type }}"
+                         data-danger="{{ '1' if item.ghs_codes else '0' }}">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center gap-2 mb-2">
+                                    <h6 class="mb-0">{{ item.nom_article }}</h6>
+                                    <small class="text-muted">
+                                        {{ categories_dict[item.id_categorie] }} → 
+                                        {{ types_dict[item.id_type] }}
+                                    </small>
+                                </div>
+                                {% if item.ghs_codes %}
+                                <div class="d-flex gap-2 flex-wrap">
+                                    {% for code in item.ghs_codes.split(',') %}
+                                    {% set code_padded = "%02d"|format(code|int) %}
+                                    <img src="{{ url_for('static', filename='images/ghs%s.png'|format(code_padded)) }}" 
+                                         class="ghs-picto" 
+                                         alt="GHS{{ code_padded }}"
+                                         title="GHS{{ code_padded }}">
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="d-flex align-items-center gap-3">
+                                <span class="badge bg-primary rounded-pill fs-6">
+                                    {{ item.quantite }} {{ item.unite_mesure }}
+                                </span>
+                            </div>
                         </div>
-                        <span class="badge bg-primary rounded-pill fs-6">
-                            {{ item.quantite }}
-                        </span>
                     </div>
                     {% else %}
-                    <div class="alert alert-info mb-0">
-                        <i class="fas fa-info-circle me-2"></i>
-                        Aucun article en stock dans ce laboratoire
-                    </div>
+                    <div class="alert alert-info">Aucun article en stock</div>
                     {% endfor %}
+                </div>
+                <div class="dynamic-bar">
+                    <!-- Contenu de la barre -->
                 </div>
             </div>
         </div>
@@ -178,36 +166,55 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const filterCategorie = document.getElementById('filterCategorie')
-            const filterType = document.getElementById('filterType')
-            const selectArticle = document.getElementById('selectArticle')
+            const filters = {
+                categorie: document.getElementById('filterCategorie'),
+                type: document.getElementById('filterType'),
+                danger: document.getElementById('filterDanger')
+            };
 
-            function updateFilters() {
+            const items = Array.from(document.querySelectorAll('.item-entry'));
+
+            // Gestionnaire de filtres
+            const updateFilters = () => {
+                const selectedCategorie = filters.categorie.value;
+                const selectedType = filters.type.value;
+                const selectedDanger = filters.danger.value;
+
                 // Filtrage des types
-                const categorieId = filterCategorie.value
-                Array.from(filterType.options).forEach(option => {
-                    option.hidden = option.value && 
-                                  option.dataset.categorie !== categorieId
-                })
-                filterType.disabled = !categorieId
-                filterType.value = ''
+                Array.from(filters.type.options).forEach(option => {
+                    const matchCategorie = option.dataset.categorie === selectedCategorie;
+                    option.hidden = selectedCategorie ? !matchCategorie : false;
+                    option.disabled = selectedCategorie ? !matchCategorie : false;
+                });
+                filters.type.disabled = !selectedCategorie;
 
                 // Filtrage des articles
-                const typeId = filterType.value
-                Array.from(selectArticle.options).forEach(option => {
-                    if(!option.value) return
-                    const matchCategorie = !categorieId || 
-                        option.dataset.categorie === categorieId
-                    const matchType = !typeId || 
-                        option.dataset.type === typeId
-                    option.hidden = !(matchCategorie && matchType)
-                })
-            }
+                items.forEach(item => {
+                    const matchCategorie = !selectedCategorie || item.dataset.categorie === selectedCategorie;
+                    const matchType = !selectedType || item.dataset.type === selectedType;
+                    const matchDanger = selectedDanger === '' || 
+                                      (selectedDanger === 'danger' && item.dataset.danger === '1') ||
+                                      (selectedDanger === 'safe' && item.dataset.danger === '0');
 
-            filterCategorie.addEventListener('change', updateFilters)
-            filterType.addEventListener('change', updateFilters)
-            updateFilters()
-        })
+                    item.style.display = (matchCategorie && matchType && matchDanger) ? 'block' : 'none';
+                });
+            };
+
+            // Événements
+            filters.categorie.addEventListener('change', () => {
+                filters.type.value = '';
+                updateFilters();
+            });
+
+            filters.type.addEventListener('change', updateFilters);
+            filters.danger.addEventListener('change', updateFilters);
+
+            // Initialisation
+            new bootstrap.Tooltip(document.body, {
+                selector: '[title]',
+                delay: { "show": 300, "hide": 100 }
+            });
+        });
     </script>
 </body>
 </html>

@@ -32,7 +32,55 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
         .action-buttons .btn {
-            min-width: 90px;
+            min-width: 40px;
+        }
+        /* Styles améliorés pour les pictogrammes */
+        .ghs-icons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        .ghs-icon {
+            width: 32px;
+            height: 32px;
+            object-fit: contain;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .ghs-icon:hover {
+            transform: scale(1.5);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            z-index: 10;
+            position: relative;
+        }
+        .ghs-tooltip {
+            position: absolute;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            white-space: nowrap;
+            display: none;
+            z-index: 100;
+        }
+        .ghs-icon-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+        .ghs-icon-wrapper:hover .ghs-tooltip {
+            display: block;
+        }
+        .danger-level-high {
+            background-color: rgba(255, 0, 0, 0.05);
+        }
+        .danger-level-medium {
+            background-color: rgba(255, 165, 0, 0.05);
         }
     </style>
 </head>
@@ -59,7 +107,7 @@
                 <!-- Filtres améliorés -->
                 <div class="filter-box">
                     <div class="row g-3 align-items-end">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label class="form-label">Catégorie</label>
                             <select id="filterCategorie" class="form-select">
                                 <option value="">Toutes catégories</option>
@@ -68,7 +116,7 @@
                                 {% endfor %}
                             </select>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label class="form-label">Type</label>
                             <select id="filterType" class="form-select" disabled>
                                 <option value="">Tous types</option>
@@ -79,7 +127,16 @@
                                 {% endfor %}
                             </select>
                         </div>
-                        <div class="col-md-4 text-end">
+                        <div class="col-md-3">
+                            <label class="form-label">Filtre de sécurité</label>
+                            <select id="filterDanger" class="form-select">
+                                <option value="">Tous niveaux</option>
+                                <option value="high">Produits dangereux</option>
+                                <option value="medium">Précaution moyenne</option>
+                                <option value="none">Sans pictogramme</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 text-end">
                             <button id="resetFilters" class="btn btn-secondary">
                                 <i class="fas fa-undo me-2"></i>Réinitialiser
                             </button>
@@ -95,6 +152,7 @@
                                 <th>Article</th>
                                 <th>Catégorie</th>
                                 <th>Type</th>
+                                <th>Pictogrammes</th>
                                 <th class="text-center">Stock</th>
                                 <th class="text-center">Unité</th>
                                 <th class="text-end">Actions</th>
@@ -104,10 +162,41 @@
                             {% for item in stock %}
                             <tr class="hover-scale" 
                                 data-categorie="{{ item.id_categorie }}"
-                                data-type="{{ item.id_type }}">
+                                data-type="{{ item.id_type }}"
+                                data-danger="{{ item.ghs_codes|default('none') }}">
                                 <td>{{ item.nom_article }}</td>
                                 <td>{{ item.nom_categorie }}</td>
                                 <td>{{ item.nom_type }}</td>
+                                <td>
+                                    {% if item.ghs_codes %}
+                                        <div class="ghs-icons">
+                                            {% for code in item.ghs_codes.split(',') %}
+                                                {% set padded_code = "%02d"|format(code|trim|int) %}
+                                                {% set descriptions = {
+                                                    '01': 'Explosif',
+                                                    '02': 'Inflammable',
+                                                    '03': 'Comburant',
+                                                    '04': 'Gaz sous pression',
+                                                    '05': 'Corrosif',
+                                                    '06': 'Toxique',
+                                                    '07': 'Irritant/Nocif',
+                                                    '08': 'Dangereux pour la santé',
+                                                    '09': 'Dangereux pour l\'environnement'
+                                                } %}
+                                                <div class="ghs-icon-wrapper">
+                                                    <img src="{{ url_for('static', filename='images/ghs' ~ padded_code ~ '.png') }}" 
+                                                         class="ghs-icon" 
+                                                         alt="GHS {{ padded_code }}">
+                                                    <div class="ghs-tooltip">
+                                                        GHS{{ padded_code }}: {{ descriptions[padded_code]|default('Pictogramme de danger') }}
+                                                    </div>
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
                                 <td class="text-center {% if item.quantite < 10 %}quantite-low{% else %}quantite-ok{% endif %}">
                                     {{ item.quantite }}
                                 </td>
@@ -115,13 +204,14 @@
                                 <td class="text-end action-buttons">
                                     <div class="d-flex gap-2 justify-content-end">
                                         <a href="{{ url_for('editer_article', id=item.id_article) }}" 
-                                           class="btn btn-warning btn-sm">
+                                           class="btn btn-warning btn-sm" title="Modifier">
                                             <i class="fas fa-edit"></i>
                                         </a>
                                         <form method="POST" action="{{ url_for('supprimer_article', id=item.id_article) }}">
                                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <button type="submit" class="btn btn-danger btn-sm"
-                                                onclick="return confirm('Supprimer définitivement cet article ?')">
+                                                onclick="return confirm('Supprimer définitivement cet article ?')"
+                                                title="Supprimer">
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </form>
@@ -130,7 +220,7 @@
                             </tr>
                             {% else %}
                             <tr>
-                                <td colspan="6" class="text-center text-muted py-4">
+                                <td colspan="7" class="text-center text-muted py-4">
                                     <i class="fas fa-box-open fa-2x mb-3"></i><br>
                                     Aucun article enregistré dans le stock
                                 </td>
@@ -148,13 +238,44 @@
         document.addEventListener('DOMContentLoaded', function() {
             const filterCategorie = document.getElementById('filterCategorie');
             const filterType = document.getElementById('filterType');
+            const filterDanger = document.getElementById('filterDanger');
             const resetBtn = document.getElementById('resetFilters');
             const rows = document.querySelectorAll('tbody tr');
+            
+            // Définir les codes GHS dangereux
+            const dangerousGHSCodes = ['01', '03', '05', '06', '08'];
+            const mediumGHSCodes = ['02', '07', '09'];
+            
+            // Colorier les lignes selon le niveau de danger
+            rows.forEach(row => {
+                const ghsCodes = row.dataset.danger?.split(',') || [];
+                
+                if (ghsCodes.length > 0 && ghsCodes[0] !== 'none') {
+                    let hasDangerousCode = false;
+                    let hasMediumCode = false;
+                    
+                    ghsCodes.forEach(code => {
+                        const paddedCode = code.trim().padStart(2, '0');
+                        if (dangerousGHSCodes.includes(paddedCode)) {
+                            hasDangerousCode = true;
+                        } else if (mediumGHSCodes.includes(paddedCode)) {
+                            hasMediumCode = true;
+                        }
+                    });
+                    
+                    if (hasDangerousCode) {
+                        row.classList.add('danger-level-high');
+                    } else if (hasMediumCode) {
+                        row.classList.add('danger-level-medium');
+                    }
+                }
+            });
         
             function updateFilters() {
                 // Récupère les valeurs sélectionnées
                 const categorieId = filterCategorie.value.toString();
                 const typeId = filterType.value.toString();
+                const dangerLevel = filterDanger.value;
         
                 // Met à jour les options du Type
                 Array.from(filterType.options).forEach(option => {
@@ -168,11 +289,24 @@
                 rows.forEach(row => {
                     const rowCat = row.dataset.categorie.toString();
                     const rowType = row.dataset.type.toString();
+                    const rowDanger = row.dataset.danger;
                     
                     const catMatch = !categorieId || rowCat === categorieId;
                     const typeMatch = !typeId || rowType === typeId;
                     
-                    row.style.display = (catMatch && typeMatch) ? '' : 'none';
+                    // Filtre par niveau de danger
+                    let dangerMatch = true;
+                    if (dangerLevel) {
+                        if (dangerLevel === 'high') {
+                            dangerMatch = row.classList.contains('danger-level-high');
+                        } else if (dangerLevel === 'medium') {
+                            dangerMatch = row.classList.contains('danger-level-medium');
+                        } else if (dangerLevel === 'none') {
+                            dangerMatch = !rowDanger || rowDanger === 'none';
+                        }
+                    }
+                    
+                    row.style.display = (catMatch && typeMatch && dangerMatch) ? '' : 'none';
                 });
         
                 // Réactive le select Type si une catégorie est sélectionnée
@@ -187,11 +321,13 @@
             });
         
             filterType.addEventListener('change', updateFilters);
+            filterDanger.addEventListener('change', updateFilters);
         
             resetBtn.addEventListener('click', function(e) {
                 e.preventDefault();
                 filterCategorie.value = '';
                 filterType.value = '';
+                filterDanger.value = '';
                 filterType.disabled = true;
                 rows.forEach(row => row.style.display = '');
             });
@@ -199,6 +335,6 @@
             // Initialisation
             updateFilters();
         });
-        </script>
+    </script>
 </body>
 </html>

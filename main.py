@@ -1312,7 +1312,8 @@ def stock_magasin():
                 t.id_type, 
                 t.nom_type, 
                 c.id_categorie, 
-                c.nom_categorie
+                c.nom_categorie,
+                a.ghs_codes
             FROM stock_magasin sm
             JOIN article a ON sm.id_article = a.id_article
             JOIN type t ON a.id_type = t.id_type
@@ -1329,6 +1330,12 @@ def stock_magasin():
         cur.execute("SELECT * FROM type")
         types = cur.fetchall()
 
+        print("=== DEBUG STOCK DATA ===")
+        for item in stock:
+            print(f"Article: {item['nom_article']}")
+            print(f"GHS Codes: {item.get('ghs_codes', 'NON RENSEIGNÉ')}")
+            print("-------------------")
+
     except Exception as e:
         flash(f"Erreur base de données : {str(e)}", "danger")
     finally:
@@ -1338,7 +1345,7 @@ def stock_magasin():
     return render_template('stock/stock_magasin.html',
                          stock=stock,
                          categories=categories,
-                         types=types)
+                         types=types,)
 
 
 # Route pour ajouter un article
@@ -1348,53 +1355,88 @@ def ajouter_article():
         flash("Accès réservé aux administrateurs", "danger")
         return redirect(url_for('index'))
 
-    cur = mysql.connection.cursor()
+    # Configuration des pictogrammes
+    pictograms = [
+        ('01', 'GHS01', 'Corrosif'),
+        ('02', 'GHS02', 'Danger environnement'),
+        ('03', 'GHS03', 'gaz sous pression'),
+        ('04', 'GHS04', 'Nocif ou irritant'),
+        ('05', 'GHS05', 'Explosif'),
+        ('06', 'GHS06', 'Inflammable'),
+        ('07', 'GHS07', 'Comburant'),
+        ('08', 'GHS08', 'Danger pour la santé'),
+        ('09', 'GHS09', 'Toxique')
+    ]
+
     try:
+        cur = mysql.connection.cursor()
+        
+        # Récupération des données de référence
         cur.execute("SELECT * FROM categorie")
         categories = cur.fetchall()
         cur.execute("SELECT * FROM type")
         types = cur.fetchall()
 
         if request.method == 'POST':
-            nom = request.form['nom']
+            # Validation des données
+            required_fields = ['nom', 'unite', 'quantite', 'type']
+            for field in required_fields:
+                if not request.form.get(field):
+                    flash(f"Le champ {field} est requis", "danger")
+                    return redirect(url_for('ajouter_article'))
+
+            # Extraction des données
+            nom = request.form['nom'].strip()
             unite = request.form['unite']
             quantite = int(request.form['quantite'])
             id_type = int(request.form['type'])
             date_expiration = request.form.get('date_expiration') or None
+            ghs_codes = ','.join(request.form.getlist('ghs_codes'))
 
             try:
                 with mysql.connection.cursor() as trans_cur:
-                    # Création de l'article
+                    # Insertion de l'article
                     trans_cur.execute("""
-                        INSERT INTO article (nom_article, unite_mesure, id_type, date_expiration)
-                        VALUES (%s, %s, %s, %s)
-                    """, (nom, unite, id_type, date_expiration))
+                        INSERT INTO article (
+                            nom_article, 
+                            unite_mesure, 
+                            id_type, 
+                            date_expiration, 
+                            ghs_codes
+                        ) VALUES (%s, %s, %s, %s, %s)
+                    """, (nom, unite, id_type, date_expiration, ghs_codes))
+                    
                     id_article = trans_cur.lastrowid
 
-                    # Création du lot
+                    # Insertion du stock initial
                     trans_cur.execute("""
-                        INSERT INTO stock_magasin (id_article, quantite, date_expiration)
-                        VALUES (%s, %s, %s)
+                        INSERT INTO stock_magasin (
+                            id_article, 
+                            quantite, 
+                            date_expiration
+                        ) VALUES (%s, %s, %s)
                     """, (id_article, quantite, date_expiration))
 
                     mysql.connection.commit()
-                    flash("Article et lot créés avec succès", "success")
+                    flash("Article créé avec succès", "success")
                     return redirect(url_for('stock_magasin'))
 
             except Exception as e:
                 mysql.connection.rollback()
-                flash(f"Erreur : {str(e)}", "danger")
+                flash(f"Erreur base de données : {str(e)}", "danger")
 
         return render_template('stock/ajouter_article.html',
-                             categories=categories,
-                             types=types)
+                            categories=categories,
+                            types=types,
+                            pictograms=pictograms)
 
     except Exception as e:
-        flash(f"Erreur : {str(e)}", "danger")
+        flash(f"Erreur système : {str(e)}", "danger")
         return redirect(url_for('stock_magasin'))
+    
     finally:
-        cur.close()
-
+        if 'cur' in locals(): 
+            cur.close()
 # Route pour éditer un article
 @app.route('/editer_article/<int:id>', methods=['GET', 'POST'])
 def editer_article(id):
@@ -1402,31 +1444,44 @@ def editer_article(id):
         flash("Accès réservé aux administrateurs", "danger")
         return redirect(url_for('index'))
 
-    cur = mysql.connection.cursor()
+    pictograms = [
+        ('01', 'GHS01', 'Explosif'),
+        ('02', 'GHS02', 'Inflammable'),
+        ('03', 'GHS03', 'Comburant'),
+        ('05', 'GHS05', 'Corrosif'),
+        ('06', 'GHS06', 'Toxique'),
+        ('08', 'GHS08', 'Danger santé'),
+        ('09', 'GHS09', 'Danger environnement')
+    ]
+
     try:
+        cur = mysql.connection.cursor()
+
         if request.method == 'POST':
             # Récupération des données
-            nom = request.form['nom']
+            nom = request.form['nom'].strip()
             unite = request.form['unite']
             quantite = int(request.form['quantite'])
             id_type = int(request.form['type'])
             date_expiration = request.form.get('date_expiration') or None
+            ghs_codes = ','.join(request.form.getlist('ghs_codes'))
 
             with mysql.connection.cursor() as trans_cur:
-                # Mise à jour article avec date d'expiration
+                # Mise à jour article
                 trans_cur.execute("""
                     UPDATE article SET
                         nom_article = %s,
                         unite_mesure = %s,
                         id_type = %s,
-                        date_expiration = %s
+                        date_expiration = %s,
+                        ghs_codes = %s
                     WHERE id_article = %s
-                """, (nom, unite, id_type, date_expiration, id))
+                """, (nom, unite, id_type, date_expiration, ghs_codes, id))
 
-                # Mise à jour stock magasin avec date d'expiration
+                # Mise à jour stock
                 trans_cur.execute("""
-                    UPDATE stock_magasin SET
-                        quantite = %s,
+                    UPDATE stock_magasin 
+                    SET quantite = %s,
                         date_expiration = %s
                     WHERE id_article = %s
                     ORDER BY date_expiration ASC
@@ -1434,10 +1489,10 @@ def editer_article(id):
                 """, (quantite, date_expiration, id))
 
                 mysql.connection.commit()
-                flash("Modifications enregistrées", "success")
+                flash("Article mis à jour avec succès", "success")
                 return redirect(url_for('stock_magasin'))
 
-        # Récupération données existantes avec jointure
+        # Récupération données existantes
         cur.execute("""
             SELECT 
                 a.*, 
@@ -1448,10 +1503,12 @@ def editer_article(id):
             JOIN stock_magasin sm ON a.id_article = sm.id_article
             JOIN type t ON a.id_type = t.id_type
             WHERE a.id_article = %s
-            ORDER BY sm.date_expiration ASC
             LIMIT 1
         """, (id,))
         article = cur.fetchone()
+
+        # Préparation des données pour le template
+        current_ghs = set(article['ghs_codes'].split(',')) if article['ghs_codes'] else set()
 
         cur.execute("SELECT * FROM categorie")
         categories = cur.fetchall()
@@ -1459,9 +1516,11 @@ def editer_article(id):
         types = cur.fetchall()
 
         return render_template('stock/editer_article.html',
-                             article=article,
-                             categories=categories,
-                             types=types)
+                            article=article,
+                            categories=categories,
+                            types=types,
+                            pictograms=pictograms,
+                            current_ghs=current_ghs)
 
     except Exception as e:
         mysql.connection.rollback()
@@ -1469,6 +1528,8 @@ def editer_article(id):
         return redirect(url_for('stock_magasin'))
     finally:
         cur.close()
+
+
 
 @app.route('/supprimer_article/<int:id>', methods=['POST'])
 def supprimer_article(id):
@@ -1598,7 +1659,8 @@ def stock_laboratoire(id_lab):
                 a.unite_mesure,
                 sl.quantite,
                 a.id_type,
-                t.id_categorie
+                t.id_categorie,
+                a.ghs_codes
             FROM stock_laboratoire sl
             JOIN stock_magasin sm ON sl.id_lot = sm.id_lot
             JOIN article a ON sm.id_article = a.id_article

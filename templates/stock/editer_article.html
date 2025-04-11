@@ -9,11 +9,21 @@
     <style>
         :root {
             --primary-gradient: linear-gradient(135deg, #0d6efd, #0b5ed7);
+            --secondary-color: #6c757d;
+            --danger-color: #dc3545;
+            --success-color: #198754;
+            --warning-color: #ffc107;
+            --info-color: #0dcaf0;
             --hover-transition: all 0.3s ease;
         }
 
+        body {
+            background: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
         .form-container {
-            max-width: 800px;
+            max-width: 850px;
             margin: 2rem auto;
             background: #fff;
             border-radius: 15px;
@@ -40,7 +50,7 @@
         }
 
         .form-body {
-            padding: 2rem;
+            padding: 2.5rem 2rem 2rem;
         }
 
         .form-group {
@@ -58,8 +68,20 @@
         }
 
         .form-label .required {
-            color: #dc3545;
+            color: var(--danger-color);
             font-size: 0.8em;
+        }
+
+        .form-control, .form-select {
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            border: 1px solid #ced4da;
+            transition: var(--hover-transition);
+        }
+
+        .form-control:focus, .form-select:focus {
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+            border-color: #86b7fe;
         }
 
         .btn-primary {
@@ -67,12 +89,34 @@
             border: none;
             padding: 0.75rem 2rem;
             border-radius: 8px;
+            font-weight: 600;
             transition: var(--hover-transition);
         }
 
         .btn-primary:hover {
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(13, 110, 253, 0.3);
+        }
+
+        .btn-outline-secondary {
+            border-radius: 8px;
+            font-weight: 600;
+            transition: var(--hover-transition);
+        }
+
+        .btn-outline-secondary:hover {
+            background-color: var(--secondary-color);
+            color: white;
+        }
+
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #0d6efd;
+            font-weight: 600;
+            font-size: 1.25rem;
+            margin-bottom: 1.25rem;
         }
 
         .dynamic-select {
@@ -91,14 +135,74 @@
             justify-content: center;
             z-index: 10;
         }
+
+        /* Styles pour les pictogrammes */
+        .pictogram-card {
+            transition: all 0.2s ease;
+            cursor: pointer;
+            border: 2px solid transparent;
+            height: 100%;
+        }
+        
+        .pictogram-card:hover {
+            background-color: rgba(13, 110, 253, 0.05);
+            transform: translateY(-3px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .pictogram-card.selected {
+            border-color: #0d6efd;
+            background-color: rgba(13, 110, 253, 0.1);
+            box-shadow: 0 4px 12px rgba(13, 110, 253, 0.2);
+        }
+        
+        .ghs-image {
+            transition: transform 0.3s ease;
+            max-height: 80px;
+            width: auto;
+            margin: 0 auto;
+        }
+        
+        .pictogram-card:hover .ghs-image,
+        .pictogram-card.selected .ghs-image {
+            transform: scale(1.05);
+        }
+        
+        .cursor-pointer {
+            cursor: pointer;
+        }
+
+        /* Animations pour retours visuels */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .section-animate {
+            animation: pulse 0.5s ease;
+        }
+
+        /* Styles pour le responsive */
+        @media (max-width: 768px) {
+            .form-body {
+                padding: 1.5rem 1rem;
+            }
+            
+            .pictogram-card {
+                margin-bottom: 1rem;
+            }
+        }
     </style>
 </head>
-<body class="bg-light">
-    <!-- Barre de navigation (identique à ajouter_article.html) -->
+<body>
+    <!-- Barre de navigation (inclusion) -->
     {% include 'nav.html' %}
+    
     <div class="content">
         {% block content %}{% endblock %}
     </div>
+    
     <!-- Formulaire principal -->
     <main class="container">
         <div class="form-container">
@@ -112,12 +216,12 @@
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                     <!-- Section Informations de base -->
-                    <div class="mb-4 border-bottom pb-3">
-                        <h5 class="text-primary mb-3"><i class="fas fa-info-circle me-2"></i>Informations de base</h5>
+                    <div class="mb-4 border-bottom pb-4">
+                        <h5 class="section-title"><i class="fas fa-info-circle me-2"></i>Informations de base</h5>
                         
                         <div class="form-group">
-                            <label for="nom">
-                                <i class="fas fa-tag"></i>
+                            <label for="nom" class="form-label">
+                                <i class="fas fa-tag text-primary"></i>
                                 Nom de l'article
                                 <span class="required">*</span>
                             </label>
@@ -128,13 +232,16 @@
                                    value="{{ article.nom_article }}"
                                    required
                                    maxlength="100">
+                            <div class="invalid-feedback">
+                                Veuillez saisir un nom pour l'article.
+                            </div>
                         </div>
 
                         <div class="row g-4">
                             <div class="col-md-6">
                                 <div class="form-group">
-                                    <label for="unite">
-                                        <i class="fas fa-balance-scale"></i>
+                                    <label for="unite" class="form-label">
+                                        <i class="fas fa-balance-scale text-primary"></i>
                                         Unité de mesure
                                         <span class="required">*</span>
                                     </label>
@@ -142,20 +249,23 @@
                                             id="unite" 
                                             name="unite" 
                                             required>
-                                        {% for unite in ['unité', 'litre', 'kg', 'paquet'] %}
+                                        {% for unite in ['unité', 'litre', 'kg', 'paquet', 'mL', 'g', 'boîte'] %}
                                         <option value="{{ unite }}" 
                                             {% if article.unite_mesure == unite %}selected{% endif %}>
                                             {{ unite|capitalize }}
                                         </option>
                                         {% endfor %}
                                     </select>
+                                    <div class="invalid-feedback">
+                                        Veuillez sélectionner une unité de mesure.
+                                    </div>
                                 </div>
                             </div>
                             
                             <div class="col-md-6">
                                 <div class="form-group">
-                                    <label for="date_expiration">
-                                        <i class="fas fa-calendar-times"></i>
+                                    <label for="date_expiration" class="form-label">
+                                        <i class="fas fa-calendar-times text-primary"></i>
                                         Date d'expiration
                                     </label>
                                     <input type="date" 
@@ -163,30 +273,40 @@
                                            id="date_expiration" 
                                            name="date_expiration"
                                            value="{{ article.date_expiration or '' }}">
+                                    <div class="form-text text-muted">
+                                        Laissez vide si non applicable
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Section Stock et classification -->
-                    <div class="mb-4 border-bottom pb-3">
-                        <h5 class="text-primary mb-3"><i class="fas fa-warehouse me-2"></i>Gestion du stock</h5>
+                    <div class="mb-4 border-bottom pb-4">
+                        <h5 class="section-title"><i class="fas fa-warehouse me-2"></i>Gestion du stock</h5>
                         
                         <div class="row g-4">
                             <div class="col-md-6">
                                 <div class="form-group">
-                                    <label for="quantite">
-                                        <i class="fas fa-boxes"></i>
+                                    <label for="quantite" class="form-label">
+                                        <i class="fas fa-boxes text-primary"></i>
                                         Stock magasin
                                         <span class="required">*</span>
                                     </label>
-                                    <input type="number" 
-                                           class="form-control" 
-                                           id="quantite" 
-                                           name="quantite" 
-                                           value="{{ article.quantite }}" 
-                                           min="0" 
-                                           required>
+                                    <div class="input-group">
+                                        <input type="number" 
+                                               class="form-control" 
+                                               id="quantite" 
+                                               name="quantite" 
+                                               value="{{ article.quantite }}" 
+                                               min="0" 
+                                               step="0.01"
+                                               required>
+                                        <span class="input-group-text" id="unite-addon">{{ article.unite_mesure }}</span>
+                                    </div>
+                                    <div class="invalid-feedback">
+                                        Veuillez indiquer la quantité en stock.
+                                    </div>
                                 </div>
                             </div>
                             
@@ -200,14 +320,16 @@
                                 <div class="row g-2">
                                     <div class="col-6">
                                         <div class="form-group">
-                                            <label for="categorie">
-                                                <i class="fas fa-layer-group"></i>
+                                            <label for="categorie" class="form-label">
+                                                <i class="fas fa-layer-group text-primary"></i>
                                                 Catégorie
                                                 <span class="required">*</span>
                                             </label>
                                             <select class="form-select" 
                                                     id="categorie" 
+                                                    name="categorie"
                                                     required>
+                                                <option value="">Sélectionner...</option>
                                                 {% for c in categories %}
                                                 <option value="{{ c.id_categorie }}" 
                                                     {% if c.id_categorie == article.id_categorie %}selected{% endif %}>
@@ -215,13 +337,16 @@
                                                 </option>
                                                 {% endfor %}
                                             </select>
+                                            <div class="invalid-feedback">
+                                                Veuillez sélectionner une catégorie.
+                                            </div>
                                         </div>
                                     </div>
                                     
                                     <div class="col-6">
                                         <div class="form-group">
-                                            <label for="type">
-                                                <i class="fas fa-shapes"></i>
+                                            <label for="type" class="form-label">
+                                                <i class="fas fa-shapes text-primary"></i>
                                                 Type
                                                 <span class="required">*</span>
                                             </label>
@@ -230,6 +355,7 @@
                                                     name="type" 
                                                     required 
                                                     disabled>
+                                                <option value="">Sélectionner...</option>
                                                 {% for t in types %}
                                                 <option value="{{ t.id_type }}" 
                                                     data-categorie="{{ t.id_categorie }}"
@@ -238,10 +364,51 @@
                                                 </option>
                                                 {% endfor %}
                                             </select>
+                                            <div class="invalid-feedback">
+                                                Veuillez sélectionner un type.
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Section pictogrammes de sécurité améliorée -->
+                    <div class="mb-4 border-bottom pb-4">
+                        <h5 class="section-title"><i class="fas fa-exclamation-triangle me-2"></i>Pictogrammes de sécurité</h5>
+                        
+                        <!-- Ajout d'une description explicative -->
+                        <p class="text-muted mb-3">Sélectionnez les pictogrammes de danger applicables à cet article :</p>
+                        
+                        <div class="row g-3">
+                            {% for code, nom, desc in pictograms %}
+                                <div class="col-6 col-md-4 col-lg-3 mb-3">
+                                    <div class="pictogram-card border rounded-3 p-3 position-relative" 
+                                         data-code="{{ code }}">
+                                        <div class="form-check position-absolute top-0 end-0 m-2">
+                                            <input class="form-check-input pictogram-checkbox" 
+                                                type="checkbox" 
+                                                name="ghs_codes" 
+                                                value="{{ code }}" 
+                                                id="ghs{{ code }}"
+                                                {{ 'checked' if code in current_ghs }}>
+                                        </div>
+                                        <label class="d-block h-100 cursor-pointer" for="ghs{{ code }}">
+                                            <div class="text-center mb-2">
+                                                <img src="{{ url_for('static', filename='images/ghs%s.png'|format(code)) }}" 
+                                                    class="ghs-image img-fluid" 
+                                                    alt="{{ nom }}">
+                                            </div>
+                                            <div class="text-center">
+                                                <div class="fw-bold text-danger mb-1">GHS-{{ code }}</div>
+                                                <div class="fw-bold small">{{ nom }}</div>
+                                                <div class="text-muted small">{{ desc }}</div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+                            {% endfor %}
                         </div>
                     </div>
 
@@ -266,36 +433,138 @@
         document.addEventListener('DOMContentLoaded', () => {
             const categorieSelect = document.getElementById('categorie');
             const typeSelect = document.getElementById('type');
+            const uniteSelect = document.getElementById('unite');
+            const uniteAddon = document.getElementById('unite-addon');
             const loadingOverlay = document.querySelector('.loading-overlay');
+            const form = document.getElementById('editForm');
 
+            // Mise à jour de l'unité dans l'addon du champ quantité
+            uniteSelect.addEventListener('change', () => {
+                uniteAddon.textContent = uniteSelect.value;
+            });
+
+            // Filtrage des types en fonction de la catégorie
             const filterTypes = () => {
                 loadingOverlay.style.display = 'flex';
                 const categorieId = categorieSelect.value;
                 
                 setTimeout(() => {
                     typeSelect.disabled = !categorieId;
+                    
+                    // Réinitialiser la sélection si aucune catégorie n'est sélectionnée
+                    if (!categorieId) {
+                        typeSelect.value = "";
+                        loadingOverlay.style.display = 'none';
+                        return;
+                    }
+                    
+                    // Masquer les options qui ne correspondent pas à la catégorie
+                    let hasValidOption = false;
                     typeSelect.querySelectorAll('option').forEach(option => {
                         if(option.value === "") return;
+                        
                         const match = option.dataset.categorie === categorieId;
                         option.hidden = !match;
                         option.disabled = !match;
+                        
+                        if(match) hasValidOption = true;
                     });
                     
-                    if(!typeSelect.value) typeSelect.value = "";
+                    // Sélectionner la première option valide si aucune n'est sélectionnée
+                    if(!typeSelect.value || typeSelect.selectedOptions[0].disabled) {
+                        if(hasValidOption) {
+                            // Trouver la première option valide
+                            const firstValidOption = Array.from(typeSelect.options)
+                                .find(opt => opt.value && !opt.disabled);
+                            
+                            if(firstValidOption) typeSelect.value = firstValidOption.value;
+                            else typeSelect.value = "";
+                        } else {
+                            typeSelect.value = "";
+                        }
+                    }
+                    
                     loadingOverlay.style.display = 'none';
                 }, 300);
             };
 
+            // Appliquer le filtrage lors du changement de catégorie
             categorieSelect.addEventListener('change', filterTypes);
-            filterTypes(); // Initialisation
+            
+            // Initialisation au chargement
+            filterTypes();
 
             // Validation du formulaire
-            document.getElementById('editForm').addEventListener('submit', (e) => {
+            form.addEventListener('submit', (e) => {
+                let isValid = true;
+                
+                // Validation de tous les champs requis
+                form.querySelectorAll('[required]').forEach(field => {
+                    if (!field.value.trim()) {
+                        field.classList.add('is-invalid');
+                        isValid = false;
+                        
+                        // Scroll vers le premier champ invalide
+                        if(field === document.querySelector('.is-invalid')) {
+                            field.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                    } else {
+                        field.classList.remove('is-invalid');
+                    }
+                });
+                
+                // Valider spécifiquement le champ type
                 if(!typeSelect.value) {
-                    e.preventDefault();
                     typeSelect.classList.add('is-invalid');
-                    typeSelect.scrollIntoView({ behavior: 'smooth' });
+                    typeSelect.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    isValid = false;
                 }
+                
+                if (!isValid) {
+                    e.preventDefault();
+                }
+            });
+            
+            // Réinitialiser l'état de validation lors de la modification
+            form.querySelectorAll('input, select').forEach(field => {
+                field.addEventListener('input', () => {
+                    field.classList.remove('is-invalid');
+                });
+            });
+
+            // Gestion des pictogrammes
+            // Initialisation des pictogrammes sélectionnés
+            document.querySelectorAll('input[name="ghs_codes"]').forEach(checkbox => {
+                if(checkbox.checked) {
+                    checkbox.closest('.pictogram-card').classList.add('selected');
+                }
+            });
+            
+            // Gestion du clic sur les cartes de pictogrammes
+            document.querySelectorAll('.pictogram-card').forEach(card => {
+                card.addEventListener('click', function(e) {
+                    // Éviter le déclenchement multiple si on clique sur la checkbox directement
+                    if (e.target.type === 'checkbox') return;
+                    
+                    const checkbox = this.querySelector('input[type="checkbox"]');
+                    checkbox.checked = !checkbox.checked;
+                    this.classList.toggle('selected', checkbox.checked);
+                    
+                    // Animation de feedback
+                    const img = this.querySelector('.ghs-image');
+                    img.style.transform = 'scale(1.2)';
+                    setTimeout(() => {
+                        img.style.transform = checkbox.checked ? 'scale(1.05)' : 'scale(1)';
+                    }, 200);
+                });
+            });
+            
+            // Gestion du clic sur les checkboxes directement
+            document.querySelectorAll('.pictogram-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    const card = this.closest('.pictogram-card');
+                    card.classList.toggle('selected', this.checked);
+                });
             });
         });
     </script>
