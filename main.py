@@ -1,6 +1,6 @@
 import os
 from datetime import datetime, time, timedelta
-from flask import Flask, render_template, request, redirect, url_for, flash, session, abort,render_template_string,Response  
+from flask import Flask, render_template, request, redirect, url_for, flash, session, abort,render_template_string,json,Response  
 from flask_mysqldb import MySQL
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_session import Session 
@@ -2946,6 +2946,189 @@ def reset_password():
             cur.close()
 
     return render_template('reset_password.html')
+
+@app.route('/parametres', methods=['GET', 'POST'])
+def parametres():
+
+    # Récupération des données
+    cur = mysql.connection.cursor()
+    try:
+        cur.execute("SELECT * FROM laboratoire")
+        laboratoires = cur.fetchall()
+        cur.execute("SELECT * FROM matiere")
+        matieres = cur.fetchall()
+        cur.execute("SELECT * FROM professeur")
+        professeurs = cur.fetchall()
+    except Exception as e:
+        flash(f"Erreur base de données : {str(e)}", 'danger')
+        return redirect(url_for('index'))
+    finally:
+        cur.close()
+
+    if request.method == 'POST':
+        action = request.form.get('action')
+        cur = mysql.connection.cursor()
+        
+        try:
+            if action == 'delete_labs':
+                selected_labs = request.form.get('selected_labs', '').split(',')
+                if not selected_labs or selected_labs[0] == '':
+                    flash("Aucun laboratoire sélectionné", 'warning')
+                    return redirect(url_for('parametres'))
+
+                mysql.connection.begin()
+                for lab_id in selected_labs:
+                    # Transfert correct du stock
+                    cur.execute("""
+                        UPDATE stock_magasin sm
+                        JOIN stock_laboratoire sl ON sm.id_lot = sl.id_lot
+                        SET sm.quantite = sm.quantite + sl.quantite
+                        WHERE sl.id_laboratoire = %s
+                    """, (lab_id,))
+                    
+                    # Suppression des données associées
+                    cur.execute("""
+                        DELETE FROM ligne_recu
+                        WHERE id_recu IN (
+                            SELECT id_recu FROM recu
+                            WHERE id_tp IN (
+                                SELECT id_tp FROM tp WHERE id_laboratoire = %s
+                            )
+                        )
+                    """, (lab_id,))
+                    cur.execute("DELETE FROM recu WHERE id_tp IN (SELECT id_tp FROM tp WHERE id_laboratoire = %s)", (lab_id,))
+                    cur.execute("DELETE FROM tp WHERE id_laboratoire = %s", (lab_id,))
+                    cur.execute("DELETE FROM stock_laboratoire WHERE id_laboratoire = %s", (lab_id,))
+                    cur.execute("DELETE FROM laboratoire WHERE id_laboratoire = %s", (lab_id,))
+                
+                mysql.connection.commit()
+                flash(f"{len(selected_labs)} laboratoire(s) supprimés", 'success')
+
+            elif action == 'transfer_stock':
+                selected_labs = request.form.get('selected_labs', '').split(',')
+                if not selected_labs or selected_labs[0] == '':
+                    flash("Aucun laboratoire sélectionné", 'warning')
+                    return redirect(url_for('parametres'))
+
+                mysql.connection.begin()
+                for lab_id in selected_labs:
+                    # Transfert sécurisé sans date_expiration
+                    cur.execute("""
+                        UPDATE stock_magasin sm
+                        JOIN stock_laboratoire sl ON sm.id_lot = sl.id_lot
+                        SET sm.quantite = sm.quantite + sl.quantite
+                        WHERE sl.id_laboratoire = %s
+                    """, (lab_id,))
+                    cur.execute("DELETE FROM stock_laboratoire WHERE id_laboratoire = %s", (lab_id,))
+                
+                mysql.connection.commit()
+                flash("Stock transféré avec succès", 'success')
+
+            elif action == 'clear_lab_stock':
+                selected_labs = request.form.get('selected_labs', '').split(',')
+                placeholders = ','.join(['%s'] * len(selected_labs))
+                cur.execute(f"DELETE FROM stock_laboratoire WHERE id_laboratoire IN ({placeholders})", selected_labs)
+                mysql.connection.commit()
+                flash("Stock laboratoire(s) vidé", 'success')
+
+            elif action == 'delete_filtered_tp':
+                filters = json.loads(request.form.get('filters', '{}'))
+                
+                conditions = []
+                params = []
+                if filters.get('start'):
+                    conditions.append("heure_debut >= %s")
+                    params.append(filters['start'])
+                if filters.get('end'):
+                    conditions.append("heure_fin <= %s")
+                    params.append(filters['end'])
+                if filters.get('lab'):
+                    conditions.append("id_laboratoire = %s")
+                    params.append(filters['lab'])
+                if filters.get('matiere'):
+                    conditions.append("id_matiere = %s")
+                    params.append(filters['matiere'])
+                if filters.get('prof'):
+                    conditions.append("id_prof = %s")
+                    params.append(filters['prof'])
+                
+                where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
+
+                mysql.connection.begin()
+                # Suppression en cascade sécurisée
+                cur.execute(f"""
+                    DELETE FROM ligne_recu
+                    WHERE id_recu IN (
+                        SELECT id_recu FROM recu
+                        WHERE id_tp IN (
+                            SELECT id_tp FROM tp {where_clause}
+                        )
+                    )
+                """, params)
+                cur.execute(f"DELETE FROM recu WHERE id_tp IN (SELECT id_tp FROM tp {where_clause})", params)
+                cur.execute(f"DELETE FROM tp {where_clause}", params)
+                mysql.connection.commit()
+                flash("TPs filtrés supprimés", 'success')
+
+            elif action == 'delete_all_tp':
+                mysql.connection.begin()
+                cur.execute("DELETE FROM ligne_recu")
+                cur.execute("DELETE FROM recu")
+                cur.execute("DELETE FROM tp")
+                mysql.connection.commit()
+                flash("Tous les TPs supprimés", 'success')
+
+            elif action == 'clear_store_stock':
+                cur.execute("UPDATE stock_magasin SET quantite = 0")
+                mysql.connection.commit()
+                flash("Stock magasin réinitialisé", 'success')
+
+            elif action == 'delete_all_profs':
+                mysql.connection.begin()
+                cur.execute("""
+                    DELETE FROM ligne_recu
+                    WHERE id_recu IN (
+                        SELECT id_recu FROM recu
+                        WHERE id_tp IN (
+                            SELECT id_tp FROM tp WHERE id_prof IS NOT NULL
+                        )
+                    )
+                """)
+                cur.execute("DELETE FROM recu WHERE id_tp IN (SELECT id_tp FROM tp WHERE id_prof IS NOT NULL)")
+                cur.execute("DELETE FROM tp WHERE id_prof IS NOT NULL")
+                cur.execute("DELETE FROM professeur")
+                mysql.connection.commit()
+                flash("Tous les professeurs supprimés", 'success')
+
+            elif action == 'delete_all_matieres':
+                mysql.connection.begin()
+                cur.execute("""
+                    DELETE FROM ligne_recu
+                    WHERE id_recu IN (
+                        SELECT id_recu FROM recu
+                        WHERE id_tp IN (
+                            SELECT id_tp FROM tp WHERE id_matiere IS NOT NULL
+                        )
+                    )
+                """)
+                cur.execute("DELETE FROM recu WHERE id_tp IN (SELECT id_tp FROM tp WHERE id_matiere IS NOT NULL)")
+                cur.execute("DELETE FROM tp WHERE id_matiere IS NOT NULL")
+                cur.execute("DELETE FROM matiere")
+                mysql.connection.commit()
+                flash("Toutes les matières supprimées", 'success')
+
+        except Exception as e:
+            mysql.connection.rollback()
+            flash(f"Erreur : {str(e)}", 'danger')
+        finally:
+            cur.close()
+
+        return redirect(url_for('parametres'))
+
+    return render_template('parametres.html',
+                         laboratoires=laboratoires,
+                         matieres=matieres,
+                         professeurs=professeurs)
 
 if __name__ == '__main__':
     # Création des utilisateurs dans un contexte d'application

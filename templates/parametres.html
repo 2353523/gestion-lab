@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administration Complète</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <style>
+        .management-section {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .management-section:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+        
+        .section-title {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            padding: 1.2rem;
+            border-radius: 10px 10px 0 0;
+            border-bottom: 2px solid #dee2e6;
+        }
+        
+        .lab-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1rem;
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 1rem;
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        
+        .lab-card {
+            padding: 1rem;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .lab-card.selected {
+            border-color: #0d6efd;
+            background-color: #e7f1ff;
+        }
+        
+        .action-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .filter-panel {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+        }
+        
+        .impact-list {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .impact-list li {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .danger-action {
+            border-left: 4px solid #dc3545;
+        }
+    </style>
+</head>
+<body>
+    {% include 'nav.html' %}
+    <div class="container py-4">
+        <h1 class="mb-4 border-bottom pb-3">Administration Complète</h1>
+
+        <!-- Section Laboratoires -->
+        <div class="management-section">
+            <div class="section-title">
+                <h3><i class="fas fa-flask me-2"></i>Gestion des Laboratoires</h3>
+            </div>
+            <div class="p-3">
+                <!-- Sélection des laboratoires -->
+                <div class="lab-grid">
+                    {% for lab in laboratoires %}
+                    <div class="lab-card" data-id="{{ lab.id_laboratoire }}">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="mb-1">{{ lab.nom_laboratoire }}</h5>
+                                <small class="text-muted">Capacité: {{ lab.capacite }}</small>
+                            </div>
+                            <i class="fas fa-check-circle text-primary" style="display: none;"></i>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Actions -->
+                <div class="action-panel">
+                    <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteLabsModal">
+                        <i class="fas fa-trash me-2"></i>Supprimer
+                    </button>
+                    <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#transferStockModal">
+                        <i class="fas fa-exchange-alt me-2"></i>Transférer stock
+                    </button>
+                    <button class="btn btn-dark" data-bs-toggle="modal" data-bs-target="#clearLabStockModal">
+                        <i class="fas fa-ban me-2"></i>Vider stock
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section TP/Reçus -->
+        <div class="management-section danger-action">
+            <div class="section-title">
+                <h3><i class="fas fa-file-contract me-2"></i>Gestion des TP/Reçus</h3>
+            </div>
+            <div class="p-3">
+                <div class="filter-panel">
+                    <h5 class="mb-3">Filtres de suppression</h5>
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Période</label>
+                            <input type="date" class="form-control" id="startDate">
+                            <input type="date" class="form-control mt-2" id="endDate">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Laboratoire</label>
+                            <select class="form-select" id="labFilter">
+                                <option value="">Tous</option>
+                                {% for lab in laboratoires %}
+                                <option value="{{ lab.id_laboratoire }}">{{ lab.nom_laboratoire }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Matière</label>
+                            <select class="form-select" id="matiereFilter">
+                                <option value="">Toutes</option>
+                                {% for matiere in matieres %}
+                                <option value="{{ matiere.id_matiere }}">{{ matiere.nom_matiere }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Professeur</label>
+                            <select class="form-select" id="profFilter">
+                                <option value="">Tous</option>
+                                {% for prof in professeurs %}
+                                <option value="{{ prof.id_prof }}">{{ prof.prenom }} {{ prof.nom }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="d-flex justify-content-end gap-2">
+                    <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteFilteredModal">
+                        <i class="fas fa-filter me-2"></i>Supprimer filtrés
+                    </button>
+                    <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteAllModal">
+                        <i class="fas fa-skull-crossbones me-2"></i>Tout supprimer
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section Professeurs -->
+        <div class="management-section">
+            <div class="section-title">
+                <h3><i class="fas fa-chalkboard-user me-2"></i>Gestion des Professeurs</h3>
+            </div>
+            <div class="p-3">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    La suppression entraînera la suppression de tous les TP associés
+                </div>
+                <button class="btn btn-danger w-100" data-bs-toggle="modal" data-bs-target="#deleteProfsModal">
+                    <i class="fas fa-users-slash me-2"></i>Supprimer tous les professeurs
+                </button>
+            </div>
+        </div>
+
+        <!-- Section Matières -->
+        <div class="management-section">
+            <div class="section-title">
+                <h3><i class="fas fa-book-open me-2"></i>Gestion des Matières</h3>
+            </div>
+            <div class="p-3">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    La suppression entraînera la suppression de tous les TP associés
+                </div>
+                <button class="btn btn-danger w-100" data-bs-toggle="modal" data-bs-target="#deleteMatieresModal">
+                    <i class="fas fa-trash-alt me-2"></i>Supprimer toutes les matières
+                </button>
+            </div>
+        </div>
+
+        <!-- Section Stock Magasin -->
+        <div class="management-section danger-action">
+            <div class="section-title">
+                <h3><i class="fas fa-warehouse me-2"></i>Stock Magasin</h3>
+            </div>
+            <div class="p-3">
+                <div class="alert alert-danger">
+                    <i class="fas fa-radiation me-2"></i>
+                    Attention : Cette action est irréversible et supprimera définitivement tout le stock
+                </div>
+                <button class="btn btn-danger w-100" data-bs-toggle="modal" data-bs-target="#clearStoreStockModal">
+                    <i class="fas fa-fire me-2"></i>Vider complètement le stock
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <!-- Modal Suppression Laboratoires -->
+    <div class="modal fade" id="deleteLabsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">Suppression de Laboratoires</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="/parametres" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="delete_labs">
+                    <input type="hidden" name="selected_labs" id="selectedLabsInput">
+                    <div class="modal-body">
+                        <p class="fw-bold">Laboratoires sélectionnés :</p>
+                        <ul id="labDeleteList" class="impact-list"></ul>
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Cette action supprimera définitivement les laboratoires et leur contenu !
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-danger">Confirmer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Transfert Stock -->
+    <div class="modal fade" id="transferStockModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title">Transfert de Stock</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="/parametres" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="transfer_stock">
+                    <input type="hidden" name="selected_labs" id="selectedLabsTransfer">
+                    <div class="modal-body">
+                        <p class="fw-bold">Transfert depuis :</p>
+                        <ul id="labTransferList" class="impact-list"></ul>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Le stock sera transféré au magasin principal
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-warning">Confirmer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Vidage Stock Labo -->
+    <div class="modal fade" id="clearLabStockModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title">Vidage de Stock</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="/parametres" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="clear_lab_stock">
+                    <input type="hidden" name="selected_labs" id="selectedLabsClear">
+                    <div class="modal-body">
+                        <p class="fw-bold">Laboratoires concernés :</p>
+                        <ul id="labClearList" class="impact-list"></ul>
+                        <div class="alert alert-danger">
+                            <i class="fas fa-radiation me-2"></i>
+                            Cette action supprimera définitivement tout le stock des laboratoires sélectionnés !
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-dark">Confirmer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Suppression TP Filtrés -->
+    <div class="modal fade" id="deleteFilteredModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">Suppression Sélective</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="/parametres" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="delete_filtered_tp">
+                    <input type="hidden" name="filters" id="tpFiltersInput">
+                    <div class="modal-body">
+                        <p class="fw-bold">Éléments à supprimer :</p>
+                        <ul class="impact-list">
+                            <li>Tous les TP correspondant aux filtres</li>
+                            <li>Les reçus associés</li>
+                            <li>Les consommations enregistrées</li>
+                        </ul>
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Cette action est irréversible et affectera les statistiques historiques !
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-danger">Confirmer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <!-- Modal Suppression Totale TP -->
+    <div class="modal fade" id="deleteAllModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">Suppression Totale des TP</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="/parametres" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="delete_all_tp">
+                    <div class="modal-body">
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Cette action va supprimer définitivement :
+                            <ul class="mt-2">
+                                <li>Tous les TP existants</li>
+                                <li>Tous les reçus associés</li>
+                                <li>Toutes les consommations enregistrées</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-danger">Confirmer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Suppression Professeurs -->
+    <div class="modal fade" id="deleteProfsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">Suppression de Tous les Professeurs</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="/parametres" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="delete_all_profs">
+                    <div class="modal-body">
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Cette action va supprimer :
+                            <ul class="mt-2">
+                                <li>Tous les professeurs</li>
+                                <li>Leurs TP associés</li>
+                                <li>Les reçus et consommations liés</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-danger">Confirmer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Suppression Matières -->
+    <div class="modal fade" id="deleteMatieresModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">Suppression de Toutes les Matières</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="/parametres" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="delete_all_matieres">
+                    <div class="modal-body">
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Cette action va supprimer :
+                            <ul class="mt-2">
+                                <li>Toutes les matières</li>
+                                <li>Les TP associés</li>
+                                <li>Les reçus et consommations liés</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-danger">Confirmer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Vidage Stock Magasin -->
+    <div class="modal fade" id="clearStoreStockModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">Vidage Complet du Stock</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="/parametres" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="clear_store_stock">
+                    <div class="modal-body">
+                        <div class="alert alert-danger">
+                            <i class="fas fa-radiation me-2"></i>
+                            Cette action va réinitialiser toutes les quantités du stock magasin à zéro !
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-danger">Confirmer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Gestion de la sélection des laboratoires
+            let selectedLabs = new Set();
+            const labCards = document.querySelectorAll('.lab-card');
+            
+            // Initialisation des icônes de sélection
+            labCards.forEach(card => {
+                if (!card.querySelector('.fa-check-circle')) {
+                    const icon = document.createElement('i');
+                    icon.className = 'fas fa-check-circle text-primary ms-2';
+                    icon.style.display = 'none';
+                    card.querySelector('div').appendChild(icon);
+                }
+            });
+    
+            // Gestion du clic sur les cartes
+            labCards.forEach(card => {
+                card.addEventListener('click', function() {
+                    const labId = this.dataset.id;
+                    const icon = this.querySelector('.fa-check-circle');
+                    
+                    this.classList.toggle('selected');
+                    const isSelected = this.classList.contains('selected');
+                    
+                    icon.style.display = isSelected ? 'inline-block' : 'none';
+                    isSelected ? selectedLabs.add(labId) : selectedLabs.delete(labId);
+                    
+                    updateLabModals();
+                });
+            });
+    
+            // Mise à jour des modals liés aux laboratoires
+            function updateLabModals() {
+                const labIds = Array.from(selectedLabs);
+                const labNames = labIds.map(id => 
+                    document.querySelector(`.lab-card[data-id="${id}"] h5`).textContent
+                );
+    
+                // Mise à jour des champs cachés
+                document.querySelectorAll('input[name="selected_labs"]').forEach(input => {
+                    input.value = labIds.join(',');
+                });
+    
+                // Mise à jour de l'affichage
+                document.querySelectorAll('.lab-impact-list').forEach(list => {
+                    list.innerHTML = labNames.map(name => `<li>${name}</li>`).join('');
+                });
+            }
+    
+            // Initialisation des modals Bootstrap
+            const modals = {
+                deleteLabs: new bootstrap.Modal('#deleteLabsModal'),
+                transferStock: new bootstrap.Modal('#transferStockModal'),
+                clearLabStock: new bootstrap.Modal('#clearLabStockModal'),
+                deleteFilteredTP: new bootstrap.Modal('#deleteFilteredModal'),
+                deleteAllTP: new bootstrap.Modal('#deleteAllModal'),
+                deleteProfs: new bootstrap.Modal('#deleteProfsModal'),
+                deleteMatieres: new bootstrap.Modal('#deleteMatieresModal'),
+                clearStoreStock: new bootstrap.Modal('#clearStoreStockModal')
+            };
+    
+            // Gestion des filtres TP
+            const tpFilterForm = document.getElementById('tpFilterForm');
+            document.getElementById('deleteFilteredModal').addEventListener('show.bs.modal', () => {
+                const filters = {
+                    start: document.getElementById('startDate').value,
+                    end: document.getElementById('endDate').value,
+                    lab: document.getElementById('labFilter').value,
+                    matiere: document.getElementById('matiereFilter').value,
+                    prof: document.getElementById('profFilter').value
+                };
+                document.getElementById('tpFiltersInput').value = JSON.stringify(filters);
+            });
+    
+            // Validation des formulaires
+            document.querySelectorAll('form').forEach(form => {
+                form.addEventListener('submit', function(e) {
+                    const action = this.querySelector('input[name="action"]').value;
+                    
+                    if (action === 'delete_labs' && selectedLabs.size === 0) {
+                        e.preventDefault();
+                        alert('Veuillez sélectionner au moins un laboratoire');
+                        return;
+                    }
+                    
+                    if (!confirm('Confirmez-vous cette action irréversible ?')) {
+                        e.preventDefault();
+                    }
+                });
+            });
+    
+            // Réinitialisation après fermeture des modals
+            document.querySelectorAll('.modal').forEach(modal => {
+                modal.addEventListener('hidden.bs.modal', () => {
+                    selectedLabs.clear();
+                    labCards.forEach(card => {
+                        card.classList.remove('selected');
+                        card.querySelector('.fa-check-circle').style.display = 'none';
+                    });
+                });
+            });
+    
+            // Initialisation de Flatpickr
+            flatpickr(".date-input", {
+                dateFormat: "Y-m-d",
+                locale: "fr",
+                mode: "range"
+            });
+    
+            // Synchronisation des sélecteurs
+            function refreshSelectors() {
+                // Ajouter ici une logique de rafraîchissement si nécessaire
+            }
+            
+            // Écouteurs des changements de filtres
+            ['labFilter', 'matiereFilter', 'profFilter'].forEach(id => {
+                document.getElementById(id).addEventListener('change', refreshSelectors);
+            });
+        });
+    
+        // Fonction globale de validation
+        function validateForm(form) {
+            const required = form.querySelectorAll('[required]');
+            let valid = true;
+            
+            required.forEach(field => {
+                if (!field.value) {
+                    valid = false;
+                    field.classList.add('is-invalid');
+                }
+            });
+            
+            return valid;
+        }
+    </script>
+</body>
+</html>
