@@ -1,5 +1,5 @@
 import os
-from datetime import datetime, time, timedelta
+from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, flash, session, abort,render_template_string,json,Response  
 from flask_mysqldb import MySQL
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -13,8 +13,8 @@ import secrets
 import smtplib
 import re
 from flask_mail import Mail, Message
-
-
+from itsdangerous import URLSafeTimedSerializer
+import time
 
 
 app = Flask(__name__)
@@ -41,19 +41,16 @@ app.config['MAIL_DEBUG'] = False
 
 mysql = MySQL(app)
 
-# Configuration Email
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = '23543@isme.esp.mr' # Votre email Gmail
-app.config['MAIL_PASSWORD'] = 'ltgmlrfujdrmhjvq'# Mot de passe d'application
-app.config['MAIL_DEFAULT_SENDER'] ='LabManager <23543@isme.esp.mr>'
-app.config['MAIL_SUPPRESS_SEND'] = False  # Activer l'envoi réel
-app.config['MAIL_DEBUG'] = True  # Afficher les logs SMTP dans la console
+# Configuration Mailjet
+app.config.update(
+    MAIL_SERVER='in-v3.mailjet.com',
+    MAIL_PORT=587,
+    MAIL_USE_TLS=True,
+    MAIL_USERNAME='8559250c64a2ffb049cd789fc94c2b67',  # À récupérer sur le dashboard Mailjet
+    MAIL_PASSWORD='69a105021dc70ca8f5a0934b3f4a1280',  # À récupérer sur le dashboard Mailjet
+    MAIL_DEFAULT_SENDER=('LabManager', '23535@isme.esp.mr')
+)
 
-
-
-  
 mail = Mail(app)
 
 
@@ -217,6 +214,11 @@ def verify_access():
     # Maintenir la session active
     session.permanent = True
     session.modified = True
+
+    def verify_admin_access():
+        if request.endpoint in ['parametres', 'request_admin_code', 'verify_admin_access']:
+            if not session.get('admin_verified'):
+                return redirect(url_for('verify_admin_access'))
 
 @app.errorhandler(403)
 def forbidden(e):
@@ -1045,8 +1047,6 @@ def supprimer_laboratoire(id):
     finally:
         cur.close()
     return redirect(url_for('laboratoires_actifs'))
-
-from datetime import datetime, time, timedelta
 
 def get_period(t):
     """Gère tous les formats temporels entrants"""
@@ -2947,9 +2947,98 @@ def reset_password():
 
     return render_template('reset_password.html')
 
+# Fichier de stockage des codes (hors de la base de données)
+ACCESS_CODE_FILE = 'access_codes.json'
+
+def generate_access_code():
+    """Génère un code d'accès sécurisé"""
+    return secrets.token_hex(3).upper()  # Exemple: 'A3B9F2'
+
+def save_access_code(email, code):
+    data = {}
+    if os.path.exists(ACCESS_CODE_FILE):
+        with open(ACCESS_CODE_FILE, 'r') as f:
+            data = json.load(f)
+    
+    # Utilisation correcte de time.time()
+    data[email] = {
+        'code': code,
+        'expires': time.time() + 600  # 10 minutes en secondes
+    }
+    
+    with open(ACCESS_CODE_FILE, 'w') as f:
+        json.dump(data, f)
+
+def get_access_code(email):
+    if not os.path.exists(ACCESS_CODE_FILE):
+        return None
+    
+    with open(ACCESS_CODE_FILE, 'r') as f:
+        data = json.load(f)
+    
+    entry = data.get(email)
+    # Vérification du timestamp avec time.time()
+    if entry and entry['expires'] > time.time():
+        return entry['code']
+    
+    return None
+
+@app.route('/admin/request-code', methods=['GET', 'POST'])
+def request_admin_code():
+    if 'user_id' not in session or session.get('role') != 'admin':
+        abort(403)
+    
+    admin_email = session['email']
+    
+    if request.method == 'POST':
+        # Générer et envoyer un nouveau code
+        new_code = generate_access_code()
+        save_access_code(admin_email, new_code)
+        
+        # Envoyer le code par email
+        msg = Message("Votre code d'accès administrateur",
+                      recipients=[admin_email])
+        msg.body = f"Votre code d'accès temporaire est : {new_code}"
+        mail.send(msg)
+        
+        flash("Un nouveau code a été envoyé à votre adresse email", "success")
+        return redirect(url_for('verify_admin_access'))
+    
+    return render_template('admin/request_code.html')
+
+@app.route('/admin/verify', methods=['GET', 'POST'])
+def verify_admin_access():
+    if 'user_id' not in session or session.get('role') != 'admin':
+        abort(403)
+    
+    if request.method == 'POST':
+        # Modification cruciale ici
+        entered_code = request.form.get('code', '').strip().upper()  # Utiliser .get() avec valeur par défaut
+        admin_email = session['email']
+        saved_code = get_access_code(admin_email)
+
+        # Validation supplémentaire
+        if not entered_code:
+            flash("Veuillez entrer un code de vérification", "danger")
+            return redirect(url_for('verify_admin_access'))
+            
+        if len(entered_code) != 6:  # Vérification de la longueur
+            flash("Le code doit contenir exactement 6 caractères", "danger")
+            return redirect(url_for('verify_admin_access'))
+
+        if saved_code and entered_code == saved_code:
+            session['admin_verified'] = True
+            return redirect(url_for('parametres'))
+        else:
+            flash("Code invalide ou expiré", "danger")
+    
+    return render_template('admin/verify.html')
+
 @app.route('/parametres', methods=['GET', 'POST'])
 def parametres():
 
+    if not session.get('admin_verified'):
+       return redirect(url_for('verify_admin_access'))
     # Récupération des données
     cur = mysql.connection.cursor()
     try:
@@ -3129,6 +3218,8 @@ def parametres():
                          laboratoires=laboratoires,
                          matieres=matieres,
                          professeurs=professeurs)
+
+
 
 if __name__ == '__main__':
     # Création des utilisateurs dans un contexte d'application
