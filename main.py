@@ -1,6 +1,7 @@
 import os
-from datetime import datetime, timedelta
-from flask import Flask, render_template, request, redirect, url_for, flash, session, abort,render_template_string,json,Response  
+from datetime import datetime, timedelta, time as dt_time  # Alias pour datetime.time
+import time  # Module time standard
+from flask import Flask, render_template, request, redirect, url_for, flash, session, abort, render_template_string, json, Response  
 from flask_mysqldb import MySQL
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_session import Session 
@@ -13,9 +14,6 @@ import secrets
 import smtplib
 import re
 from flask_mail import Mail, Message
-from itsdangerous import URLSafeTimedSerializer
-import time
-
 
 app = Flask(__name__)
 csrf = CSRFProtect(app)
@@ -1050,6 +1048,7 @@ def supprimer_laboratoire(id):
 
 def get_period(t):
     """Gère tous les formats temporels entrants"""
+    # Conversion vers datetime.time
     if isinstance(t, str):
         # Conversion depuis un string SQL 'HH:MM:SS'
         t = datetime.strptime(t, '%H:%M:%S').time()
@@ -1058,16 +1057,18 @@ def get_period(t):
         total_seconds = t.total_seconds()
         hours = int(total_seconds // 3600)
         minutes = int((total_seconds % 3600) // 60)
-        t = time(hours, minutes)
+        t = dt_time(hours, minutes)  # Utilisation de l'alias
     
+    # Définition des périodes avec le bon type
     periods = {
-        'P1': (time(8, 0), time(9, 30)),
-        'P2': (time(9, 45), time(11, 15)),
-        'P3': (time(11, 30), time(13, 0)),
-        'P4': (time(15, 10), time(16, 40)),
-        'P5': (time(17, 0), time(18, 30))
+        'P1': (dt_time(8, 0), dt_time(9, 30)),
+        'P2': (dt_time(9, 45), dt_time(11, 15)),
+        'P3': (dt_time(11, 30), dt_time(13, 0)),
+        'P4': (dt_time(15, 10), dt_time(16, 40)),
+        'P5': (dt_time(17, 0), dt_time(18, 30))
     }
     
+    # Vérification des plages horaires
     for period, (start, end) in periods.items():
         if start <= t <= end:
             return period
@@ -1078,29 +1079,36 @@ def emploi():
     try:
         if request.method == 'HEAD':
             return Response()
-        locale.setlocale(locale.LC_TIME, 'french')  # Alternative pour Windows
+        
+        # Configuration locale française
+        locale.setlocale(locale.LC_TIME, 'french')
 
+        # Récupération des paramètres
         lab_id = request.args.get('lab_id', type=int)
         week_offset = int(request.args.get('week_offset', 0))
+        
+        # Calcul des dates
         today = datetime.today()
         start_date = today - timedelta(days=today.weekday()) + timedelta(weeks=week_offset)
         days = [start_date + timedelta(days=i) for i in range(7)]  # Lundi à dimanche
 
+        # Définition des créneaux horaires avec datetime.time
         CRENEAUX = {
-            'P1': (time(8, 0), time(9, 30)),
-            'P2': (time(9, 45), time(11, 15)),
-            'P3': (time(11, 30), time(13, 0)),
-            'P4': (time(15, 10), time(16, 40)),
-            'P5': (time(17, 0), time(18, 30))
+            'P1': (dt_time(8, 0), dt_time(9, 30)),
+            'P2': (dt_time(9, 45), dt_time(11, 15)),
+            'P3': (dt_time(11, 30), dt_time(13, 0)),
+            'P4': (dt_time(15, 10), dt_time(16, 40)),
+            'P5': (dt_time(17, 0), dt_time(18, 30))
         }
 
+        # Connexion à la base de données
         cur = mysql.connection.cursor()
         
-        # Récupération de la liste des laboratoires
+        # Récupération des laboratoires
         cur.execute("SELECT id_laboratoire, nom_laboratoire FROM laboratoire")
         laboratoires = cur.fetchall()
         
-        # Requête modifiée pour filtrer par labo
+        # Requête des TPs
         query = """
             SELECT 
                 tp.id_tp,
@@ -1121,7 +1129,6 @@ def emploi():
         """
         params = [start_date]
         
-        
         if lab_id:
             query += " AND l.id_laboratoire = %s"
             params.append(lab_id)
@@ -1130,21 +1137,24 @@ def emploi():
         
         cur.execute(query, tuple(params))
 
+        # Traitement des résultats
         tps = {}
         for tp in cur.fetchall():
             debut = tp['debut']
+            
+            # Conversion si nécessaire
             if isinstance(debut, timedelta):
                 total_seconds = debut.total_seconds()
-                debut = time(int(total_seconds // 3600), int((total_seconds % 3600) // 60))
+                debut = dt_time(int(total_seconds // 3600), int((total_seconds % 3600) // 60))
             
-            periode = get_period(debut)
+            periode = get_period(debut)  # Supposons que cette fonction utilise datetime.time
             
             if periode:
                 lab_key = f"{tp['id_laboratoire']}-{tp['date_tp'].strftime('%Y-%m-%d')}-{periode}"
                 tps[lab_key] = tp
 
         return render_template('emplois/emploi.html',
-                            current_time=datetime.now().strftime('%d/%m/%Y à %H:%M'),  
+                            current_time=datetime.now().strftime('%d/%m/%Y à %H:%M'),
                             laboratoires=laboratoires,
                             selected_lab=lab_id,
                             days=days,
@@ -2606,7 +2616,7 @@ def liste_utilisateurs():
 
 @app.route('/admin/utilisateurs/creer', methods=['GET', 'POST'])
 def creer_utilisateur():
-    if 'user_id' not in session or session.get('role') != 'admin':
+    if 'user_id' not in session or session.get('role') != ('admin' or 'super_admin'):
         abort(403)
     
     if request.method == 'POST':
