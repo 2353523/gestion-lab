@@ -60,7 +60,7 @@
                     <p class="lead mb-0">Gestion centralisée des ressources matérielles</p>
                 </div>
                 <div class="col-md-4 text-end">
-                    {% if session.role == 'admin' %}
+                    {% if session.role in ['admin', 'super_admin'] %}
                     <a href="{{ url_for('parametres_stock') }}" class="btn btn-light btn-lg">
                         <i class="fas fa-cog me-2"></i>Admin Stock
                     </a>

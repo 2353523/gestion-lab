@@ -114,7 +114,7 @@ def create_default_users():
 def login():
     if request.method == 'POST':
         try:
-            email = request.form['email']  # Changé de username à email
+            email = request.form['email']
             password = request.form['password']
             
             cur = mysql.connection.cursor()
@@ -123,7 +123,11 @@ def login():
             cur.close()
             
             if user:
-                print(f"Utilisateur trouvé : {user['username']}")
+                # Vérification si le compte est désactivé
+                if not user['is_active']:
+                    flash('Ce compte est désactivé', 'danger')
+                    return redirect(url_for('login'))
+                
                 if check_password_hash(user['password'], password):
                     session.clear()
                     session['user_id'] = user['id']
@@ -145,28 +149,31 @@ def login():
             flash('Erreur système', 'danger')
     
     return render_template('login.html')
+
 @app.before_request
 def verify_access():
-    # Liste de toutes les routes protégées
+    # Liste des routes protégées (nécessitant une connexion)
     protected_routes = [
-        'index', 'liste_professeurs', 'creer_tp', 'editer_tp', 
+        'index', 'liste_professeurs', 'creer_tp', 'editer_tp',
         'supprimer_tp', 'creer_recu', 'liste_matieres', 'creer_matiere',
         'editer_matiere', 'supprimer_matiere', 'liste_laboratoires',
         'creer_laboratoire', 'editer_laboratoire', 'supprimer_laboratoire'
     ]
     
+    # Vérification de la connexion
     if request.endpoint in protected_routes and not session.get('user_id'):
         return redirect(url_for('login'))
     
-    # Vérification droits admin
+    # Vérification des droits admin/super_admin
     admin_only_routes = [
         'creer_professeur', 'supprimer_professeur',
         'creer_matiere', 'supprimer_matiere',
         'creer_laboratoire', 'supprimer_laboratoire'
     ]
     
-    if request.endpoint in admin_only_routes and session.get('role') != 'admin':
-        abort(403, description="Accès réservé aux administrateurs")
+    if request.endpoint in admin_only_routes:
+        if session.get('role') not in ['admin', 'super_admin']:
+            abort(403)  # Accès interdit
 @app.route('/logout', methods=['GET', 'POST'])
 def logout():
     session.clear()
@@ -206,7 +213,7 @@ def verify_access():
         'editer_utilisateur', 'supprimer_utilisateur',
     ]
     
-    if request.endpoint in admin_only_routes and session.get('role') != 'admin':
+    if request.endpoint in admin_only_routes and session.get('role') not in ['admin', 'super_admin']:
         abort(403, description="Accès réservé aux administrateurs")
     
     # Maintenir la session active
@@ -726,7 +733,7 @@ def tous_les_professeurs():
 
 @app.route('/professeurs/creer', methods=['GET', 'POST'])
 def creer_professeur():
-    if 'user_id' not in session or session.get('role') != 'admin':
+    if ('user_id' not in session or session.get('role') not in ['admin', 'super_admin']):
         abort(403)
     if request.method == 'POST':
         data = {
@@ -758,7 +765,7 @@ def creer_professeur():
 
 @app.route('/professeurs/editer/<int:id>', methods=['GET', 'POST'])
 def editer_professeur(id):
-    if 'user_id' not in session or session.get('role') != 'admin':
+    if ('user_id' not in session or session.get('role') not in ['admin', 'super_admin']):
         abort(403)
     cur = mysql.connection.cursor()
     try:
@@ -796,7 +803,7 @@ def editer_professeur(id):
 
 @app.route('/professeurs/supprimer/<int:id>', methods=['POST'])
 def supprimer_professeur(id):
-    if 'user_id' not in session or session.get('role') != 'admin':
+    if ('user_id' not in session or session.get('role') not in ['admin', 'super_admin']):
         abort(403)
     cur = mysql.connection.cursor()
     try:
@@ -821,7 +828,7 @@ def liste_matieres():
 
 @app.route('/matieres/creer', methods=['GET', 'POST'])
 def creer_matiere():
-    if 'user_id' not in session or session.get('role') != 'admin':
+    if ('user_id' not in session or session.get('role') not in ['admin', 'super_admin']):
         abort(403)
     if request.method == 'POST':
         nom_matiere = request.form['nom_matiere'].strip()
@@ -865,7 +872,7 @@ def creer_matiere():
 
 @app.route('/matieres/editer/<int:id>', methods=['GET', 'POST'])
 def editer_matiere(id):
-    if 'user_id' not in session or session.get('role') != 'admin':
+    if ('user_id' not in session or session.get('role') not in ['admin', 'super_admin']):
         abort(403)
     cur = mysql.connection.cursor()
     try:
@@ -916,7 +923,7 @@ def editer_matiere(id):
         
 @app.route('/matieres/supprimer/<int:id>', methods=['POST'])
 def supprimer_matiere(id):
-    if 'user_id' not in session or session.get('role') != 'admin':
+    if ('user_id' not in session or session.get('role') not in ['admin', 'super_admin']):
         abort(403)
     cur = mysql.connection.cursor()
     try:
@@ -966,7 +973,7 @@ def tous_les_laboratoires():
 
 @app.route('/laboratoires/creer', methods=['GET', 'POST'])
 def creer_laboratoire():
-    if 'user_id' not in session or session.get('role') != 'admin':
+    if ('user_id' not in session or session.get('role') not in ['admin', 'super_admin']):
         abort(403)
     if request.method == 'POST':
         data = {
@@ -996,7 +1003,7 @@ def creer_laboratoire():
 
 @app.route('/laboratoires/editer/<int:id>', methods=['GET', 'POST'])
 def editer_laboratoire(id):
-    if 'user_id' not in session or session.get('role') != 'admin':
+    if ('user_id' not in session or session.get('role') not in ['admin', 'super_admin']):
         abort(403)
     cur = mysql.connection.cursor()
     try:
@@ -1032,7 +1039,7 @@ def editer_laboratoire(id):
 
 @app.route('/laboratoires/supprimer/<int:id>', methods=['POST'])
 def supprimer_laboratoire(id):
-    if 'user_id' not in session or session.get('role') != 'admin':
+    if ('user_id' not in session or session.get('role') not in ['admin', 'super_admin']):
         abort(403)
     cur = mysql.connection.cursor()
     try:
@@ -1296,7 +1303,7 @@ def stocks_overview():
 
 @app.route('/stock_magasin')
 def stock_magasin():
-    if 'user_id' not in session or session['role'] != 'admin':
+    if 'user_id' not in session or session.get('role') not in ['admin', 'super_admin']:
         flash("Accès réservé aux administrateurs", "danger")
         return redirect(url_for('index'))
     
@@ -1361,7 +1368,7 @@ def stock_magasin():
 # Route pour ajouter un article
 @app.route('/ajouter_article', methods=['GET', 'POST'])
 def ajouter_article():
-    if 'user_id' not in session or session['role'] != 'admin':
+    if 'user_id' not in session or session.get('role') not in ['admin', 'super_admin']:
         flash("Accès réservé aux administrateurs", "danger")
         return redirect(url_for('index'))
 
@@ -1450,7 +1457,7 @@ def ajouter_article():
 # Route pour éditer un article
 @app.route('/editer_article/<int:id>', methods=['GET', 'POST'])
 def editer_article(id):
-    if 'user_id' not in session or session['role'] != 'admin':
+    if 'user_id' not in session or session.get('role') not in ['admin', 'super_admin']:
         flash("Accès réservé aux administrateurs", "danger")
         return redirect(url_for('index'))
 
@@ -1543,7 +1550,7 @@ def editer_article(id):
 
 @app.route('/supprimer_article/<int:id>', methods=['POST'])
 def supprimer_article(id):
-    if 'user_id' not in session or session['role'] != 'admin':
+    if 'user_id' not in session or session.get('role') not in ['admin', 'super_admin']:
         flash("Accès réservé aux administrateurs", "danger")
         return redirect(url_for('index'))
 
@@ -1717,7 +1724,7 @@ def stock_laboratoire(id_lab):
 @app.route('/parametres_stock')
 def parametres_stock():
   
-    if 'user_id' not in session or session['role'] != 'admin':
+    if 'user_id' not in session or session.get('role') not in ['admin', 'super_admin']:
         flash("Accès réservé aux administrateurs", "danger")
         return redirect(url_for('index'))
     
@@ -1755,7 +1762,7 @@ def parametres_stock():
 @app.route('/ajouter_categorie', methods=['POST'])
 def ajouter_categorie():
  
-    if 'user_id' not in session or session['role'] != 'admin':
+    if 'user_id' not in session or session.get('role') not in ['admin', 'super_admin']:
         flash("Accès réservé aux administrateurs", "danger")
         return redirect(url_for('index'))
     
@@ -1788,7 +1795,7 @@ def ajouter_categorie():
 
 @app.route('/editer_categorie/<int:id>', methods=['POST'])
 def editer_categorie(id):
-    if 'user_id' not in session or session['role'] != 'admin':
+    if 'user_id' not in session or session.get('role') not in ['admin', 'super_admin']:
         flash("Accès réservé aux administrateurs", "danger")
         return redirect(url_for('index'))
     
@@ -1824,7 +1831,7 @@ def editer_categorie(id):
 @app.route('/supprimer_categorie/<int:id>', methods=['POST'])
 def supprimer_categorie(id):
    
-    if 'user_id' not in session or session['role'] != 'admin':
+    if 'user_id' not in session or session.get('role') not in ['admin', 'super_admin']:
         flash("Accès réservé aux administrateurs", "danger")
         return redirect(url_for('index'))
     
@@ -1855,7 +1862,7 @@ def supprimer_categorie(id):
 @app.route('/ajouter_type', methods=['POST'])
 def ajouter_type():
   
-    if 'user_id' not in session or session['role'] != 'admin':
+    if 'user_id' not in session or session.get('role') not in ['admin', 'super_admin']:
         flash("Accès réservé aux administrateurs", "danger")
         return redirect(url_for('index'))
     
@@ -1898,7 +1905,7 @@ def ajouter_type():
 @app.route('/editer_type/<int:id>', methods=['POST'])
 def editer_type(id):
   
-    if 'user_id' not in session or session['role'] != 'admin':
+    if 'user_id' not in session or session.get('role') not in ['admin', 'super_admin']:
         flash("Accès réservé aux administrateurs", "danger")
         return redirect(url_for('index'))
     
@@ -1944,7 +1951,7 @@ def editer_type(id):
 
 @app.route('/supprimer_type/<int:id>', methods=['POST'])
 def supprimer_type(id):
-    if 'user_id' not in session or session['role'] != 'admin':
+    if 'user_id' not in session or session.get('role') not in ['admin', 'super_admin']:
         flash("Accès réservé aux administrateurs", "danger")
         return redirect(url_for('index'))
     
@@ -1974,7 +1981,7 @@ def supprimer_type(id):
 def statistiques():
     if 'user_id' not in session:
         return redirect(url_for('login'))
-    if 'user_id' not in session or session.get('role') != 'admin':
+    if ('user_id' not in session or session.get('role') not in ['admin', 'super_admin']):
         abort(403)
 
     try:
@@ -2320,7 +2327,7 @@ def detail_recu(id_recu):
 
 @app.route('/recus/<int:id_recu>/supprimer', methods=['POST'])
 def supprimer_recu(id_recu):
-    if 'user_id' not in session or session.get('role') != 'admin':
+    if ('user_id' not in session or session.get('role') not in ['admin', 'super_admin']):
         abort(403)
     
     cur = mysql.connection.cursor()
@@ -2416,7 +2423,7 @@ def imprimer_recu(id_recu):
 
 @app.route('/recus/<int:id_recu>/editer', methods=['GET', 'POST'])
 def editer_recu(id_recu):
-    if 'user_id' not in session or session.get('role') != 'admin':
+    if ('user_id' not in session or session.get('role') not in ['admin', 'super_admin']):
         abort(403)
 
     try:
@@ -2597,15 +2604,20 @@ def editer_recu(id_recu):
 
 def is_valid_password(password):
     return len(password) >= 4 and any(c.isalpha() for c in password)
-# CRUD Utilisateurs (Admin seulement)
+# CRUD Utilisateurs (Admins)
 @app.route('/admin/utilisateurs')
 def liste_utilisateurs():
-    if 'user_id' not in session or session.get('role') != 'admin':
+    if ('user_id' not in session or session.get('role') not in ['admin', 'super_admin']):
         abort(403)
     
     cur = mysql.connection.cursor()
     try:
-        cur.execute("SELECT id, username, email, role FROM utilisateur ORDER BY username")
+        # Exemple dans liste_utilisateurs
+        cur.execute("""
+        SELECT id, username, email, role, is_active 
+        FROM utilisateur 
+        ORDER BY username
+    """)
         utilisateurs = cur.fetchall()
         return render_template('admin/utilisateurs/liste.html', utilisateurs=utilisateurs)
     except Exception as e:
@@ -2659,65 +2671,95 @@ def creer_utilisateur():
 
 @app.route('/admin/utilisateurs/editer/<int:id>', methods=['GET', 'POST'])
 def editer_utilisateur(id):
-    if 'user_id' not in session or session.get('role') != 'admin':
+    # Vérification des permissions
+    if 'user_id' not in session or session.get('role') not in ['admin', 'super_admin']:
         abort(403)
     
+    is_super_admin = (session.get('role') == 'super_admin')
     cur = mysql.connection.cursor()
+    
     try:
         if request.method == 'POST':
+            # Récupération des données du formulaire
             username = request.form['username'].strip()
             email = request.form['email'].strip()
             role = request.form.get('role', 'user')
             new_password = request.form.get('new_password', '').strip()
-            
+
+            # Vérification des champs obligatoires
             if not all([username, email]):
                 flash("Les champs obligatoires doivent être remplis", "danger")
                 return redirect(url_for('editer_utilisateur', id=id))
-            
+
+            # Validation du mot de passe
             if new_password and not is_valid_password(new_password):
                 flash("Le mot de passe doit contenir au moins 4 caractères et une lettre", "danger")
                 return redirect(url_for('editer_utilisateur', id=id))
-            
+
+            # Vérification des doublons
             cur.execute("SELECT id FROM utilisateur WHERE (username = %s OR email = %s) AND id != %s", 
                        (username, email, id))
             if cur.fetchone():
                 flash("Nom d'utilisateur ou email déjà utilisé", "danger")
                 return redirect(url_for('editer_utilisateur', id=id))
-            
-            update_fields = []
-            params = []
-            update_fields.extend(["username = %s", "email = %s", "role = %s"])
-            params.extend([username, email, role])
-            
+
+            # Protection contre la modification des super_admins
+            cur.execute("SELECT role FROM utilisateur WHERE id = %s", (id,))
+            old_role = cur.fetchone()['role']
+
+            # Seul un super_admin peut modifier un super_admin
+            if old_role == 'super_admin' and not is_super_admin:
+                flash("Action non autorisée", "danger")
+                return redirect(url_for('liste_utilisateurs'))
+
+            # Empêcher la suppression du dernier super_admin
+            if old_role == 'super_admin' and role != 'super_admin':
+                cur.execute("SELECT COUNT(*) as count FROM utilisateur WHERE role = 'super_admin' AND id != %s", (id,))
+                if cur.fetchone()['count'] == 0:
+                    flash("Il doit rester au moins un super admin", "danger")
+                    return redirect(url_for('editer_utilisateur', id=id))
+
+            # Mise à jour de la base de données
+            update_fields = ["username = %s", "email = %s", "role = %s"]
+            params = [username, email, role]
+
             if new_password:
                 hashed_pw = generate_password_hash(new_password)
                 update_fields.append("password = %s")
                 params.append(hashed_pw)
-            
+
             params.append(id)
             query = "UPDATE utilisateur SET " + ", ".join(update_fields) + " WHERE id = %s"
             cur.execute(query, tuple(params))
             mysql.connection.commit()
-            flash("Utilisateur mis à jour avec succès", "success")
+
+            flash("Modifications enregistrées avec succès", "success")
             return redirect(url_for('liste_utilisateurs'))
-        
-        cur.execute("SELECT id, username, email, role FROM utilisateur WHERE id = %s", (id,))
+
+        # Récupération des données utilisateur
+        cur.execute("SELECT id, username, email, role, is_active FROM utilisateur WHERE id = %s", (id,))
         utilisateur = cur.fetchone()
+
         if not utilisateur:
             flash("Utilisateur introuvable", "danger")
             return redirect(url_for('liste_utilisateurs'))
-        return render_template('admin/utilisateurs/editer.html', utilisateur=utilisateur)
-    
+
+        return render_template('admin/utilisateurs/editer.html',
+                             utilisateur=utilisateur,
+                             is_super_admin=is_super_admin)
+
     except Exception as e:
         mysql.connection.rollback()
-        flash(f"Erreur : {str(e)}", "danger")
+        flash(f"Erreur lors de la mise à jour : {str(e)}", "danger")
         return redirect(url_for('liste_utilisateurs'))
+    
     finally:
         cur.close()
 
+# Modification de la route de suppression
 @app.route('/admin/utilisateurs/supprimer/<int:id>', methods=['POST'])
 def supprimer_utilisateur(id):
-    if 'user_id' not in session or session.get('role') != 'admin':
+    if ('user_id' not in session or session.get('role') != 'super_admin'):  # Seul super_admin
         abort(403)
     
     if session.get('user_id') == id:
@@ -2728,7 +2770,7 @@ def supprimer_utilisateur(id):
     try:
         cur.execute("DELETE FROM utilisateur WHERE id = %s", (id,))
         mysql.connection.commit()
-        flash("Utilisateur supprimé avec succès", "success")
+        flash("Utilisateur supprimé définitivement", "success")
     except Exception as e:
         mysql.connection.rollback()
         flash(f"Erreur : {str(e)}", "danger")
@@ -2736,8 +2778,45 @@ def supprimer_utilisateur(id):
         cur.close()
     return redirect(url_for('liste_utilisateurs'))
 
+# Nouvelle route pour activer/désactiver
+@app.route('/admin/utilisateurs/toggle-active/<int:id>', methods=['POST'])
+def toggle_active_user(id):
+    if 'user_id' not in session or session.get('role') not in ['admin', 'super_admin']:
+        abort(403)
+    
+    current_user_id = session['user_id']
+    
+    if id == current_user_id:
+        flash("Vous ne pouvez pas modifier votre propre statut", "danger")
+        return redirect(url_for('liste_utilisateurs'))
+    
+    try:
+        cur = mysql.connection.cursor()
+        
+        # Vérification supplémentaire de l'existence de l'utilisateur
+        cur.execute("SELECT id FROM utilisateur WHERE id = %s", (id,))
+        if not cur.fetchone():
+            flash("Utilisateur introuvable", "danger")
+            return redirect(url_for('liste_utilisateurs'))
+        
+        # Mise à jour du statut
+        cur.execute("UPDATE utilisateur SET is_active = NOT is_active WHERE id = %s", (id,))
+        mysql.connection.commit()
+        
+        # Récupération du nouveau statut
+        cur.execute("SELECT is_active FROM utilisateur WHERE id = %s", (id,))
+        new_status = cur.fetchone()['is_active']
+        
+        flash(f"Statut modifié : {'Activé' if new_status else 'Désactivé'}", "success")
+        
+    except Exception as e:
+        mysql.connection.rollback()
+        flash(f"Erreur de base de données : {str(e)}", "danger")
+    finally:
+        cur.close()
+    
+    return redirect(url_for('liste_utilisateurs'))
 
-# ... (Configuration initiale et connexion MySQL)
 
 # Route profil utilisateur
 @app.route('/profil', methods=['GET', 'POST'])
@@ -2994,7 +3073,7 @@ def get_access_code(email):
 
 @app.route('/admin/request-code', methods=['GET', 'POST'])
 def request_admin_code():
-    if 'user_id' not in session or session.get('role') != 'admin':
+    if ('user_id' not in session or session.get('role') not in ['super_admin']):
         abort(403)
     
     admin_email = session['email']
@@ -3017,7 +3096,7 @@ def request_admin_code():
 
 @app.route('/admin/verify', methods=['GET', 'POST'])
 def verify_admin_access():
-    if 'user_id' not in session or session.get('role') != 'admin':
+    if ('user_id' not in session or session.get('role') not in ['super_admin']):
         abort(403)
     
     admin_email = session['email']

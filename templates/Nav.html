@@ -75,7 +75,7 @@
                 </li>
                 
                 <!-- Analytics -->
-                {% if session.role == 'admin' %}
+                {% if session.role in ['admin', 'super_admin'] %}
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('statistiques') }}">
                         <i class="fas fa-chart-bar me-2"></i>Statistiques
@@ -105,7 +105,7 @@
                         <li><a class="dropdown-item py-2" href="{{ url_for('profil') }}">
                             <i class="fas fa-user me-2 text-primary"></i>Profil
                         </a></li>
-                        {% if session.role == 'admin' %}
+                        {% if session.role in ['admin', 'super_admin'] %}
                         <li><a class="dropdown-item py-2" href="{{ url_for('liste_utilisateurs') }}">
                             <i class="fas fa-users me-2 text-primary"></i>Utilisateurs
                         </a></li>

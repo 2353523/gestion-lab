@@ -134,32 +134,48 @@
                                             {% if utilisateur.role == 'admin' %}bg-danger
                                             {% elif utilisateur.role == 'super_admin' %}bg-purple
                                             {% else %}bg-info{% endif %}">
-                                            <i class="fas 
-                                                {% if utilisateur.role == 'admin' %}fa-user-shield
-                                                {% elif utilisateur.role == 'super_admin' %}fa-crown
-                                                {% else %}fa-user{% endif %} me-1"></i>
                                             {{ utilisateur.role|replace('_', ' ')|title }}
                                         </span>
+                                        <br>
+                                        <small class="{% if utilisateur.is_active %}text-success{% else %}text-danger{% endif %}">
+                                            <i class="fas fa-circle"></i> 
+                                            {% if utilisateur.is_active %}Actif{% else %}Inactif{% endif %}
+                                        </small>
                                     </td>
                                     <td>
                                         <div class="d-flex justify-content-center gap-2">
-                                            <a href="{{ url_for('editer_utilisateur', id=utilisateur.id) }}" class="btn btn-warning btn-action">
+                                            <!-- Bouton Toggle Activer/Désactiver -->
+                                            <form action="{{ url_for('toggle_active_user', id=utilisateur.id) }}" method="POST">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <button type="submit" 
+                                                        class="btn btn-{% if utilisateur.is_active %}warning{% else %}success{% endif %} btn-action"
+                                                        {% if utilisateur.id == session.user_id %}disabled{% endif %}
+                                                        title="{% if utilisateur.id == session.user_id %}Vous ne pouvez pas modifier votre propre statut{% endif %}">
+                                                    <i class="fas fa-power-off"></i>
+                                                    {% if utilisateur.is_active %}Désactiver{% else %}Activer{% endif %}
+                                                </button>
+                                            </form>
+                                    
+                                            <!-- Bouton Éditer -->
+                                            <a href="{{ url_for('editer_utilisateur', id=utilisateur.id) }}" 
+                                               class="btn btn-warning btn-action"
+                                               {% if not utilisateur.is_active %}disabled{% endif %}>
                                                 <i class="fas fa-edit"></i> Éditer
                                             </a>
-                                            <form action="{{ url_for('supprimer_utilisateur', id=utilisateur.id) }}" method="POST" class="d-inline">
+                                    
+                                            <!-- Bouton Supprimer (Super Admin seulement) -->
+                                            {% if session.role == 'super_admin' %}
+                                            <form action="{{ url_for('supprimer_utilisateur', id=utilisateur.id) }}" method="POST">
                                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                <button type="button" class="btn btn-danger btn-action delete-btn" data-id="{{ utilisateur.id }}" data-username="{{ utilisateur.username }}">
+                                                <button type="button" 
+                                                        class="btn btn-danger btn-action delete-btn"
+                                                        data-id="{{ utilisateur.id }}" 
+                                                        data-username="{{ utilisateur.username }}"
+                                                        {% if not utilisateur.is_active %}disabled{% endif %}>
                                                     <i class="fas fa-trash-alt"></i> Supprimer
                                                 </button>
                                             </form>
-                                        </div>
-                                    </td>
-                                </tr>
-                            {% else %}
-                                <tr>
-                                    <td colspan="4" class="text-center py-4">
-                                        <div class="alert alert-info mb-0">
-                                            <i class="fas fa-info-circle me-2"></i> Aucun utilisateur trouvé
+                                            {% endif %}
                                         </div>
                                     </td>
                                 </tr>

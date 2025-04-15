@@ -255,7 +255,7 @@
                                 <td class="text-end pe-3">
                                     <div class="d-flex gap-2 justify-content-end action-buttons">
                                        
-                                        {% if session.role == 'admin' %}
+                                        {% if session.role in ['admin', 'super_admin'] %}
                                         <a href="{{ url_for('editer_professeur', id=prof.id_prof) }}" 
                                            class="btn btn-outline-warning" data-bs-toggle="tooltip" title="Modifier">
                                             <i class="fas fa-edit"></i>
@@ -290,7 +290,7 @@
                 </div>
                 
                 <!-- Modals de confirmation (placés hors du tableau pour éviter les conflits) -->
-                {% if session.role == 'admin' %}
+                {% if session.role in ['admin', 'super_admin'] %}
                     {% for prof in professeurs %}
                     <div class="modal fade" id="deleteModal{{ prof.id_prof }}" tabindex="-1" aria-hidden="true">
                         <div class="modal-dialog modal-dialog-centered">

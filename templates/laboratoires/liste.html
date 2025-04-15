@@ -249,7 +249,7 @@
                                 <i class="fas fa-list me-2"></i>Tous
                             </a>
                         </div>
-                        {% if session.role == 'admin' %}
+                        {% if session.role in ['admin', 'super_admin'] %}
                         <a href="{{ url_for('creer_laboratoire') }}" class="btn btn-success">
                             <i class="fas fa-plus me-2"></i>Nouveau Laboratoire
                         </a>
@@ -328,7 +328,7 @@
                                                class="btn btn-outline-info" data-bs-toggle="tooltip" title="Gestion du stock">
                                                 <i class="fas fa-boxes me-2"></i>Stock
                                             </a>
-                                            {% if session.role == 'admin' %}
+                                            {% if session.role in ['admin', 'super_admin'] %}
                                             <a href="{{ url_for('editer_laboratoire', id=lab.id_laboratoire) }}" 
                                                class="btn btn-outline-warning" data-bs-toggle="tooltip" title="Modifier">
                                                 <i class="fas fa-edit"></i>

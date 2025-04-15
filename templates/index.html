@@ -358,7 +358,7 @@
                             <i class="fas fa-flask me-2 text-primary"></i>Nouveau TP
                         </a>
                     </li>
-                    {% if session.role == 'admin' %}
+                    {% if session.role in ['admin', 'super_admin'] %}
                     <li><hr class="dropdown-divider"></li>
                     <li>
                         <a class="dropdown-item py-2 px-3" href="{{ url_for('creer_professeur') }}">

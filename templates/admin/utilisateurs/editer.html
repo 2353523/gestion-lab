@@ -157,7 +157,7 @@
                                                    name="role" 
                                                    value="super_admin"
                                                    {% if utilisateur.role == 'super_admin' %}checked{% endif %}
-                                                   {{ 'disabled' if not is_super_admin }}>
+                                                   {% if not is_super_admin %}disabled{% endif %}>
                                             <div class="role-card text-center">
                                                 <i class="fas fa-crown role-icon super-admin-color"></i>
                                                 <h5 class="mb-1">Super Admin</h5>

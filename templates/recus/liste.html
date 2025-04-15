@@ -309,7 +309,7 @@
                                                title="Voir détails">
                                                 <i class="fas fa-eye"></i>
                                             </a>
-                                            {% if session.role == 'admin' %}
+                                            {% if session.role in ['admin', 'super_admin'] %}
                                             <a href="{{ url_for('editer_recu', id_recu=recu.id_recu) }}" 
                                             class="btn btn-sm btn-warning">
                                             <i class="fas fa-edit"></i>
@@ -322,7 +322,7 @@
                                                title="Imprimer">
                                                 <i class="fas fa-print"></i>
                                             </a>
-                                            {% if session.role == 'admin' %}
+                                            {% if session.role in ['admin', 'super_admin'] %}
                                             <button type="button"
                                                    class="btn btn-danger"
                                                    data-bs-toggle="modal"
