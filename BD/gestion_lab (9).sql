@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Hôte : 127.0.0.1:3306
--- Généré le : mar. 15 avr. 2025 à 17:33
+-- Généré le : mar. 15 avr. 2025 à 20:00
 -- Version du serveur : 5.6.17
 -- Version de PHP : 8.3.14
 
@@ -341,6 +341,7 @@ CREATE TABLE IF NOT EXISTS `utilisateur` (
   `email` varchar(191) NOT NULL,
   `password` varchar(255) NOT NULL,
   `role` enum('admin','user','super_admin') NOT NULL DEFAULT 'user',
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
   PRIMARY KEY (`id`),
   UNIQUE KEY `username_unique` (`username`),
   UNIQUE KEY `email_unique` (`email`)
@@ -350,10 +351,10 @@ CREATE TABLE IF NOT EXISTS `utilisateur` (
 -- Déchargement des données de la table `utilisateur`
 --
 
-INSERT INTO `utilisateur` (`id`, `username`, `email`, `password`, `role`) VALUES
-(1, 'admin', 'admin@example.com', 'scrypt:32768:8:1$IsC1aEm8mtSfRB1e$3a99f9a9538d6706a3f8ac61204294ee73bbe8ce3f9ee22169d38bd2835ff56fc1b6414cea81050ebcf4401e651c12d6c254ddd4be4fd9ad897170ec0a67d574', 'admin'),
-(2, 'user', 'user@example.com', 'scrypt:32768:8:1$p5Af2fgp20tKiMM2$72fd94017bf5fc8e61eaef28e0afaff5843f1df4d3703de48f16c8344d9aa24b7053c35ba5f26175b79795c77b548f11e5324009a16c4c63029d42e187f85519', 'user'),
-(3, 'disey', 'diaganaseydi02@gmail.com', 'scrypt:32768:8:1$l3o2A1oQzpb50G5u$9ffb36eb47176ed8fd8114234f668f90eb2d4d8cad0a5040f265e76fdf6b07e87a46d651abe8e5943d1d0080bc78e720e1df5663e50b55da529b3cbde4dee83c', 'admin');
+INSERT INTO `utilisateur` (`id`, `username`, `email`, `password`, `role`, `is_active`) VALUES
+(1, 'admin', 'admin@example.com', 'scrypt:32768:8:1$IsC1aEm8mtSfRB1e$3a99f9a9538d6706a3f8ac61204294ee73bbe8ce3f9ee22169d38bd2835ff56fc1b6414cea81050ebcf4401e651c12d6c254ddd4be4fd9ad897170ec0a67d574', 'admin', 1),
+(2, 'user', 'user@example.com', 'scrypt:32768:8:1$p5Af2fgp20tKiMM2$72fd94017bf5fc8e61eaef28e0afaff5843f1df4d3703de48f16c8344d9aa24b7053c35ba5f26175b79795c77b548f11e5324009a16c4c63029d42e187f85519', 'user', 1),
+(3, 'disey', 'diaganaseydi02@gmail.com', 'scrypt:32768:8:1$l3o2A1oQzpb50G5u$9ffb36eb47176ed8fd8114234f668f90eb2d4d8cad0a5040f265e76fdf6b07e87a46d651abe8e5943d1d0080bc78e720e1df5663e50b55da529b3cbde4dee83c', 'super_admin', 1);
 
 --
 -- Contraintes pour les tables déchargées
