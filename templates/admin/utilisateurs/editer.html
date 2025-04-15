@@ -4,109 +4,179 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Éditer utilisateur</title>
-    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .role-option {
+            position: relative;
+            overflow: hidden;
+        }
+        .role-input {
+            position: absolute;
+            opacity: 0;
+            height: 0;
+            width: 0;
+        }
+        .role-card {
+            border: 2px solid #dee2e6;
+            border-radius: 10px;
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background-color: white;
+        }
+        .role-input:checked + .role-card {
+            border-color: #0d6efd;
+            background-color: rgba(13, 110, 253, 0.05);
+            box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
+        }
+        .role-input:disabled + .role-card {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background-color: #f8f9fa;
+        }
+        .role-icon {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+        .user-color { color: #28a745; }
+        .admin-color { color: #0d6efd; }
+        .super-admin-color { color: #6f42c1; }
+    </style>
 </head>
 <body class="bg-light">
-
-    <!-- Barre de navigation -->
     {% include 'nav.html' %}
-    
-    <div class="container py-5">
+
+    <main class="container py-4">
         <div class="row justify-content-center">
-            <div class="col-lg-8 col-md-10">
-                <div class="card shadow-sm border-0">
+            <div class="col-lg-10 col-md-12">
+                <div class="card shadow">
                     <div class="card-header bg-primary text-white">
-                        <div class="d-flex align-items-center">
-                            <i class="bi bi-person-gear me-2 fs-4"></i>
-                            <h4 class="mb-0">Éditer l'utilisateur</h4>
-                        </div>
+                        <h3 class="mb-0">
+                            <i class="fas fa-user-edit me-2"></i>Éditer l'utilisateur
+                        </h3>
                     </div>
                     
                     <div class="card-body p-4">
                         {% with messages = get_flashed_messages(with_categories=true) %}
                             {% if messages %}
                                 {% for category, message in messages %}
-                                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                                    <div class="alert alert-{{ category }} alert-dismissible fade show">
                                         {{ message }}
-                                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
+                                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                                     </div>
                                 {% endfor %}
                             {% endif %}
                         {% endwith %}
 
-                        <form method="POST" class="needs-validation" novalidate>
+                        <form method="POST">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             
+                            <!-- Section Informations de base -->
                             <div class="mb-4">
-                                <label for="username" class="form-label fw-bold">
-                                    <i class="bi bi-person me-1"></i>Nom d'utilisateur
-                                </label>
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="bi bi-at"></i></span>
-                                    <input type="text" class="form-control" id="username" name="username" value="{{ utilisateur.username }}" required>
-                                    <div class="invalid-feedback">
-                                        Veuillez saisir un nom d'utilisateur.
-                                    </div>
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">
+                                        <i class="fas fa-id-card me-1"></i>Nom d'utilisateur
+                                    </label>
+                                    <input type="text" class="form-control" name="username" 
+                                           value="{{ utilisateur.username }}" required>
                                 </div>
-                            </div>
-                            <div class="mb-4">
-                                <label for="email" class="form-label fw-bold">
-                                    <i class="bi bi-envelope me-1"></i>Adresse email
-                                </label>
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="bi bi-at"></i></span>
-                                    <input type="email" class="form-control" id="email" name="email" 
+                                
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">
+                                        <i class="fas fa-envelope me-1"></i>Adresse email
+                                    </label>
+                                    <input type="email" class="form-control" name="email"
                                            value="{{ utilisateur.email }}" required>
-                                    <div class="invalid-feedback">
-                                        Veuillez saisir une adresse email valide.
-                                    </div>
                                 </div>
                             </div>
-                            
+
+                            <!-- Section Mot de passe -->
                             <div class="mb-4">
-                                <label for="new_password" class="form-label fw-bold">
-                                    <i class="bi bi-key me-1"></i>Nouveau mot de passe
+                                <label class="form-label fw-bold">
+                                    <i class="fas fa-key me-1"></i>Mot de passe
                                 </label>
                                 <div class="input-group">
-                                    <span class="input-group-text"><i class="bi bi-shield-lock"></i></span>
-                                    <input type="password" class="form-control" id="new_password" name="new_password" 
-                                           placeholder="Laisser vide pour ne pas changer">
-                                    <button class="btn btn-outline-secondary" type="button" id="togglePassword">
-                                        <i class="bi bi-eye"></i>
+                                    <input type="password" class="form-control" 
+                                           id="passwordInput" 
+                                           name="new_password" 
+                                           placeholder="Nouveau mot de passe (optionnel)">
+                                    <button class="btn btn-outline-secondary" 
+                                            type="button" 
+                                            onclick="togglePasswordVisibility()">
+                                        <i class="fas fa-eye" id="toggleIcon"></i>
                                     </button>
                                 </div>
-                                <div class="form-text text-muted">
-                                    <i class="bi bi-info-circle me-1"></i>Laissez ce champ vide si vous ne souhaitez pas modifier le mot de passe.
-                                </div>
                             </div>
-                            
+
+                            <!-- Section Rôles -->
                             <div class="mb-4">
-                                <label for="role" class="form-label fw-bold">
-                                    <i class="bi bi-person-badge me-1"></i>Rôle
+                                <label class="form-label fw-bold d-block mb-3">
+                                    <i class="fas fa-shield-alt me-1"></i>Rôle utilisateur
                                 </label>
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="bi bi-shield"></i></span>
-                                    <select class="form-select" id="role" name="role" required>
-                                        <option value="user" {% if utilisateur.role == 'user' %}selected{% endif %}>
-                                            Utilisateur standard
-                                        </option>
-                                        <option value="admin" {% if utilisateur.role == 'admin' %}selected{% endif %}>
-                                            Administrateur
-                                        </option>
-                                    </select>
+                                
+                                <div class="row g-3">
+                                    <!-- Utilisateur -->
+                                    <div class="col-md-4">
+                                        <label class="role-option w-100">
+                                            <input type="radio" 
+                                                   class="role-input" 
+                                                   name="role" 
+                                                   value="user"
+                                                   {% if utilisateur.role == 'user' %}checked{% endif %}
+                                                   {{ 'disabled' if not is_super_admin and utilisateur.role == 'super_admin' }}>
+                                            <div class="role-card text-center">
+                                                <i class="fas fa-user role-icon user-color"></i>
+                                                <h5 class="mb-1">Utilisateur</h5>
+                                                <small class="text-muted">Accès standard</small>
+                                            </div>
+                                        </label>
+                                    </div>
+
+                                    <!-- Administrateur -->
+                                    <div class="col-md-4">
+                                        <label class="role-option w-100">
+                                            <input type="radio" 
+                                                   class="role-input" 
+                                                   name="role" 
+                                                   value="admin"
+                                                   {% if utilisateur.role == 'admin' %}checked{% endif %}>
+                                            <div class="role-card text-center">
+                                                <i class="fas fa-user-shield role-icon admin-color"></i>
+                                                <h5 class="mb-1">Administrateur</h5>
+                                                <small class="text-muted">Accès complet</small>
+                                            </div>
+                                        </label>
+                                    </div>
+
+                                    <!-- Super Admin -->
+                                    <div class="col-md-4">
+                                        <label class="role-option w-100">
+                                            <input type="radio" 
+                                                   class="role-input" 
+                                                   name="role" 
+                                                   value="super_admin"
+                                                   {% if utilisateur.role == 'super_admin' %}checked{% endif %}
+                                                   {{ 'disabled' if not is_super_admin }}>
+                                            <div class="role-card text-center">
+                                                <i class="fas fa-crown role-icon super-admin-color"></i>
+                                                <h5 class="mb-1">Super Admin</h5>
+                                                <small class="text-muted">Accès total</small>
+                                            </div>
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
-                            
-                            <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
-                                <a href="{{ url_for('liste_utilisateurs') }}" class="btn btn-outline-secondary">
-                                    <i class="bi bi-x-circle me-1"></i>Annuler
+
+                            <!-- Boutons de soumission -->
+                            <div class="d-flex justify-content-between mt-4">
+                                <a href="{{ url_for('liste_utilisateurs') }}" 
+                                   class="btn btn-outline-secondary px-4">
+                                    <i class="fas fa-times me-2"></i>Annuler
                                 </a>
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="bi bi-check2-circle me-1"></i>Mettre à jour
+                                <button type="submit" 
+                                        class="btn btn-primary px-4">
+                                    <i class="fas fa-save me-2"></i>Enregistrer
                                 </button>
                             </div>
                         </form>
@@ -114,38 +184,37 @@
                 </div>
             </div>
         </div>
-    </div>
+    </main>
 
-    <!-- Bootstrap JS Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <!-- Validation et affichage du mot de passe -->
     <script>
-        // Validation des formulaires
+        // Fonction pour basculer la visibilité du mot de passe
+        function togglePasswordVisibility() {
+            const passwordInput = document.getElementById('passwordInput');
+            const icon = document.getElementById('toggleIcon');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                icon.classList.replace('fa-eye', 'fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                icon.classList.replace('fa-eye-slash', 'fa-eye');
+            }
+        }
+
+        // Validation du formulaire
         (function() {
             'use strict';
+            const forms = document.querySelectorAll('form');
             
-            const forms = document.querySelectorAll('.needs-validation');
-            
-            Array.prototype.slice.call(forms).forEach(function(form) {
-                form.addEventListener('submit', function(event) {
+            forms.forEach(form => {
+                form.addEventListener('submit', event => {
                     if (!form.checkValidity()) {
                         event.preventDefault();
                         event.stopPropagation();
                     }
                     form.classList.add('was-validated');
                 }, false);
-            });
-            
-            // Affichage/masquage du mot de passe
-            const togglePassword = document.getElementById('togglePassword');
-            const passwordInput = document.getElementById('new_password');
-            
-            togglePassword.addEventListener('click', function() {
-                const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-                passwordInput.setAttribute('type', type);
-                this.querySelector('i').classList.toggle('bi-eye');
-                this.querySelector('i').classList.toggle('bi-eye-slash');
             });
         })();
     </script>
