@@ -2960,7 +2960,6 @@ def save_access_code(email, code):
         with open(ACCESS_CODE_FILE, 'r') as f:
             data = json.load(f)
     
-    # Utilisation correcte de time.time()
     data[email] = {
         'code': code,
         'expires': time.time() + 600  # 10 minutes en secondes
@@ -3011,21 +3010,35 @@ def verify_admin_access():
     if 'user_id' not in session or session.get('role') != 'admin':
         abort(403)
     
-    if request.method == 'POST':
-        # Modification cruciale ici
-        entered_code = request.form.get('code', '').strip().upper()  # Utiliser .get() avec valeur par défaut
-        admin_email = session['email']
-        saved_code = get_access_code(admin_email)
+    admin_email = session['email']
+    saved_code = get_access_code(admin_email)
 
-        # Validation supplémentaire
+    # Génération automatique du code si absent/expiré (méthode GET)
+    if request.method == 'GET':
+        if not saved_code:
+            new_code = generate_access_code()
+            save_access_code(admin_email, new_code)
+            
+            msg = Message("Votre code d'accès administrateur",
+                        recipients=[admin_email])
+            msg.body = f"Votre code d'accès temporaire est : {new_code}"
+            mail.send(msg)
+            
+            flash("Un nouveau code a été envoyé à votre adresse email", "success")
+
+    # Traitement de la soumission du formulaire (méthode POST)
+    if request.method == 'POST':
+        entered_code = request.form.get('code', '').strip().upper()
+        
         if not entered_code:
             flash("Veuillez entrer un code de vérification", "danger")
             return redirect(url_for('verify_admin_access'))
             
-        if len(entered_code) != 6:  # Vérification de la longueur
+        if len(entered_code) != 6:
             flash("Le code doit contenir exactement 6 caractères", "danger")
             return redirect(url_for('verify_admin_access'))
 
+        saved_code = get_access_code(admin_email)  # Re-vérification après possible génération en GET
         if saved_code and entered_code == saved_code:
             session['admin_verified'] = True
             return redirect(url_for('parametres'))

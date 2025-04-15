@@ -125,10 +125,19 @@
         </div>
     </div>
 </nav>
+
+<!-- Bande d'information avec système de masquage/apparition -->
 <div class="number-ticker" id="numberTicker">
+    <!-- Bouton de contrôle du défilement (pause/play) -->
     <button class="ticker-control" id="tickerControl" title="Pause/Play">
         <i class="fas fa-pause" id="controlIcon"></i>
     </button>
+    
+    <!-- Bouton pour masquer/afficher la bande d'information -->
+    <button class="ticker-toggle" id="tickerToggle" title="Masquer/Afficher">
+        <i class="fas fa-chevron-down" id="toggleIcon"></i>
+    </button>
+    
     <div class="ticker-container">
         <div class="ticker-content" id="tickerContent">
             <span class="number-item"><i class="fas fa-user-graduate"></i><span class="student-name">Mariem</span><span class="student-id">23516</span></span>
@@ -159,26 +168,50 @@
         </div>
     </div>
 </div>
+
 <script>
-    // Animation pour l'icône flask
+    /**
+     * Script de gestion des animations et contrôles de la barre d'information
+     * 
+     * Fonctionnalités implémentées:
+     * - Animation pulse pour l'icône flask
+     * - Animation séquentielle pour les éléments de la bande
+     * - Contrôle pause/play du défilement
+     * - Système de masquage/apparition de la bande
+     * - Interactions visuelles au survol
+     */
     document.addEventListener('DOMContentLoaded', function() {
+        // Référence aux éléments DOM
         const pulseIcons = document.querySelectorAll('.pulse-icon');
+        const numberItems = document.querySelectorAll('.number-item');
+        const tickerContent = document.getElementById('tickerContent');
+        const tickerControl = document.getElementById('tickerControl');
+        const controlIcon = document.getElementById('controlIcon');
+        const numberTicker = document.getElementById('numberTicker');
+        const tickerToggle = document.getElementById('tickerToggle');
+        const toggleIcon = document.getElementById('toggleIcon');
+        
+        // État initial des contrôles
+        let isPlaying = true;
+        let isVisible = true;
+        
+        /**
+         * Initialisation des animations pour les icônes
+         */
         pulseIcons.forEach(icon => {
             icon.style.animation = 'pulse 2s infinite';
         });
         
-        // Appliquer une animation de brillance à chaque élément de manière séquentielle
-        const numberItems = document.querySelectorAll('.number-item');
+        /**
+         * Animation séquentielle des éléments de la bande
+         */
         numberItems.forEach((item, index) => {
             item.style.animation = `shine 6s ${index * 1.5}s infinite`;
         });
         
-        // Contrôle du défilement (pause/play)
-        const tickerContent = document.getElementById('tickerContent');
-        const tickerControl = document.getElementById('tickerControl');
-        const controlIcon = document.getElementById('controlIcon');
-        let isPlaying = true;
-        
+        /**
+         * Gestion de la pause/reprise du défilement
+         */
         tickerControl.addEventListener('click', function() {
             if (isPlaying) {
                 // Mettre en pause
@@ -194,7 +227,27 @@
             isPlaying = !isPlaying;
         });
         
-        // Surbrillance au survol
+        /**
+         * Gestion du masquage/apparition de la bande d'information
+         */
+        tickerToggle.addEventListener('click', function() {
+            if (isVisible) {
+                // Masquer la bande
+                numberTicker.classList.add('ticker-hidden');
+                toggleIcon.classList.remove('fa-chevron-down');
+                toggleIcon.classList.add('fa-chevron-up');
+            } else {
+                // Afficher la bande
+                numberTicker.classList.remove('ticker-hidden');
+                toggleIcon.classList.remove('fa-chevron-up');
+                toggleIcon.classList.add('fa-chevron-down');
+            }
+            isVisible = !isVisible;
+        });
+        
+        /**
+         * Gestion du survol des éléments (pause automatique)
+         */
         numberItems.forEach(item => {
             item.addEventListener('mouseover', function() {
                 if (isPlaying) {
@@ -208,12 +261,39 @@
                 }
             });
         });
+        
+        /**
+         * Sauvegarde de l'état de visibilité dans le stockage local
+         * pour persistance entre les sessions
+         */
+        const savedVisibility = localStorage.getItem('tickerVisibility');
+        if (savedVisibility === 'hidden') {
+            numberTicker.classList.add('ticker-hidden');
+            toggleIcon.classList.remove('fa-chevron-down');
+            toggleIcon.classList.add('fa-chevron-up');
+            isVisible = false;
+        }
+        
+        // Sauvegarde de l'état lors du changement
+        tickerToggle.addEventListener('click', function() {
+            localStorage.setItem('tickerVisibility', isVisible ? 'visible' : 'hidden');
+        });
     });
 </script>
 
-
 <style>
-/* Animation for the flask icon */
+/**
+ * Styles pour le système de navigation et la bande d'information
+ * 
+ * Organisation:
+ * 1. Animations
+ * 2. Styles de la barre de navigation
+ * 3. Styles de la bande d'information
+ * 4. Styles des contrôles
+ * 5. Styles des transitions et animations
+ */
+
+/* 1. ANIMATIONS */
 @keyframes pulse {
     0% { transform: scale(1); }
     50% { transform: scale(1.15); }
@@ -224,30 +304,32 @@
     animation: pulse 2s infinite;
 }
 
-/* Second pulse animation (keeping both for compatibility) */
-@keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.5); }
-    100% { transform: scale(1); }
+@keyframes ticker {
+    0% { transform: translateX(100%); }
+    100% { transform: translateX(-100%); }
 }
 
-/* Improve dropdown hover effects */
-.dropdown-item:hover {
-    background-color: rgba(13, 110, 253, 0.5) !important;
+@keyframes shine {
+    0% { color: #000; }
+    20% { color: #0d6efd; }
+    100% { color: #000; }
 }
 
-/* Active navigation item */
+/* 2. STYLES BARRE DE NAVIGATION */
 .nav-link.active {
     background-color: rgba(255, 255, 255, 0.1);
     border-radius: 4px;
 }
 
-/* Make navbar sticky */
 .sticky-top {
     z-index: 1030;
 }
 
-/* BARRE VRAIMENT TRANSPARENTE */
+.dropdown-item:hover {
+    background-color: rgba(13, 110, 253, 0.5) !important;
+}
+
+/* 3. STYLES BANDE D'INFORMATION */
 .number-ticker {
     position: fixed;
     bottom: 0;
@@ -261,6 +343,12 @@
     border-top: 1px solid rgba(255, 255, 255, 0.3);
     backdrop-filter: blur(5px);
     -webkit-backdrop-filter: blur(5px);
+    transition: transform 0.4s ease-in-out;
+}
+
+/* État caché pour la bande d'information */
+.number-ticker.ticker-hidden {
+    transform: translateY(100%);
 }
 
 .ticker-container {
@@ -323,28 +411,7 @@
     margin-left: 10px;
 }
 
-/* Animation pour le défilement */
-@keyframes ticker {
-    0% { transform: translateX(100%); }
-    100% { transform: translateX(-100%); }
-}
-
-/* Animation pour faire briller les éléments en séquence */
-@keyframes shine {
-    0% { color: #000; }
-    20% { color: #0d6efd; }
-    100% { color: #000; }
-}
-
-/* Animation pour simuler le contenu existant */
-.content-container {
-    height: 90vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-/* Bouton pour arrêter/démarrer l'animation */
+/* 4. STYLES DES CONTRÔLES */
 .ticker-control {
     position: absolute;
     top: -20px;
@@ -362,10 +429,39 @@
     box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
     transition: all 0.3s ease;
     backdrop-filter: blur(3px);
+    z-index: 1010;
 }
 
-.ticker-control:hover {
+.ticker-toggle {
+    position: absolute;
+    top: -20px;
+    right: 70px;
+    background: rgba(255, 255, 255, 0.7);
+    color: #0d6efd;
+    border: none;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    backdrop-filter: blur(3px);
+    z-index: 1010;
+}
+
+.ticker-control:hover, .ticker-toggle:hover {
     transform: scale(1.1);
     background: rgba(255, 255, 255, 0.9);
+}
+
+/* 5. STYLES DE L'ANIMATION SIMULÉE */
+.content-container {
+    height: 90vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 </style>
