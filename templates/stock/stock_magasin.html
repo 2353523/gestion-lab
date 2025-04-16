@@ -39,10 +39,13 @@
             display: flex;
             flex-wrap: wrap;
             gap: 5px;
+            align-items: center;
+            justify-content: flex-start;
+            margin-bottom: 8px;
         }
         .ghs-icon {
-            width: 32px;
-            height: 32px;
+            width: 28px;
+            height: 28px;
             object-fit: contain;
             border-radius: 4px;
             border: 1px solid #dee2e6;
@@ -50,7 +53,7 @@
             transition: transform 0.2s, box-shadow 0.2s;
         }
         .ghs-icon:hover {
-            transform: scale(1.5);
+            transform: scale(2);
             box-shadow: 0 4px 8px rgba(0,0,0,0.15);
             z-index: 10;
             position: relative;
@@ -62,12 +65,13 @@
             padding: 5px 10px;
             border-radius: 4px;
             font-size: 12px;
-            bottom: 100%;
+            bottom: 120%;
             left: 50%;
             transform: translateX(-50%);
             white-space: nowrap;
             display: none;
             z-index: 100;
+            pointer-events: none;
         }
         .ghs-icon-wrapper {
             position: relative;
@@ -81,6 +85,52 @@
         }
         .danger-level-medium {
             background-color: rgba(255, 165, 0, 0.05);
+        }
+        
+        /* Styles améliorés pour la colonne de sécurité */
+        .security-column {
+            width: 150px;
+            vertical-align: middle;
+        }
+        
+        /* Nouveaux styles pour améliorer la fiche SDS */
+        .sds-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 0.875rem;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            width: 100%;
+            font-weight: 500;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+        }
+        .sds-btn:hover {
+            background: linear-gradient(135deg, #c0392b, #e74c3c);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            color: white;
+        }
+        .sds-btn i {
+            margin-right: 5px;
+        }
+        
+        .safety-content {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .no-pictograms {
+            color: #6c757d;
+            font-style: italic;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
         }
     </style>
 </head>
@@ -152,7 +202,7 @@
                                 <th>Article</th>
                                 <th>Catégorie</th>
                                 <th>Type</th>
-                                <th>Pictogrammes</th>
+                                <th class="text-center">Sécurité</th>
                                 <th class="text-center">Stock</th>
                                 <th class="text-center">Unité</th>
                                 <th class="text-end">Actions</th>
@@ -167,35 +217,48 @@
                                 <td>{{ item.nom_article }}</td>
                                 <td>{{ item.nom_categorie }}</td>
                                 <td>{{ item.nom_type }}</td>
-                                <td>
-                                    {% if item.ghs_codes %}
-                                        <div class="ghs-icons">
-                                            {% for code in item.ghs_codes.split(',') %}
-                                                {% set padded_code = "%02d"|format(code|trim|int) %}
-                                                {% set descriptions = {
-                                                    '01': 'Explosif',
-                                                    '02': 'Inflammable',
-                                                    '03': 'Comburant',
-                                                    '04': 'Gaz sous pression',
-                                                    '05': 'Corrosif',
-                                                    '06': 'Toxique',
-                                                    '07': 'Irritant/Nocif',
-                                                    '08': 'Dangereux pour la santé',
-                                                    '09': 'Dangereux pour l\'environnement'
-                                                } %}
-                                                <div class="ghs-icon-wrapper">
-                                                    <img src="{{ url_for('static', filename='images/ghs' ~ padded_code ~ '.png') }}" 
-                                                         class="ghs-icon" 
-                                                         alt="GHS {{ padded_code }}">
-                                                    <div class="ghs-tooltip">
-                                                        GHS{{ padded_code }}: {{ descriptions[padded_code]|default('Pictogramme de danger') }}
+                                <td class="security-column">
+                                    <div class="safety-content">
+                                        <!-- Pictogrammes GHS -->
+                                        {% if item.ghs_codes %}
+                                            <div class="ghs-icons">
+                                                {% for code in item.ghs_codes.split(',') %}
+                                                    {% set padded_code = "%02d"|format(code|trim|int) %}
+                                                    {% set descriptions = {
+                                                        '01': 'Explosif',
+                                                        '02': 'Inflammable',
+                                                        '03': 'Comburant',
+                                                        '04': 'Gaz sous pression',
+                                                        '05': 'Corrosif',
+                                                        '06': 'Toxique',
+                                                        '07': 'Irritant/Nocif',
+                                                        '08': 'Dangereux pour la santé',
+                                                        '09': 'Dangereux pour l\'environnement'
+                                                    } %}
+                                                    <div class="ghs-icon-wrapper">
+                                                        <img src="{{ url_for('static', filename='images/ghs' ~ padded_code ~ '.png') }}" 
+                                                             class="ghs-icon" 
+                                                             alt="GHS {{ padded_code }}">
+                                                        <div class="ghs-tooltip">
+                                                            GHS{{ padded_code }}: {{ descriptions[padded_code]|default('Pictogramme de danger') }}
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            {% endfor %}
-                                        </div>
-                                    {% else %}
-                                        <span class="text-muted">-</span>
-                                    {% endif %}
+                                                {% endfor %}
+                                            </div>
+                                        {% else %}
+                                            <div class="no-pictograms">Aucun pictogramme</div>
+                                        {% endif %}
+                                        
+                                        <!-- Fiche SDS -->
+                                        {% if item.sds_filename %}
+                                            <a href="{{ url_for('view_sds', filename=item.sds_filename) }}" 
+                                               target="_blank"
+                                               class="sds-btn"
+                                               title="Fiche de sécurité">
+                                                <i class="fas fa-file-pdf"></i> Fiche sécurité
+                                            </a>
+                                        {% endif %}
+                                    </div>
                                 </td>
                                 <td class="text-center {% if item.quantite < 10 %}quantite-low{% else %}quantite-ok{% endif %}">
                                     {{ item.quantite }}

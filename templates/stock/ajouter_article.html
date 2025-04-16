@@ -11,6 +11,7 @@
             --primary-gradient: linear-gradient(135deg, #0d6efd, #0b5ed7);
             --danger-gradient: linear-gradient(135deg, #dc3545, #b02a37);
             --hover-transition: all 0.3s ease;
+            --transition-speed: 0.5s ease;
         }
 
         .form-container {
@@ -149,6 +150,134 @@
         .pictogram-card {
             animation: fadeIn 0.3s ease-in-out;
         }
+        
+        .sds-section {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height var(--transition-speed);
+        }
+
+        .sds-section.active {
+            max-height: 300px;
+        }
+
+        .required-asterisk {
+            color: #dc3545;
+            font-size: 0.8em;
+            vertical-align: super;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .danger-mode {
+            animation: fadeIn 0.3s ease-out;
+            background-color: #fff5f5;
+            border: 1px solid #f8d7da;
+        }
+
+        /* Styles améliorés pour la section FDS */
+        .sds-input-group {
+            position: relative;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: stretch;
+            width: 100%;
+        }
+
+        .file-upload-wrapper {
+            position: relative;
+            width: 100%;
+            margin-bottom: 1rem;
+        }
+
+        .file-upload-info {
+            border-radius: 8px;
+            border: 2px dashed #dee2e6;
+            padding: 1.5rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            margin-bottom: 1rem;
+            cursor: pointer;
+            background-color: rgba(13, 110, 253, 0.05);
+        }
+
+        .file-upload-info:hover, .file-upload-info.has-file {
+            border-color: #0d6efd;
+            background-color: rgba(13, 110, 253, 0.1);
+        }
+
+        .file-upload-info.danger-mode {
+            border-color: #dc3545;
+            background-color: rgba(220, 53, 69, 0.1);
+        }
+
+        .file-upload-info.danger-mode:hover {
+            background-color: rgba(220, 53, 69, 0.15);
+        }
+
+        .file-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: #6c757d;
+            transition: all 0.3s ease;
+        }
+
+        .file-upload-info:hover .file-icon, 
+        .file-upload-info.has-file .file-icon {
+            color: #0d6efd;
+        }
+
+        .file-upload-info.danger-mode .file-icon {
+            color: #dc3545;
+        }
+
+        .file-info {
+            display: none;
+            margin-top: 1rem;
+            padding: 0.5rem 1rem;
+            background-color: #e9ecef;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+
+        .file-info.show {
+            display: block;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .file-actions {
+            margin-top: 1rem;
+            display: none;
+        }
+        
+        .file-actions.show {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+        }
+
+        /* Styles pour le prévisualisateur PDF */
+        .pdf-preview {
+            max-height: 0;
+            overflow: hidden;
+            transition: all var(--transition-speed);
+            margin-top: 1rem;
+        }
+
+        .pdf-preview.show {
+            max-height: 500px;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+        }
+
+        #pdfPreviewFrame {
+            width: 100%;
+            height: 300px;
+            border: none;
+        }
     </style>
 </head>
 <body class="bg-light">
@@ -166,7 +295,7 @@
             </div>
 
             <div class="form-body">
-                <form method="POST" id="articleForm">
+                <form method="POST" id="articleForm" enctype="multipart/form-data">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                     <!-- Groupe Nom -->
@@ -332,6 +461,57 @@
                                 {% endfor %}
                             </div>
                         </div>
+                        
+                        <!-- Section améliorée pour upload FDS -->
+                        <div class="sds-section mt-4" id="sdsUpload">
+                            <div class="card shadow-sm">
+                                <div class="card-header bg-danger text-white py-3">
+                                    <i class="fas fa-file-pdf me-2"></i>
+                                    Fiche de Données de Sécurité (FDS)
+                                    <span class="required-asterisk">*</span>
+                                </div>
+                                <div class="card-body">
+                                    <div class="file-upload-wrapper">
+                                        <input type="file" 
+                                               class="d-none" 
+                                               name="sds" 
+                                               id="sdsFile"
+                                               accept=".pdf">
+                                        
+                                        <div class="file-upload-info" id="dropZone">
+                                            <i class="fas fa-file-pdf file-icon"></i>
+                                            <h5>Déposez votre fichier PDF ici</h5>
+                                            <p class="text-muted mb-2">ou</p>
+                                            <button type="button" class="btn btn-outline-primary" id="browseButton">
+                                                <i class="fas fa-search me-2"></i>Parcourir
+                                            </button>
+                                            <div class="small text-muted mt-2">Taille maximale : 16 MB</div>
+                                        </div>
+                                        
+                                        <div class="file-info" id="fileInfo">
+                                            <div class="d-flex align-items-center">
+                                                <i class="fas fa-file-pdf me-2 text-danger"></i>
+                                                <span id="fileName">document.pdf</span>
+                                                <span class="badge bg-primary ms-2" id="fileSize">0 KB</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="file-actions" id="fileActions">
+                                            <button type="button" class="btn btn-sm btn-outline-primary" id="previewButton">
+                                                <i class="fas fa-eye me-1"></i>Aperçu
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-danger" id="removeButton">
+                                                <i class="fas fa-trash me-1"></i>Supprimer
+                                            </button>
+                                        </div>
+                                        
+                                        <div class="pdf-preview" id="pdfPreview">
+                                            <iframe id="pdfPreviewFrame" title="Aperçu PDF"></iframe>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Boutons -->
@@ -353,10 +533,29 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // Filtrage dynamique des types
+            // Définition des variables 
             const categorieSelect = document.getElementById('categorie');
             const typeSelect = document.getElementById('type');
-
+            const isDangerous = document.getElementById('isDangerous');
+            const dangerToggle = document.getElementById('dangerToggle');
+            const pictogramGrid = document.getElementById('pictogramGrid');
+            const dangerSection = document.getElementById('dangerSection');
+            const toggleIcon = document.querySelector('.toggle-icon');
+            const sdsUpload = document.getElementById('sdsUpload');
+            const sdsFileInput = document.getElementById('sdsFile');
+            
+            // Variables pour la nouvelle section FDS
+            const dropZone = document.getElementById('dropZone');
+            const browseButton = document.getElementById('browseButton');
+            const fileInfo = document.getElementById('fileInfo');
+            const fileActions = document.getElementById('fileActions');
+            const fileName = document.getElementById('fileName');
+            const fileSize = document.getElementById('fileSize');
+            const previewButton = document.getElementById('previewButton');
+            const removeButton = document.getElementById('removeButton');
+            const pdfPreview = document.getElementById('pdfPreview');
+            const pdfPreviewFrame = document.getElementById('pdfPreviewFrame');
+            
             const filterTypes = () => {
                 const categorieId = categorieSelect.value;
                 typeSelect.disabled = !categorieId;
@@ -373,13 +572,6 @@
 
             categorieSelect.addEventListener('change', filterTypes);
 
-            // Gestion des pictogrammes de danger
-            const isDangerous = document.getElementById('isDangerous');
-            const dangerToggle = document.getElementById('dangerToggle');
-            const pictogramGrid = document.getElementById('pictogramGrid');
-            const dangerSection = document.getElementById('dangerSection');
-            const toggleIcon = document.querySelector('.toggle-icon');
-
             // Toggle pour l'affichage des pictogrammes
             dangerToggle.addEventListener('click', () => {
                 isDangerous.checked = !isDangerous.checked;
@@ -392,11 +584,17 @@
                     dangerSection.classList.add('danger-mode');
                     dangerToggle.classList.add('active');
                     toggleIcon.classList.replace('fa-chevron-down', 'fa-chevron-up');
+                    sdsUpload.classList.add('active'); // Affiche la section FDS
+                    sdsFileInput.required = true; // Rend le champ obligatoire
+                    dropZone.classList.add('danger-mode');
                 } else {
                     pictogramGrid.classList.remove('show');
                     dangerSection.classList.remove('danger-mode');
                     dangerToggle.classList.remove('active');
                     toggleIcon.classList.replace('fa-chevron-up', 'fa-chevron-down');
+                    sdsUpload.classList.remove('active'); // Cache la section FDS
+                    sdsFileInput.required = false; // Rend le champ non obligatoire
+                    dropZone.classList.remove('danger-mode');
                     
                     // Décocher tous les pictogrammes quand on désactive le danger
                     document.querySelectorAll('.ghs-checkbox').forEach(checkbox => {
@@ -406,6 +604,9 @@
                     document.querySelectorAll('.pictogram-card').forEach(card => {
                         card.classList.remove('selected');
                     });
+                    
+                    // Réinitialiser l'uploader de fichier
+                    resetFileUpload();
                 }
             }
 
@@ -426,6 +627,125 @@
                     card.classList.toggle('selected', checkbox.checked);
                 });
             });
+            
+            // Gestion améliorée de l'upload FDS
+            browseButton.addEventListener('click', () => {
+                sdsFileInput.click();
+            });
+            
+            // Zone de dépôt pour glisser-déposer
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, preventDefaults, false);
+            });
+            
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, highlight, false);
+            });
+            
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, unhighlight, false);
+            });
+            
+            function highlight() {
+                dropZone.classList.add('border-primary');
+            }
+            
+            function unhighlight() {
+                dropZone.classList.remove('border-primary');
+            }
+            
+            dropZone.addEventListener('drop', handleDrop, false);
+            
+            function handleDrop(e) {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                
+                if (files.length > 0) {
+                    sdsFileInput.files = files;
+                    updateFileInfo(files[0]);
+                }
+            }
+            
+            // Détecter quand un fichier est sélectionné
+            sdsFileInput.addEventListener('change', function() {
+                if (this.files.length > 0) {
+                    updateFileInfo(this.files[0]);
+                }
+            });
+            
+            function updateFileInfo(file) {
+                // Vérification si c'est un PDF
+                if (file.type !== 'application/pdf') {
+                    alert('Veuillez sélectionner un fichier PDF.');
+                    resetFileUpload();
+                    return;
+                }
+                
+                // Vérification de la taille (16MB max)
+                if (file.size > 16 * 1024 * 1024) {
+                    alert('Le fichier dépasse la taille maximale autorisée (16MB).');
+                    resetFileUpload();
+                    return;
+                }
+                
+                // Afficher les informations du fichier
+                fileName.textContent = file.name;
+                fileSize.textContent = formatFileSize(file.size);
+                
+                // Afficher l'élément d'information et les actions
+                fileInfo.classList.add('show');
+                fileActions.classList.add('show');
+                dropZone.classList.add('has-file');
+                
+                // Créer une URL pour le preview du PDF
+                const fileURL = URL.createObjectURL(file);
+                pdfPreviewFrame.src = fileURL;
+            }
+            
+            // Formatage de la taille du fichier
+            function formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+            
+            // Bouton d'aperçu
+            previewButton.addEventListener('click', () => {
+                pdfPreview.classList.toggle('show');
+                
+                if (pdfPreview.classList.contains('show')) {
+                    previewButton.innerHTML = '<i class="fas fa-eye-slash me-1"></i>Masquer';
+                } else {
+                    previewButton.innerHTML = '<i class="fas fa-eye me-1"></i>Aperçu';
+                }
+            });
+            
+            // Bouton de suppression
+            removeButton.addEventListener('click', resetFileUpload);
+            
+            function resetFileUpload() {
+                sdsFileInput.value = '';
+                fileInfo.classList.remove('show');
+                fileActions.classList.remove('show');
+                pdfPreview.classList.remove('show');
+                dropZone.classList.remove('has-file');
+                previewButton.innerHTML = '<i class="fas fa-eye me-1"></i>Aperçu';
+                
+                // Libérer les ressources
+                if (pdfPreviewFrame.src) {
+                    URL.revokeObjectURL(pdfPreviewFrame.src);
+                    pdfPreviewFrame.src = '';
+                }
+            }
 
             // Soumission du formulaire
             const form = document.getElementById('articleForm');
@@ -436,6 +756,14 @@
                     if (selectedPictograms === 0) {
                         e.preventDefault();
                         alert('Veuillez sélectionner au moins un pictogramme de danger ou désactiver l\'option "Ce produit présente des risques".');
+                        return;
+                    }
+                    
+                    // Vérifier si un fichier FDS a été téléchargé
+                    if (!sdsFileInput.files || sdsFileInput.files.length === 0) {
+                        e.preventDefault();
+                        alert('Veuillez ajouter une Fiche de Données de Sécurité (FDS) pour ce produit dangereux.');
+                        return;
                     }
                 }
             });

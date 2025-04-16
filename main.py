@@ -1,9 +1,11 @@
 import os
 from datetime import datetime, timedelta, time as dt_time  # Alias pour datetime.time
 import time  # Module time standard
-from flask import Flask, render_template, request, redirect, url_for, flash, session, abort, render_template_string, json, Response  
+from flask import Flask, render_template, request, redirect, url_for, flash, session, abort, render_template_string, json, Response,send_from_directory
 from flask_mysqldb import MySQL
 from werkzeug.security import generate_password_hash, check_password_hash
+import uuid
+from werkzeug.utils import secure_filename
 from flask_session import Session 
 from flask_wtf.csrf import CSRFProtect
 import locale
@@ -50,6 +52,17 @@ app.config.update(
 )
 
 mail = Mail(app)
+
+# Configuration
+UPLOAD_FOLDER = 'static/sds'
+ALLOWED_EXTENSIONS = {'pdf'}
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 
 
 def get_tp_status(start_time, end_time):
@@ -1330,7 +1343,8 @@ def stock_magasin():
                 t.nom_type, 
                 c.id_categorie, 
                 c.nom_categorie,
-                a.ghs_codes
+                a.ghs_codes,
+                a.sds_filename  
             FROM stock_magasin sm
             JOIN article a ON sm.id_article = a.id_article
             JOIN type t ON a.id_type = t.id_type
@@ -1387,53 +1401,57 @@ def ajouter_article():
 
     try:
         cur = mysql.connection.cursor()
-        
-        # Récupération des données de référence
         cur.execute("SELECT * FROM categorie")
         categories = cur.fetchall()
         cur.execute("SELECT * FROM type")
         types = cur.fetchall()
 
         if request.method == 'POST':
-            # Validation des données
             required_fields = ['nom', 'unite', 'quantite', 'type']
             for field in required_fields:
                 if not request.form.get(field):
                     flash(f"Le champ {field} est requis", "danger")
                     return redirect(url_for('ajouter_article'))
 
-            # Extraction des données
             nom = request.form['nom'].strip()
             unite = request.form['unite']
             quantite = int(request.form['quantite'])
             id_type = int(request.form['type'])
             date_expiration = request.form.get('date_expiration') or None
             ghs_codes = ','.join(request.form.getlist('ghs_codes'))
+            sds_filename = None
+
+            # Gestion du fichier SDS
+            sds_file = request.files.get('sds')
+            if sds_file and sds_file.filename != '':
+                if not allowed_file(sds_file.filename):
+                    flash("Seuls les fichiers PDF sont acceptés", "danger")
+                    return redirect(url_for('ajouter_article'))
+                
+                filename = secure_filename(sds_file.filename)
+                unique_id = uuid.uuid4().hex[:8]
+                sds_filename = f"{unique_id}_{filename}"
+                sds_file.save(os.path.join(app.config['UPLOAD_FOLDER'], sds_filename))
 
             try:
                 with mysql.connection.cursor() as trans_cur:
-                    # Insertion de l'article
+                    # Insertion article
                     trans_cur.execute("""
                         INSERT INTO article (
-                            nom_article, 
-                            unite_mesure, 
-                            id_type, 
-                            date_expiration, 
-                            ghs_codes
-                        ) VALUES (%s, %s, %s, %s, %s)
-                    """, (nom, unite, id_type, date_expiration, ghs_codes))
+                            nom_article, unite_mesure, id_type, 
+                            date_expiration, ghs_codes, sds_filename
+                        ) VALUES (%s, %s, %s, %s, %s, %s)
+                    """, (nom, unite, id_type, date_expiration, ghs_codes, sds_filename))
                     
                     id_article = trans_cur.lastrowid
 
-                    # Insertion du stock initial
+                    # Insertion stock
                     trans_cur.execute("""
                         INSERT INTO stock_magasin (
-                            id_article, 
-                            quantite, 
-                            date_expiration
+                            id_article, quantite, date_expiration
                         ) VALUES (%s, %s, %s)
                     """, (id_article, quantite, date_expiration))
-
+                    
                     mysql.connection.commit()
                     flash("Article créé avec succès", "success")
                     return redirect(url_for('stock_magasin'))
@@ -1441,7 +1459,6 @@ def ajouter_article():
             except Exception as e:
                 mysql.connection.rollback()
                 flash(f"Erreur base de données : {str(e)}", "danger")
-
         return render_template('stock/ajouter_article.html',
                             categories=categories,
                             types=types,
@@ -1475,39 +1492,85 @@ def editer_article(id):
         cur = mysql.connection.cursor()
 
         if request.method == 'POST':
-            # Récupération des données
+            # Validation des champs obligatoires
+            required_fields = ['nom', 'unite', 'quantite', 'type']
+            for field in required_fields:
+                if not request.form.get(field):
+                    flash(f"Le champ {field} est requis", "danger")
+                    return redirect(url_for('editer_article', id=id))
+
+            # Extraction des données
             nom = request.form['nom'].strip()
             unite = request.form['unite']
             quantite = int(request.form['quantite'])
             id_type = int(request.form['type'])
             date_expiration = request.form.get('date_expiration') or None
             ghs_codes = ','.join(request.form.getlist('ghs_codes'))
+            sds_file = request.files.get('sds')
 
-            with mysql.connection.cursor() as trans_cur:
-                # Mise à jour article
-                trans_cur.execute("""
-                    UPDATE article SET
-                        nom_article = %s,
-                        unite_mesure = %s,
-                        id_type = %s,
-                        date_expiration = %s,
-                        ghs_codes = %s
-                    WHERE id_article = %s
-                """, (nom, unite, id_type, date_expiration, ghs_codes, id))
+            # Récupération ancien fichier
+            cur.execute("SELECT sds_filename FROM article WHERE id_article = %s", (id,))
+            existing_sds = cur.fetchone()['sds_filename']
+            sds_filename = existing_sds
 
-                # Mise à jour stock
-                trans_cur.execute("""
-                    UPDATE stock_magasin 
-                    SET quantite = %s,
-                        date_expiration = %s
-                    WHERE id_article = %s
-                    ORDER BY date_expiration ASC
-                    LIMIT 1
-                """, (quantite, date_expiration, id))
+            # Gestion du nouveau fichier
+            new_file_uploaded = False
+            if sds_file and sds_file.filename != '':
+                if not allowed_file(sds_file.filename):
+                    flash("Format de fichier non autorisé (PDF uniquement)", "danger")
+                    return redirect(url_for('editer_article', id=id))
 
-                mysql.connection.commit()
-                flash("Article mis à jour avec succès", "success")
-                return redirect(url_for('stock_magasin'))
+                # Génération nouveau nom de fichier
+                filename = secure_filename(sds_file.filename)
+                unique_id = uuid.uuid4().hex[:8]
+                sds_filename = f"{unique_id}_{filename}"
+                new_file_uploaded = True
+
+            try:
+                with mysql.connection.cursor() as trans_cur:
+                    # Mise à jour base de données
+                    trans_cur.execute("""
+                        UPDATE article SET
+                            nom_article = %s,
+                            unite_mesure = %s,
+                            id_type = %s,
+                            date_expiration = %s,
+                            ghs_codes = %s,
+                            sds_filename = %s
+                        WHERE id_article = %s
+                    """, (nom, unite, id_type, date_expiration, ghs_codes, sds_filename, id))
+
+                    trans_cur.execute("""
+                        UPDATE stock_magasin 
+                        SET quantite = %s,
+                            date_expiration = %s
+                        WHERE id_article = %s
+                        ORDER BY date_expiration ASC
+                        LIMIT 1
+                    """, (quantite, date_expiration, id))
+
+                    mysql.connection.commit()
+
+                    # Gestion fichiers après commit réussi
+                    if new_file_uploaded:
+                        # Suppression ancien fichier
+                        if existing_sds:
+                            old_path = os.path.join(app.config['UPLOAD_FOLDER'], existing_sds)
+                            if os.path.exists(old_path):
+                                os.remove(old_path)
+                        
+                        # Sauvegarde nouveau fichier
+                        sds_file.save(os.path.join(app.config['UPLOAD_FOLDER'], sds_filename))
+
+                    flash("Article mis à jour avec succès", "success")
+                    return redirect(url_for('stock_magasin'))
+
+            except Exception as e:
+                mysql.connection.rollback()
+                # Nettoyage fichier en cas d'erreur
+                if new_file_uploaded and os.path.exists(os.path.join(app.config['UPLOAD_FOLDER'], sds_filename)):
+                    os.remove(os.path.join(app.config['UPLOAD_FOLDER'], sds_filename))
+                raise e
 
         # Récupération données existantes
         cur.execute("""
@@ -1524,7 +1587,6 @@ def editer_article(id):
         """, (id,))
         article = cur.fetchone()
 
-        # Préparation des données pour le template
         current_ghs = set(article['ghs_codes'].split(',')) if article['ghs_codes'] else set()
 
         cur.execute("SELECT * FROM categorie")
@@ -1540,13 +1602,11 @@ def editer_article(id):
                             current_ghs=current_ghs)
 
     except Exception as e:
-        mysql.connection.rollback()
         flash(f"Erreur : {str(e)}", "danger")
         return redirect(url_for('stock_magasin'))
     finally:
-        cur.close()
-
-
+        if 'cur' in locals():
+            cur.close()
 
 @app.route('/supprimer_article/<int:id>', methods=['POST'])
 def supprimer_article(id):
@@ -1556,10 +1616,21 @@ def supprimer_article(id):
 
     try:
         with mysql.connection.cursor() as trans_cur:
+            # Récupération du fichier SDS
+            trans_cur.execute("SELECT sds_filename FROM article WHERE id_article = %s", (id,))
+            sds_filename = trans_cur.fetchone()['sds_filename']
+
+            # Suppression fichier physique
+            if sds_filename:
+                file_path = os.path.join(app.config['UPLOAD_FOLDER'], sds_filename)
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+
             # Suppression en cascade
             trans_cur.execute("DELETE FROM stock_laboratoire WHERE id_lot IN (SELECT id_lot FROM stock_magasin WHERE id_article = %s)", (id,))
             trans_cur.execute("DELETE FROM stock_magasin WHERE id_article = %s", (id,))
             trans_cur.execute("DELETE FROM article WHERE id_article = %s", (id,))
+            
             mysql.connection.commit()
             flash("Article et stocks associés supprimés", "success")
 
@@ -1568,6 +1639,8 @@ def supprimer_article(id):
         flash(f"Erreur : {str(e)}", "danger")
     
     return redirect(url_for('stock_magasin'))
+
+
 
 # Route pour le stock laboratoire
 @app.route('/laboratoires/<int:id_lab>/stock', methods=['GET', 'POST'])
@@ -3320,6 +3393,10 @@ def parametres():
                          laboratoires=laboratoires,
                          matieres=matieres,
                          professeurs=professeurs)
+
+@app.route('/sds/<filename>')
+def view_sds(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 
 

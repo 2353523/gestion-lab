@@ -212,7 +212,7 @@
             </div>
 
             <div class="form-body">
-                <form method="POST" id="editForm">
+                <form method="POST" id="editForm" enctype="multipart/form-data">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                     <!-- Section Informations de base -->
@@ -412,6 +412,36 @@
                         </div>
                     </div>
 
+                    <div class="mb-4">
+                        <h5 class="section-title"><i class="fas fa-file-pdf me-2"></i>Fiche de Sécurité</h5>
+                        
+                        <div class="alert alert-info d-flex align-items-center">
+                            <i class="fas fa-info-circle me-3 fs-4"></i>
+                            <div>
+                                {% if article.sds_filename %}
+                                    <div class="mb-2">Fichier actuel: <strong>{{ article.sds_filename }}</strong></div>
+                                    <a href="{{ url_for('view_sds', filename=article.sds_filename) }}" 
+                                       target="_blank" 
+                                       class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-eye me-2"></i>Voir
+                                    </a>
+                                {% else %}
+                                    <span class="text-muted">Aucun fichier attaché</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                
+                        <div class="file-input-group">
+                            <input type="file" 
+                                   class="form-control" 
+                                   name="sds" 
+                                   id="sdsFile"
+                                   accept=".pdf"
+                                   data-max-size="16MB">
+                            <div class="form-text text-danger" id="fileError"></div>
+                        </div>
+                    </div>
+
                     <!-- Boutons d'action -->
                     <div class="d-flex gap-3 mt-4">
                         <button type="submit" 
@@ -430,143 +460,150 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const categorieSelect = document.getElementById('categorie');
-            const typeSelect = document.getElementById('type');
-            const uniteSelect = document.getElementById('unite');
-            const uniteAddon = document.getElementById('unite-addon');
-            const loadingOverlay = document.querySelector('.loading-overlay');
-            const form = document.getElementById('editForm');
+       document.addEventListener('DOMContentLoaded', () => {
+    // Éléments DOM principaux
+    const form = document.getElementById('editForm');
+    const categorieSelect = document.getElementById('categorie');
+    const typeSelect = document.getElementById('type');
+    const loadingOverlay = document.querySelector('.loading-overlay');
+    const uniteSelect = document.getElementById('unite');
+    const uniteAddon = document.getElementById('unite-addon');
+    const sdsFileInput = document.getElementById('sdsFile');
 
-            // Mise à jour de l'unité dans l'addon du champ quantité
-            uniteSelect.addEventListener('change', () => {
-                uniteAddon.textContent = uniteSelect.value;
-            });
+    // Configuration
+    const MAX_FILE_SIZE = 16 * 1024 * 1024; // 16MB
+    const ALLOWED_MIME_TYPES = ['application/pdf'];
 
-            // Filtrage des types en fonction de la catégorie
-            const filterTypes = () => {
-                loadingOverlay.style.display = 'flex';
+    // Initialisation des sélecteurs dynamiques
+    const initDynamicSelects = () => {
+        // Mise à jour de l'unité affichée
+        const updateUniteDisplay = () => {
+            uniteAddon.textContent = uniteSelect.value;
+        };
+
+        // Filtrage des types selon la catégorie
+        const filterTypes = async () => {
+            loadingOverlay.style.display = 'flex';
+            
+            try {
                 const categorieId = categorieSelect.value;
-                
-                setTimeout(() => {
-                    typeSelect.disabled = !categorieId;
-                    
-                    // Réinitialiser la sélection si aucune catégorie n'est sélectionnée
-                    if (!categorieId) {
-                        typeSelect.value = "";
-                        loadingOverlay.style.display = 'none';
-                        return;
-                    }
-                    
-                    // Masquer les options qui ne correspondent pas à la catégorie
-                    let hasValidOption = false;
-                    typeSelect.querySelectorAll('option').forEach(option => {
-                        if(option.value === "") return;
-                        
-                        const match = option.dataset.categorie === categorieId;
-                        option.hidden = !match;
-                        option.disabled = !match;
-                        
-                        if(match) hasValidOption = true;
-                    });
-                    
-                    // Sélectionner la première option valide si aucune n'est sélectionnée
-                    if(!typeSelect.value || typeSelect.selectedOptions[0].disabled) {
-                        if(hasValidOption) {
-                            // Trouver la première option valide
-                            const firstValidOption = Array.from(typeSelect.options)
-                                .find(opt => opt.value && !opt.disabled);
-                            
-                            if(firstValidOption) typeSelect.value = firstValidOption.value;
-                            else typeSelect.value = "";
-                        } else {
-                            typeSelect.value = "";
-                        }
-                    }
-                    
-                    loadingOverlay.style.display = 'none';
-                }, 300);
-            };
+                typeSelect.disabled = !categorieId;
 
-            // Appliquer le filtrage lors du changement de catégorie
-            categorieSelect.addEventListener('change', filterTypes);
-            
-            // Initialisation au chargement
-            filterTypes();
+                // Masquer/afficher les options
+                Array.from(typeSelect.options).forEach(option => {
+                    if(option.value === "") return;
+                    const match = option.dataset.categorie === categorieId;
+                    option.hidden = !match;
+                    option.disabled = !match;
+                });
 
-            // Validation du formulaire
-            form.addEventListener('submit', (e) => {
-                let isValid = true;
-                
-                // Validation de tous les champs requis
-                form.querySelectorAll('[required]').forEach(field => {
-                    if (!field.value.trim()) {
-                        field.classList.add('is-invalid');
-                        isValid = false;
-                        
-                        // Scroll vers le premier champ invalide
-                        if(field === document.querySelector('.is-invalid')) {
-                            field.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        }
-                    } else {
-                        field.classList.remove('is-invalid');
-                    }
-                });
-                
-                // Valider spécifiquement le champ type
-                if(!typeSelect.value) {
-                    typeSelect.classList.add('is-invalid');
-                    typeSelect.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    isValid = false;
+                // Validation automatique
+                if(!typeSelect.value || typeSelect.selectedOptions[0].disabled) {
+                    typeSelect.value = "";
                 }
-                
-                if (!isValid) {
-                    e.preventDefault();
-                }
-            });
-            
-            // Réinitialiser l'état de validation lors de la modification
-            form.querySelectorAll('input, select').forEach(field => {
-                field.addEventListener('input', () => {
-                    field.classList.remove('is-invalid');
-                });
-            });
+            } finally {
+                loadingOverlay.style.display = 'none';
+            }
+        };
 
-            // Gestion des pictogrammes
-            // Initialisation des pictogrammes sélectionnés
-            document.querySelectorAll('input[name="ghs_codes"]').forEach(checkbox => {
-                if(checkbox.checked) {
-                    checkbox.closest('.pictogram-card').classList.add('selected');
-                }
-            });
+        // Événements
+        uniteSelect.addEventListener('change', updateUniteDisplay);
+        categorieSelect.addEventListener('change', filterTypes);
+        
+        // Initialisation
+        updateUniteDisplay();
+        filterTypes();
+    };
+
+    // Gestion des pictogrammes
+    const initPictograms = () => {
+        document.querySelectorAll('.pictogram-card').forEach(card => {
+            const checkbox = card.querySelector('input[type="checkbox"]');
             
-            // Gestion du clic sur les cartes de pictogrammes
-            document.querySelectorAll('.pictogram-card').forEach(card => {
-                card.addEventListener('click', function(e) {
-                    // Éviter le déclenchement multiple si on clique sur la checkbox directement
-                    if (e.target.type === 'checkbox') return;
-                    
-                    const checkbox = this.querySelector('input[type="checkbox"]');
-                    checkbox.checked = !checkbox.checked;
-                    this.classList.toggle('selected', checkbox.checked);
-                    
-                    // Animation de feedback
-                    const img = this.querySelector('.ghs-image');
-                    img.style.transform = 'scale(1.2)';
-                    setTimeout(() => {
-                        img.style.transform = checkbox.checked ? 'scale(1.05)' : 'scale(1)';
-                    }, 200);
-                });
-            });
-            
-            // Gestion du clic sur les checkboxes directement
-            document.querySelectorAll('.pictogram-checkbox').forEach(checkbox => {
-                checkbox.addEventListener('change', function() {
-                    const card = this.closest('.pictogram-card');
-                    card.classList.toggle('selected', this.checked);
-                });
+            // État initial
+            if(checkbox.checked) card.classList.add('selected');
+
+            // Gestion du clic
+            card.addEventListener('click', (e) => {
+                if(e.target.tagName === 'INPUT') return;
+                
+                checkbox.checked = !checkbox.checked;
+                card.classList.toggle('selected', checkbox.checked);
+                
+                // Animation
+                card.style.transform = 'scale(0.98)';
+                setTimeout(() => card.style.transform = '', 150);
             });
         });
+    };
+
+    // Validation des fichiers
+    const validateFile = (file) => {
+        if(!file) return true;
+        
+        return file.size <= MAX_FILE_SIZE && 
+               ALLOWED_MIME_TYPES.includes(file.type);
+    };
+
+    // Gestion du formulaire
+    const handleFormSubmit = (e) => {
+        e.preventDefault();
+        
+        // Validation
+        let isValid = true;
+        const invalidFields = [];
+        
+        // Champs requis
+        form.querySelectorAll('[required]').forEach(field => {
+            if(!field.value.trim()) {
+                field.classList.add('is-invalid');
+                invalidFields.push(field);
+                isValid = false;
+            }
+        });
+
+        // Validation fichier
+        if(sdsFileInput.files.length > 0 && !validateFile(sdsFileInput.files[0])) {
+            sdsFileInput.classList.add('is-invalid');
+            invalidFields.push(sdsFileInput);
+            isValid = false;
+        }
+
+        if(!isValid) {
+            // Focus sur le premier champ invalide
+            invalidFields[0].scrollIntoView({
+                behavior: 'smooth',
+                block: 'center'
+            });
+            return;
+        }
+
+        // Confirmation
+        if(!confirm('Confirmez-vous la modification de cet article ?')) return;
+
+        // Soumission
+        form.submit();
+    };
+
+    // Réinitialisation des états d'erreur
+    const initInputValidation = () => {
+        form.querySelectorAll('input, select').forEach(field => {
+            field.addEventListener('input', () => {
+                field.classList.remove('is-invalid');
+            });
+        });
+    };
+
+    // Initialisation globale
+    const init = () => {
+        initDynamicSelects();
+        initPictograms();
+        initInputValidation();
+        form.addEventListener('submit', handleFormSubmit);
+    };
+
+    init();
+});
     </script>
 </body>
 </html>
