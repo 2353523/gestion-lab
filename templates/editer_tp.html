@@ -2,7 +2,8 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Éditer TP</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ 'Modifier' if tp else 'Créer' }} TP</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -15,17 +16,61 @@
             color: #dc3545;
             margin-left: 4px;
         }
-        .form-check-label {
-            cursor: pointer;
-            transition: all 0.2s;
+        .form-check {
+            margin: 8px 0;
         }
-        .form-check-input:checked + .form-check-label {
-            font-weight: 500;
-            color: #0d6efd;
+        .form-check-label {
+            margin-left: 8px;
+        }
+        .card {
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+        }
+        .file-upload-wrapper {
+            position: relative;
+            margin-bottom: 15px;
+        }
+        .file-upload-input {
+            position: relative;
+            z-index: 2;
+            width: 100%;
+            height: calc(3rem + 2px);
+            margin: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+        .file-upload-text {
+            position: absolute;
+            top: 0;
+            right: 0;
+            left: 0;
+            z-index: 1;
+            height: calc(3rem + 2px);
+            padding: 0.75rem 1rem;
+            font-weight: 400;
+            line-height: 1.5;
+            color: #495057;
+            background-color: #fff;
+            border: 1px solid #ced4da;
+            border-radius: 0.25rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+        }
+        .file-upload-btn {
+            position: absolute;
+            top: 3px;
+            right: 3px;
+            z-index: 3;
+            display: block;
+            height: calc(3rem - 6px);
         }
     </style>
 </head>
-<body class="bg-light">
+<body>
+    <!-- Barre de navigation -->
     {% include 'nav.html' %}
     <div class="content">
         {% block content %}{% endblock %}
@@ -36,30 +81,27 @@
             <div class="col-lg-8">
                 <div class="card form-card border-0">
                     <div class="card-header bg-primary text-white rounded-top-3">
-                        <h2 class="h4 mb-0">
-                            <i class="fas fa-edit me-2"></i>
-                            {{ 'Modifier' if tp else 'Créer' }} TP
-                        </h2>
+                        <h2 class="h4 mb-0"><i class="fas fa-edit me-2"></i>{{ 'Modifier' if tp else 'Créer' }} TP</h2>
                     </div>
                     
                     <div class="card-body p-4">
                         {% with messages = get_flashed_messages(with_categories=true) %}
-                            {% if messages %}
-                                {% for category, message in messages %}
-                                <div class="alert alert-{{ category }} alert-dismissible fade show">
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
                                     {{ message }}
-                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                                 </div>
-                                {% endfor %}
-                            {% endif %}
+                            {% endfor %}
+                        {% endif %}
                         {% endwith %}
 
-                        <form method="POST" class="needs-validation" novalidate>
+                        <form method="POST" class="needs-validation" enctype="multipart/form-data" novalidate>
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <input type="hidden" name="redirect_week" value="{{ redirect_week }}">
                             <input type="hidden" name="lab_id" value="{{ lab_id }}">
-                            {% if tp %}<input type="hidden" name="redirect_week" value="{{ redirect_week }}">{% endif %}
-                        
+                            {% if tp %}<input type="hidden" name="tp_id" value="{{ tp.id_tp }}">{% endif %}
+
                             <div class="row g-4">
                                 <!-- Nom du TP -->
                                 <div class="col-12">
@@ -69,24 +111,26 @@
                                            value="{{ tp.nom_tp if tp else '' }}" 
                                            placeholder="Ex: Chromatographie des pigments végétaux" 
                                            required>
+                                    <div class="invalid-feedback">Veuillez saisir un nom pour ce TP</div>
                                 </div>
-                        
-                                <!-- Sélection du professeur avec vérification disponibilité -->
+
+                                <!-- Professeur -->
                                 <div class="col-md-6">
                                     <label for="id_prof" class="form-label required-label">Professeur</label>
                                     <select class="form-select form-select-lg" id="id_prof" name="id_prof" required>
                                         <option value="" disabled>Choisir un professeur...</option>
                                         {% for prof in professeurs %}
-                                        <option value="{{ prof.id_prof }}"
+                                        <option value="{{ prof.id_prof }}" 
                                             {{ 'selected' if tp and prof.id_prof == tp.id_prof|int }}>
                                             {{ prof.prenom }} {{ prof.nom }}
                                         </option>
                                         {% endfor %}
                                     </select>
+                                    <div class="invalid-feedback">Veuillez sélectionner un professeur</div>
                                     <div id="professor-availability" class="mt-2 small"></div>
                                 </div>
-                        
-                                <!-- Sélection de la matière -->
+
+                                <!-- Matière -->
                                 <div class="col-md-6">
                                     <label for="id_matiere" class="form-label required-label">Matière</label>
                                     <select class="form-select form-select-lg" id="id_matiere" name="id_matiere" required>
@@ -98,9 +142,10 @@
                                         </option>
                                         {% endfor %}
                                     </select>
+                                    <div class="invalid-feedback">Veuillez sélectionner une matière</div>
                                 </div>
-                        
-                                <!-- Sélection du laboratoire -->
+
+                                <!-- Laboratoire -->
                                 <div class="col-md-6">
                                     <label for="id_laboratoire" class="form-label">Laboratoire</label>
                                     <select class="form-select form-select-lg" id="id_laboratoire" name="id_laboratoire">
@@ -113,59 +158,82 @@
                                         {% endfor %}
                                     </select>
                                 </div>
-                        
-                                <!-- Date -->
+
+                                <!-- Sujet TP -->
+                                <div class="col-md-6">
+                                    <label for="sujet_pdf" class="form-label">Sujet TP (PDF)</label>
+                                    <div class="file-upload-wrapper">
+                                        <input type="file" name="sujet_pdf" id="sujet_pdf" class="file-upload-input" accept="application/pdf">
+                                        <div class="file-upload-text">
+                                            <i class="fas fa-file-pdf me-2"></i>
+                                            <span id="file-name">
+                                                {% if tp and tp.sujet_pdf %}
+                                                    {{ tp.sujet_pdf.split('/')[-1] }}
+                                                {% else %}
+                                                    Aucun fichier sélectionné
+                                                {% endif %}
+                                            </span>
+                                        </div>
+                                        <button type="button" class="btn btn-primary file-upload-btn">
+                                            <i class="fas fa-upload me-1"></i> Parcourir
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Date du TP -->
                                 <div class="col-md-6">
                                     <label for="date_tp" class="form-label required-label">Date</label>
-                                    <input type="date" class="form-control form-control-lg" 
-                                           id="date_tp" name="date_tp" 
-                                           value="{{ tp.heure_debut.strftime('%Y-%m-%d') if tp else default_date }}" 
-                                           {{ 'readonly' if from_emploi else '' }} 
-                                           required>
+                                    <input type="date" 
+                                        class="form-control form-control-lg" 
+                                        id="date_tp"
+                                        name="date_tp" 
+                                        value="{{ tp.heure_debut.strftime('%Y-%m-%d') if tp else default_date }}" 
+                                        {% if from_emploi %}readonly{% endif %}
+                                        required>
+                                    <div class="invalid-feedback">Veuillez sélectionner une date</div>
                                 </div>
-                        
+
                                 <!-- Créneaux horaires -->
-                                <div class="col-12">
+                                <div class="col-md-6">
                                     <label class="form-label required-label">Créneaux horaires</label>
                                     <div class="card">
                                         <div class="card-body">
                                             {% for periode, heures in CRENEAUX.items() %}
                                             <div class="form-check">
                                                 <input class="form-check-input" type="checkbox" 
-                                                       name="periodes" 
-                                                       value="{{ periode }}" 
-                                                       id="periode{{ loop.index }}"
-                                                       {{ 'checked' if periode in (periodes_selectionnes if tp else default_periodes) }}>
+                                                    name="periodes" value="{{ periode }}" 
+                                                    id="periode{{ loop.index }}"
+                                                    {{ 'checked' if periode in (periodes_selectionnes if tp else default_periodes) }}>
                                                 <label class="form-check-label" for="periode{{ loop.index }}">
                                                     {{ periode }} ({{ heures[0] }} - {{ heures[1] }})
-                                                    {% if periode in (periodes_selectionnes if tp else default_periodes) %}
-                                                    <span class="badge bg-success ms-2">Sélectionné</span>
-                                                    {% endif %}
                                                 </label>
                                             </div>
                                             {% endfor %}
                                         </div>
                                     </div>
+                                    <div class="invalid-feedback">Veuillez sélectionner au moins un créneau</div>
                                 </div>
-                        
+
                                 <!-- Année Scolaire -->
                                 <div class="col-md-6">
                                     <label for="annee_scolaire" class="form-label required-label">Année scolaire</label>
-                                    <input type="text" class="form-control form-control-lg" 
-                                           id="annee_scolaire" name="annee_scolaire" 
-                                           value="{{ tp.annee_scolaire if tp else default_annee }}" 
-                                           pattern="\d{4}-\d{4}" 
-                                           {{ 'readonly' if tp else '' }} 
-                                           required>
+                                    <input type="text" 
+                                        class="form-control form-control-lg" 
+                                        id="annee_scolaire" 
+                                        name="annee_scolaire"
+                                        value="{{ tp.annee_scolaire if tp else default_annee }}"
+                                        pattern="\d{4}-\d{4}"
+                                        {{ 'readonly' if tp else '' }}
+                                        required>
                                 </div>
-                        
+
                                 <!-- Boutons -->
                                 <div class="col-12 mt-5">
                                     <div class="d-grid gap-3 d-md-flex justify-content-md-end">
                                         <button type="submit" class="btn btn-success btn-lg px-5">
                                             <i class="fas fa-save me-2"></i>Enregistrer
                                         </button>
-                                        <a href="{{ url_for('emploi', lab_id=lab_id, week_offset=redirect_week) if tp else url_for('index') }}" 
+                                        <a href="{{ url_for(request.args.get('from_page', 'emploi'), lab_id=lab_id, week_offset=redirect_week) if 'from_page' in request.args else url_for('index') }}" 
                                             class="btn btn-outline-secondary btn-lg px-5">
                                             <i class="fas fa-times me-2"></i>Annuler
                                         </a>
@@ -181,20 +249,94 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Validation Bootstrap
-        (() => {
-            'use strict'
-            const forms = document.querySelectorAll('.needs-validation')
-            Array.from(forms).forEach(form => {
-                form.addEventListener('submit', event => {
+        document.addEventListener('DOMContentLoaded', function() {
+            'use strict';
+    
+            // Validation Bootstrap
+            const forms = document.querySelectorAll('.needs-validation');
+            forms.forEach(form => {
+                form.addEventListener('submit', function(event) {
                     if (!form.checkValidity()) {
-                        event.preventDefault()
-                        event.stopPropagation()
+                        event.preventDefault();
+                        event.stopPropagation();
                     }
-                    form.classList.add('was-validated')
-                }, false)
-            })
-        })()
+                    form.classList.add('was-validated');
+                }, false);
+            });
+    
+            // Vérification disponibilité professeur
+            const professorSelect = document.getElementById('id_prof');
+            const dateInput = document.getElementById('date_tp');
+            const availabilityDiv = document.getElementById('professor-availability');
+    
+            async function checkProfessorAvailability() {
+                const professorId = professorSelect.value;
+                const date = dateInput.value;
+    
+                if (!professorId || !date) {
+                    availabilityDiv.innerHTML = '';
+                    return;
+                }
+    
+                try {
+                    const response = await fetch(`/check_professor_availability?professor_id=${professorId}&date=${date}`);
+                    const data = await response.json();
+    
+                    availabilityDiv.innerHTML = data.occupied 
+                        ? `<div class="alert alert-warning mt-2 p-2">
+                               <i class="fas fa-exclamation-triangle me-2"></i>
+                               Créneaux occupés : ${data.slots.join(', ')}
+                           </div>`
+                        : `<div class="alert alert-success mt-2 p-2">
+                               <i class="fas fa-check-circle me-2"></i>
+                               Disponible toute la journée
+                           </div>`;
+    
+                } catch (error) {
+                    console.error('Erreur:', error);
+                    availabilityDiv.innerHTML = '';
+                }
+            }
+    
+            // Gestion upload fichier
+            const fileInput = document.getElementById('sujet_pdf');
+            const fileNameDisplay = document.getElementById('file-name');
+            
+            fileInput.addEventListener('change', function() {
+                if (this.files && this.files[0]) {
+                    fileNameDisplay.textContent = this.files[0].name;
+                } else {
+                    fileNameDisplay.textContent = '{{ tp.sujet_pdf.split("/")[-1] if tp and tp.sujet_pdf else "Aucun fichier sélectionné" }}';
+                }
+            });
+            
+            const uploadButton = document.querySelector('.file-upload-btn');
+            uploadButton.addEventListener('click', function() {
+                fileInput.click();
+            });
+    
+            // Événements disponibilité
+            professorSelect.addEventListener('change', checkProfessorAvailability);
+            dateInput.addEventListener('change', checkProfessorAvailability);
+    
+            // Vérification initiale
+            if (professorSelect.value && dateInput.value) {
+                checkProfessorAvailability();
+            }
+
+            // Validation créneaux
+            const form = document.querySelector('form');
+            form.addEventListener('submit', function(event) {
+                const checkboxes = document.querySelectorAll('input[name="periodes"]:checked');
+                if (checkboxes.length === 0) {
+                    event.preventDefault();
+                    const creneauxCard = document.querySelector('.card:has(input[name="periodes"])');
+                    creneauxCard.classList.add('border-danger');
+                    const feedback = creneauxCard.nextElementSibling;
+                    feedback.style.display = 'block';
+                }
+            });
+        });
     </script>
 </body>
 </html>

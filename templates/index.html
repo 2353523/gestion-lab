@@ -477,8 +477,8 @@
                 </div>
         
                 <!-- Table des TP améliorée -->
-                <div class="table-responsive">
-                    <table id="tableTP" class="table table-hover align-middle border-0">
+                <div class="table-responsive" style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
+                    <table id="tableTP" class="table table-hover align-middle border-0" style="min-width: 800px;">
                         <thead class="bg-light">
                             <tr>
                                 <th class="ps-3">Nom TP</th>
@@ -527,9 +527,9 @@
                                 </td>
                                 <td class="text-end pe-3">
                                     <div class="btn-group">
-                                        <a href="{{ url_for('editer_tp', id=tp.id_tp) }}" 
-                                           class="btn btn-sm btn-outline-warning"
-                                           title="Modifier">
+                                        <a href="{{ url_for('editer_tp', id=tp.id_tp, from_page='index') }}" 
+                                            class="btn btn-sm btn-outline-warning"
+                                            title="Modifier">
                                             <i class="fas fa-edit"></i>
                                         </a>
                                         <form method="POST" action="{{ url_for('supprimer_tp', id=tp.id_tp) }}" class="d-inline">

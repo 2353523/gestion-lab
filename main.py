@@ -53,11 +53,23 @@ app.config.update(
 
 mail = Mail(app)
 
-# Configuration
-UPLOAD_FOLDER = 'static/sds'
+
+# Configuration commune
 ALLOWED_EXTENSIONS = {'pdf'}
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB pour les fichiers SDS
+
+# Configuration spécifique pour les sujets de TP
+UPLOAD_FOLDER_SUJETS = 'static/sujets_pdf'
+app.config['UPLOAD_FOLDER_SUJETS'] = UPLOAD_FOLDER_SUJETS
+app.config['MAX_CONTENT_LENGTH_SUJETS'] = 5 * 1024 * 1024  # 5MB spécifique aux sujets
+
+# Configuration SDS
+UPLOAD_FOLDER_SDS = 'static/sds'
+app.config['UPLOAD_FOLDER_SDS'] = UPLOAD_FOLDER_SDS
+
+# Création des répertoires
+for folder in [UPLOAD_FOLDER_SUJETS, UPLOAD_FOLDER_SDS]:
+    os.makedirs(folder, exist_ok=True)
 
 def allowed_file(filename):
     return '.' in filename and \
@@ -373,6 +385,16 @@ def creer_tp():
         'P5': ('17:00', '18:30')
     }
 
+    # Configuration upload PDF
+    UPLOAD_FOLDER = 'static/sujets_pdf'
+    ALLOWED_EXTENSIONS = {'pdf'}
+    app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+    def allowed_file(filename):
+        return '.' in filename and \
+            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
     from_emploi = 'date' in request.args
     default_date = request.args.get('date')
     default_periode = request.args.get('periode', None)
@@ -380,7 +402,7 @@ def creer_tp():
     cur = mysql.connection.cursor()
     cur.execute("SELECT id_prof, prenom, nom FROM professeur")
     professeurs = cur.fetchall()
-    cur.execute("SELECT id_matiere, nom_matiere, niveau FROM matiere")  # Ajouter niveau
+    cur.execute("SELECT id_matiere, nom_matiere, niveau FROM matiere")
     matieres = cur.fetchall()
     cur.execute("SELECT id_laboratoire, nom_laboratoire FROM laboratoire")
     laboratoires = cur.fetchall()
@@ -391,10 +413,19 @@ def creer_tp():
     default_annee = "2024-2025"
     if now.month >= 10:
         default_annee = f"{current_year + 1}-{current_year + 2}"
-    else:
-        pass
+
     if request.method == 'POST':
         try:
+            sujet_pdf_filename = None
+            # Gestion upload fichier
+            if 'sujet_pdf' in request.files:
+                file = request.files['sujet_pdf']
+                if file.filename != '' and allowed_file(file.filename):
+                    filename = secure_filename(file.filename)
+                    unique_filename = f"{uuid.uuid4().hex}_{filename}"
+                    file.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_filename))
+                    sujet_pdf_filename = unique_filename
+
             data = {
                 'nom_tp': request.form['nom_tp'].strip(),
                 'id_prof': request.form.get('id_prof', '').strip(),
@@ -403,8 +434,7 @@ def creer_tp():
                 'date_tp': request.form['date_tp'].strip(),
                 'periodes': request.form.getlist('periodes'),
                 'annee_scolaire': request.form['annee_scolaire'].strip(),
-                'annee_scolaire': default_annee  # On utilise la valeur calculée
-
+                'annee_scolaire': default_annee
             }
 
             if from_emploi and not data['date_tp']:
@@ -439,8 +469,7 @@ def creer_tp():
                     heure_debut = datetime.strptime(f"{data['date_tp']} {debut}", "%Y-%m-%d %H:%M")
                     heure_fin = datetime.strptime(f"{data['date_tp']} {fin}", "%Y-%m-%d %H:%M")
 
-                    # Remplacer la requête SQL existante par :
-                    # 1. Vérification conflit professeur
+                    # Vérification conflit professeur
                     cur.execute("""
                         SELECT id_tp 
                         FROM tp 
@@ -467,7 +496,7 @@ def creer_tp():
                                             from_emploi=from_emploi,
                                             default_date=default_date)
                     
-                    # 2. Vérification conflit laboratoire (nouveau)
+                    # Vérification conflit laboratoire
                     cur.execute("""
                         SELECT id_tp 
                         FROM tp 
@@ -486,7 +515,6 @@ def creer_tp():
                     if cur.fetchone():
                         flash(f"Le labo est déjà réservé ({periode} {debut}-{fin}) !", "danger")
                         mysql.connection.rollback()
-
                         return render_template('creer_tp.html',
                                             professeurs=professeurs,
                                             matieres=matieres,
@@ -495,14 +523,21 @@ def creer_tp():
                                             from_emploi=from_emploi,
                                             default_date=default_date)
 
+                    # Insertion avec le PDF
                     cur.execute("""
                         INSERT INTO tp (
                             nom_tp, heure_debut, heure_fin, annee_scolaire,
-                            id_laboratoire, id_matiere, id_prof
-                        ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+                            id_laboratoire, id_matiere, id_prof, sujet_pdf
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     """, (
-                        data['nom_tp'], heure_debut, heure_fin, data['annee_scolaire'],
-                        data['id_laboratoire'], data['id_matiere'], data['id_prof']
+                        data['nom_tp'], 
+                        heure_debut, 
+                        heure_fin, 
+                        data['annee_scolaire'],
+                        data['id_laboratoire'], 
+                        data['id_matiere'], 
+                        data['id_prof'],
+                        sujet_pdf_filename
                     ))
                     created_count += 1
 
@@ -532,13 +567,14 @@ def creer_tp():
 
     return render_template('creer_tp.html',
                         default_annee=default_annee,
-                         professeurs=professeurs,
-                         matieres=matieres,
-                         laboratoires=laboratoires,
-                         CRENEAUX=CRENEAUX,
-                         default_date=default_date,
-                         default_periodes=[default_periode] if default_periode else [],
-                         from_emploi=from_emploi)
+                        professeurs=professeurs,
+                        matieres=matieres,
+                        laboratoires=laboratoires,
+                        CRENEAUX=CRENEAUX,
+                        default_date=default_date,
+                        default_periodes=[default_periode] if default_periode else [],
+                        from_emploi=from_emploi)
+
 
 @app.route('/editer_tp/<int:id>', methods=['GET', 'POST'])
 def editer_tp(id):
@@ -550,27 +586,26 @@ def editer_tp(id):
         'P5': ('17:00', '18:30')
     }
 
+    # Configuration upload PDF
+    UPLOAD_FOLDER = 'static/sujets_pdf'
+    ALLOWED_EXTENSIONS = {'pdf'}
+    app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+    def allowed_file(filename):
+        return '.' in filename and \
+            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
     lab_id = request.args.get('lab_id', None, type=int)
     redirect_week = request.args.get('redirect_week', 0, type=int)
     from_emploi = 'redirect_week' in request.args
-    
+    from_page = request.args.get('from_page', 'emploi')
     cur = mysql.connection.cursor()
     try:
+        # Récupération des données existantes
         cur.execute("""
-            SELECT 
-                tp.*,
-                DATE(tp.heure_debut) AS date_tp,
-                TIME(tp.heure_debut) AS heure_debut_time,
-                TIME(tp.heure_fin) AS heure_fin_time,
-                p.prenom,
-                p.nom,
-                m.nom_matiere,
-                l.nom_laboratoire
-            FROM tp
-            JOIN professeur p ON tp.id_prof = p.id_prof
-            JOIN matiere m ON tp.id_matiere = m.id_matiere
-            LEFT JOIN laboratoire l ON tp.id_laboratoire = l.id_laboratoire
-            WHERE tp.id_tp = %s
+            SELECT * FROM tp 
+            WHERE id_tp = %s
         """, (id,))
         tp = cur.fetchone()
 
@@ -578,7 +613,20 @@ def editer_tp(id):
             flash("TP introuvable", "danger")
             return redirect(url_for('emploi', week_offset=redirect_week))
 
+        old_filename = tp['sujet_pdf'] if tp else None
+
         if request.method == 'POST':
+            sujet_pdf_filename = old_filename
+            # Gestion du nouveau fichier PDF
+            if 'sujet_pdf' in request.files:
+                file = request.files['sujet_pdf']
+                if file.filename != '' and allowed_file(file.filename):
+                    # Générer nouveau nom de fichier
+                    filename = secure_filename(file.filename)
+                    unique_filename = f"{uuid.uuid4().hex}_{filename}"
+                    file.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_filename))
+                    sujet_pdf_filename = unique_filename
+
             data = {
                 'nom_tp': request.form['nom_tp'].strip(),
                 'id_prof': request.form['id_prof'].strip(),
@@ -590,9 +638,7 @@ def editer_tp(id):
                 'redirect_week': request.form.get('redirect_week', 0, type=int)
             }
 
-            if from_emploi and not data['date_tp']:
-                data['date_tp'] = tp['date_tp'].strftime('%Y-%m-%d')
-
+            # Validation des données
             if not all([data['nom_tp'], data['id_prof'], data['id_matiere'], data['date_tp']]):
                 flash("Tous les champs obligatoires doivent être remplis", "danger")
                 return render_edit_form(cur, tp, data, redirect_week, from_emploi)
@@ -605,7 +651,7 @@ def editer_tp(id):
                 # Suppression ancien TP
                 cur.execute("DELETE FROM tp WHERE id_tp = %s", (id,))
                 
-                # Vérification et création des nouveaux TP
+                # Insertion des nouveaux TPs
                 created_count = 0
                 for periode in data['periodes']:
                     if periode in CRENEAUX:
@@ -613,53 +659,86 @@ def editer_tp(id):
                         heure_debut = datetime.strptime(f"{data['date_tp']} {debut}", "%Y-%m-%d %H:%M")
                         heure_fin = datetime.strptime(f"{data['date_tp']} {fin}", "%Y-%m-%d %H:%M")
 
+                        # Vérification des conflits
                         cur.execute("""
-                                SELECT id_tp 
-                                FROM tp 
-                                WHERE (
-                                    (heure_debut < %s AND heure_fin > %s) OR
-                                    (heure_debut < %s AND heure_fin > %s) OR
-                                    (heure_debut BETWEEN %s AND %s) OR
-                                    (heure_fin BETWEEN %s AND %s)
-                                )
-                                AND id_prof = %s
-                                AND id_tp != %s  /* Exclusion du TP actuel */
-                            """, (
-                                heure_fin, heure_debut,
-                                heure_debut, heure_fin,
-                                heure_debut, heure_fin,
-                                heure_debut, heure_fin,
-                                data['id_prof'], id
-                            ))
+                            SELECT id_tp 
+                            FROM tp 
+                            WHERE (
+                                (heure_debut < %s AND heure_fin > %s) OR
+                                (heure_debut BETWEEN %s AND %s) OR
+                                (heure_fin BETWEEN %s AND %s)
+                            )
+                            AND (id_prof = %s OR id_laboratoire = %s)
+                        """, (
+                            heure_fin, heure_debut,
+                            heure_debut, heure_fin,
+                            heure_debut, heure_fin,
+                            data['id_prof'], data['id_laboratoire']
+                        ))
                         if cur.fetchone():
-                            flash(f"Le créneau {periode} ({debut}-{fin}) est déjà occupé !", "danger")
+                            flash("Conflit d'horaire détecté !", "danger")
                             mysql.connection.rollback()
                             return render_edit_form(cur, tp, data, redirect_week, from_emploi)
 
+                        # Insertion avec le nouveau PDF
                         cur.execute("""
                             INSERT INTO tp (
                                 nom_tp, heure_debut, heure_fin, annee_scolaire,
-                                id_laboratoire, id_matiere, id_prof
-                            ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+                                id_laboratoire, id_matiere, id_prof, sujet_pdf
+                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                         """, (
                             data['nom_tp'], heure_debut, heure_fin, data['annee_scolaire'],
-                            data['id_laboratoire'], data['id_matiere'], data['id_prof']
+                            data['id_laboratoire'], data['id_matiere'], data['id_prof'],
+                            sujet_pdf_filename
                         ))
                         created_count += 1
 
                 mysql.connection.commit()
-                flash(f"{created_count} TP modifiés avec succès!", "success")
-                return redirect(url_for('emploi', week_offset=data['redirect_week']) if from_emploi else url_for('index'))
 
-            except ValueError as e:
-                flash(f"Erreur de format : {str(e)}", "danger")
-                return render_edit_form(cur, tp, data, redirect_week, from_emploi)
+                # Nettoyage ancien fichier si nécessaire
+                if sujet_pdf_filename != old_filename and old_filename:
+                    cur.execute("SELECT COUNT(*) AS count FROM tp WHERE sujet_pdf = %s", (old_filename,))
+                    if cur.fetchone()['count'] == 0:
+                        try:
+                            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], old_filename))
+                        except OSError:
+                            pass
+
+                flash(f"{created_count} TP modifiés avec succès!", "success")
+                return redirect(url_for(from_page, week_offset=data['redirect_week']) if from_page == 'emploi' else url_for('index'))
+
             except Exception as e:
                 mysql.connection.rollback()
                 flash(f"Erreur base de données : {str(e)}", "danger")
                 return render_edit_form(cur, tp, data, redirect_week, from_emploi)
 
-        return render_edit_form(cur, tp, None, redirect_week, from_emploi)
+        # Rendu du formulaire
+        cur.execute("SELECT id_prof, prenom, nom FROM professeur")
+        professeurs = cur.fetchall()
+        cur.execute("SELECT id_matiere, nom_matiere FROM matiere")
+        matieres = cur.fetchall()
+        cur.execute("SELECT id_laboratoire, nom_laboratoire FROM laboratoire")
+        laboratoires = cur.fetchall()
+
+        debut_time = tp['heure_debut'].time() if isinstance(tp['heure_debut'], datetime) else tp['heure_debut']
+        fin_time = tp['heure_fin'].time() if isinstance(tp['heure_fin'], datetime) else tp['heure_fin']
+
+        periodes_selectionnes = []
+        for periode, (debut, fin) in CRENEAUX.items():
+            debut_periode = datetime.strptime(debut, "%H:%M").time()
+            fin_periode = datetime.strptime(fin, "%H:%M").time()
+            if debut_periode <= debut_time and fin_periode >= fin_time:
+                periodes_selectionnes.append(periode)
+
+        return render_template('editer_tp.html',
+                            tp=tp,
+                            CRENEAUX=CRENEAUX,
+                            periodes_selectionnes=periodes_selectionnes,
+                            professeurs=professeurs,
+                            matieres=matieres,
+                            laboratoires=laboratoires,
+                            redirect_week=redirect_week,
+                            from_emploi=from_emploi)
 
     except Exception as e:
         flash(f"Erreur système : {str(e)}", "danger")
@@ -668,44 +747,68 @@ def editer_tp(id):
         cur.close()
 
 def render_edit_form(cur, tp, form_data, redirect_week, from_emploi):
-    """Factorise le rendu du formulaire d'édition"""
-    # Conversion des timedelta en time
-    debut_time = convert_timedelta(tp['heure_debut_time'])
-    fin_time = convert_timedelta(tp['heure_fin_time'])
-    
-    # Détermination des créneaux sélectionnés
-    periodes_selectionnes = []
-    for periode, (debut, fin) in CRENEAUX.items():
-        debut_periode = datetime.strptime(debut, "%H:%M").time()
-        fin_periode = datetime.strptime(fin, "%H:%M").time()
+    """Prépare et renvoie le template d'édition avec toutes les données nécessaires"""
+    try:
+        # Récupération des données dynamiques
+        cur.execute("SELECT id_prof, prenom, nom FROM professeur")
+        professeurs = cur.fetchall()
         
-        if debut_periode <= debut_time and fin_periode >= fin_time:
-            periodes_selectionnes.append(periode)
+        cur.execute("SELECT id_matiere, nom_matiere FROM matiere")
+        matieres = cur.fetchall()
+        
+        cur.execute("SELECT id_laboratoire, nom_laboratoire FROM laboratoire")
+        laboratoires = cur.fetchall()
 
-    # Récupération des données pour les listes déroulantes
-    cur.execute("SELECT id_prof, prenom, nom FROM professeur")
-    professeurs = cur.fetchall()
-    cur.execute("SELECT id_matiere, nom_matiere FROM matiere")
-    matieres = cur.fetchall()
-    cur.execute("SELECT id_laboratoire, nom_laboratoire FROM laboratoire")
-    laboratoires = cur.fetchall()
+        # Gestion des dates/heures
+        if isinstance(tp['heure_debut'], datetime):
+            debut_time = tp['heure_debut'].time()
+            fin_time = tp['heure_fin'].time()
+        else:  # Si les dates sont déjà des objets time
+            debut_time = tp['heure_debut']
+            fin_time = tp['heure_fin']
 
-    return render_template('editer_tp.html',
-                        tp=tp,
-                        CRENEAUX=CRENEAUX,
-                        periodes_selectionnes=periodes_selectionnes,
-                        professeurs=professeurs,
-                        matieres=matieres,
-                        laboratoires=laboratoires,
-                        redirect_week=redirect_week,
-                        from_emploi=from_emploi)
+        # Détermination des créneaux sélectionnés
+        periodes_selectionnes = []
+        for periode, (debut_str, fin_str) in CRENEAUX.items():
+            debut_periode = datetime.strptime(debut_str, "%H:%M").time()
+            fin_periode = datetime.strptime(fin_str, "%H:%M").time()
+            
+            if (debut_periode <= debut_time) and (fin_periode >= fin_time):
+                periodes_selectionnes.append(periode)
+
+        # Fusion des données existantes avec les données du formulaire (en cas d'erreur)
+        merged_data = {
+            'nom_tp': form_data['nom_tp'] if form_data else tp['nom_tp'],
+            'id_prof': form_data['id_prof'] if form_data else tp['id_prof'],
+            'id_matiere': form_data['id_matiere'] if form_data else tp['id_matiere'],
+            'id_laboratoire': form_data['id_laboratoire'] if form_data else tp['id_laboratoire'],
+            'date_tp': form_data['date_tp'] if form_data else tp['heure_debut'].strftime('%Y-%m-%d'),
+            'periodes': form_data['periodes'] if form_data else periodes_selectionnes,
+            'annee_scolaire': form_data['annee_scolaire'] if form_data else tp['annee_scolaire'],
+            'sujet_pdf': tp['sujet_pdf']
+        }
+
+        return render_template('editer_tp.html',
+            tp=merged_data,
+            CRENEAUX=CRENEAUX,
+            professeurs=professeurs,
+            matieres=matieres,
+            laboratoires=laboratoires,
+            redirect_week=redirect_week,
+            from_emploi=from_emploi,
+            existing_pdf=tp['sujet_pdf']  # Pour l'affichage du PDF existant
+        )
+
+    except Exception as e:
+        flash(f"Erreur lors du chargement du formulaire: {str(e)}", "danger")
+        return redirect(url_for('emploi', week_offset=redirect_week))
 
 def convert_timedelta(td):
     """Convertit un timedelta SQL en objet datetime.time"""
     total_seconds = td.total_seconds()
     hours = int(total_seconds // 3600)
     minutes = int((total_seconds % 3600) // 60)
-    return time(hour=hours, minute=minutes)
+    return dt_time(hour=hours, minute=minutes)
 
 # CRUD Professeurs
 @app.route('/professeurs')
@@ -1245,7 +1348,7 @@ def print_emploi():
             debut = tp['debut']
             if isinstance(debut, timedelta):
                 total_seconds = debut.total_seconds()
-                debut = time(int(total_seconds // 3600), int((total_seconds % 3600) // 60))
+                debut = dt_time(int(total_seconds // 3600), int((total_seconds % 3600) // 60))
             
             periode = None
             for p, (s, e) in CRENEAUX.items():

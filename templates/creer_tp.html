@@ -17,7 +17,7 @@
             margin-left: 4px;
         }
         .form-check {
-        margin: 8px 0;
+            margin: 8px 0;
         }
         .form-check-label {
             margin-left: 8px;
@@ -25,6 +25,47 @@
         .card {
             border: 1px solid #dee2e6;
             border-radius: 8px;
+        }
+        .file-upload-wrapper {
+            position: relative;
+            margin-bottom: 15px;
+        }
+        .file-upload-input {
+            position: relative;
+            z-index: 2;
+            width: 100%;
+            height: calc(3rem + 2px);
+            margin: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+        .file-upload-text {
+            position: absolute;
+            top: 0;
+            right: 0;
+            left: 0;
+            z-index: 1;
+            height: calc(3rem + 2px);
+            padding: 0.75rem 1rem;
+            font-weight: 400;
+            line-height: 1.5;
+            color: #495057;
+            background-color: #fff;
+            border: 1px solid #ced4da;
+            border-radius: 0.25rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+        }
+        .file-upload-btn {
+            position: absolute;
+            top: 3px;
+            right: 3px;
+            z-index: 3;
+            display: block;
+            height: calc(3rem - 6px);
         }
     </style>
 </head>
@@ -54,9 +95,9 @@
                                 </div>
                             {% endfor %}
                         {% endif %}
-                    {% endwith %}
+                        {% endwith %}
 
-                        <form method="POST" class="needs-validation" novalidate><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <form method="POST" class="needs-validation" enctype="multipart/form-data" novalidate><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <div class="row g-4">
                                 <!-- Nom du TP -->
                                 <div class="col-12">
@@ -64,9 +105,10 @@
                                     <input type="text" class="form-control form-control-lg" 
                                            id="nom_tp" name="nom_tp" required
                                            placeholder="Ex: Chromatographie des pigments végétaux">
+                                    <div class="invalid-feedback">Veuillez saisir un nom pour ce TP</div>
                                 </div>
 
-                                <!-- Modifier le bloc de sélection du professeur -->
+                                <!-- Professeur -->
                                 <div class="col-md-6">
                                     <label for="id_prof" class="form-label required-label">Professeur</label>
                                     <select class="form-select form-select-lg" id="id_prof" name="id_prof" required>
@@ -75,9 +117,11 @@
                                         <option value="{{ prof.id_prof }}">{{ prof.prenom }} {{ prof.nom }}</option>
                                         {% endfor %}
                                     </select>
+                                    <div class="invalid-feedback">Veuillez sélectionner un professeur</div>
                                     <div id="professor-availability" class="mt-2 small"></div>
                                 </div>
 
+                                <!-- Matière -->
                                 <div class="col-md-6">
                                     <label for="id_matiere" class="form-label required-label">Matière</label>
                                     <select class="form-select form-select-lg" id="id_matiere" name="id_matiere" required>
@@ -88,31 +132,49 @@
                                         </option>
                                         {% endfor %}
                                     </select>
+                                    <div class="invalid-feedback">Veuillez sélectionner une matière</div>
                                 </div>
 
-                                
-
+                                <!-- Laboratoire -->
                                 <div class="col-md-6">
-                                    <label for="id_laboratoire" class="form-label">Laboratoire</label>
+                                    <label for="id_laboratoire" class="form-label required-label">Laboratoire</label>
                                     <select class="form-select form-select-lg" id="id_laboratoire" name="id_laboratoire" required>
                                         <option value="" selected>Aucun laboratoire</option>
                                         {% for lab in laboratoires %}
                                         <option value="{{ lab.id_laboratoire }}">{{ lab.nom_laboratoire }}</option>
                                         {% endfor %}
                                     </select>
+                                    <div class="invalid-feedback">Veuillez sélectionner un laboratoire ou "Aucun laboratoire"</div>
                                 </div>
 
-                                <!-- Date et Heure -->
+                                <!-- Sujet TP (amélioré) -->
+                                <div class="col-md-6">
+                                    <label for="sujet_pdf" class="form-label">Sujet TP (PDF)</label>
+                                    <div class="file-upload-wrapper">
+                                        <input type="file" name="sujet_pdf" id="sujet_pdf" class="file-upload-input" accept="application/pdf">
+                                        <div class="file-upload-text">
+                                            <i class="fas fa-file-pdf me-2"></i>
+                                            <span id="file-name">Aucun fichier sélectionné</span>
+                                        </div>
+                                        <button type="button" class="btn btn-primary file-upload-btn">
+                                            <i class="fas fa-upload me-1"></i> Parcourir
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Date du TP -->
                                 <div class="col-md-6">
                                     <label for="date_tp" class="form-label required-label">Date</label>
                                     <input type="date" 
                                         class="form-control form-control-lg" 
+                                        id="date_tp"
                                         name="date_tp" 
                                         {% if from_emploi %}value="{{ default_date }}" readonly{% else %}value="{{ default_date if default_date else '' }}"{% endif %}
                                         required>
+                                    <div class="invalid-feedback">Veuillez sélectionner une date</div>
                                 </div>
 
-                               <!-- Remplacer le select par une liste de checkboxes -->
+                                <!-- Créneaux horaires -->
                                 <div class="col-md-6">
                                     <label class="form-label required-label">Créneaux horaires</label>
                                     <div class="card">
@@ -130,6 +192,7 @@
                                             {% endfor %}
                                         </div>
                                     </div>
+                                    <div class="invalid-feedback">Veuillez sélectionner au moins un créneau</div>
                                 </div>
 
                                 <!-- Année Scolaire -->
@@ -168,7 +231,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             'use strict';
     
-            // 1. Validation Bootstrap
+            // 1. Validation Bootstrap des formulaires
             const forms = document.querySelectorAll('.needs-validation');
             forms.forEach(form => {
                 form.addEventListener('submit', function(event) {
@@ -182,10 +245,8 @@
     
             // 2. Vérification de disponibilité des professeurs
             const professorSelect = document.getElementById('id_prof');
-            const dateInput = document.querySelector('input[name="date_tp"]');
-            const availabilityDiv = document.createElement('div');
-            availabilityDiv.id = 'professor-availability';
-            professorSelect.parentNode.appendChild(availabilityDiv);
+            const dateInput = document.getElementById('date_tp');
+            const availabilityDiv = document.getElementById('professor-availability');
     
             async function checkProfessorAvailability() {
                 const professorId = professorSelect.value;
@@ -216,14 +277,44 @@
                 }
             }
     
-            // 3. Écouteurs d'événements
+            // 3. Gestion du téléchargement de fichier
+            const fileInput = document.getElementById('sujet_pdf');
+            const fileNameDisplay = document.getElementById('file-name');
+            
+            fileInput.addEventListener('change', function() {
+                if (this.files && this.files[0]) {
+                    fileNameDisplay.textContent = this.files[0].name;
+                } else {
+                    fileNameDisplay.textContent = 'Aucun fichier sélectionné';
+                }
+            });
+            
+            const uploadButton = document.querySelector('.file-upload-btn');
+            uploadButton.addEventListener('click', function() {
+                fileInput.click();
+            });
+    
+            // 4. Écouteurs d'événements pour vérification de disponibilité
             professorSelect.addEventListener('change', checkProfessorAvailability);
             dateInput.addEventListener('change', checkProfessorAvailability);
     
-            // 4. Vérification initiale
+            // 5. Vérification initiale de disponibilité
             if (professorSelect.value && dateInput.value) {
                 checkProfessorAvailability();
             }
+
+            // 6. Validation spécifique des créneaux horaires
+            const form = document.querySelector('form');
+            form.addEventListener('submit', function(event) {
+                const checkboxes = document.querySelectorAll('input[name="periodes"]:checked');
+                if (checkboxes.length === 0) {
+                    event.preventDefault();
+                    const creneauxCard = document.querySelector('.card:has(input[name="periodes"])');
+                    creneauxCard.classList.add('border-danger');
+                    const feedback = creneauxCard.nextElementSibling;
+                    feedback.style.display = 'block';
+                }
+            });
         });
     </script>
 </body>
