@@ -107,6 +107,16 @@ def create_default_users():
                  """)
                 print("Table utilisateur créée")
 
+
+            # Créer super_admin
+            cur.execute("SELECT * FROM utilisateur WHERE username = 'super_admin'")
+            if not cur.fetchone():
+                hashed_pw = generate_password_hash('super_admin123')
+                cur.execute("""
+                    INSERT INTO utilisateur (username, email, password, role) 
+                    VALUES (%s, %s, %s, 'super_admin')
+                """, ('super_admin', 'super_admin@example.com', hashed_pw))
+                print("super_admin créé")
             # Créer admin
             cur.execute("SELECT * FROM utilisateur WHERE username = 'admin'")
             if not cur.fetchone():
@@ -126,6 +136,7 @@ def create_default_users():
                     VALUES (%s, %s, %s)
                 """, ('user', 'user@example.com', hashed_pw))
                 print("User créé")
+            
 
             mysql.connection.commit()
         except Exception as e:
