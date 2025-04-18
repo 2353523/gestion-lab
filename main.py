@@ -342,7 +342,7 @@ def index():
             now = datetime.now()
     
             # Vérifier si au moins 24h depuis la dernière alerte
-            if not last_alert or (now - datetime.strptime(last_alert, "%Y-%m-%d %H:%M:%S")).total_seconds() >= 86400:
+            if not last_alert or (now - datetime.strptime(last_alert, "%Y-%m-%d %H:%M:%S")).total_seconds() >= 0:
                 cur.execute("SELECT email FROM utilisateur WHERE role = 'super_admin'")
                 super_admins = cur.fetchall()  # Récupérer tous les super_admins
                 
@@ -355,7 +355,7 @@ def index():
                                     recipients=recipients)
                         
                         msg.html = render_template(
-                            'emails/stock_alert.html',  # Chemin corrigé vers le template
+                            'stock_alert_email.html',  # Chemin corrigé vers le template
                             alertes=alertes_stock,
                             date=now.strftime("%d/%m/%Y %H:%M"),
                             count=len(alertes_stock)
