@@ -259,13 +259,13 @@
                            target="_blank">
                             <i class="fas fa-print me-2"></i> Imprimer
                         </a>
-                        {% if session.role == 'admin' %}
+                        {% if session.role in ['admin', 'super_admin'] %}
                                             <a href="{{ url_for('editer_recu', id_recu=recu.id_recu) }}" 
                                             class="btn btn-sm btn-warning">
                                             <i class="fas fa-edit"></i>
                                             </a>
                         {% endif %}
-                        {% if session.role == 'admin' %}
+                        {% if session.role in ['admin', 'super_admin'] %}
                         <form method="POST" 
                               action="{{ url_for('supprimer_recu', id_recu=recu.id_recu) }}">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

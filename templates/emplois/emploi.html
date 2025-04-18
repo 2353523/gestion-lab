@@ -243,9 +243,9 @@
                                         <div class="mb-1 d-flex justify-content-between align-items-start">
                                             <strong>{{ tps[lab_key].nom_tp }}</strong>
                                             <div class="btn-group gap-1">
-                                                <a href="{{ url_for('editer_tp', id=tps[lab_key].id_tp, redirect_week=week_offset) }}" 
-                                                   class="btn btn-action btn-primary"
-                                                   title="Modifier">
+                                                <a href="{{ url_for('editer_tp', id=tps[lab_key].id_tp, redirect_week=week_offset, from_page='emploi') }}" 
+                                                    class="btn btn-action btn-primary"
+                                                    title="Modifier">
                                                     <i class="fas fa-edit fa-xs"></i>
                                                 </a>
                                                 <button class="btn btn-action btn-danger" 

@@ -365,7 +365,7 @@
             </div>
         </div>
         
-        {% if session.role == 'admin' and professeurs %}
+        {% if session.role in ['admin', 'super_admin'] %}
         <div class="text-center mt-4">
             <a href="{{ url_for('creer_professeur') }}" class="btn btn-primary">
                 <i class="fas fa-user-plus me-2"></i>Ajouter un nouveau professeur

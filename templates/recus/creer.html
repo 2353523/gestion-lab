@@ -265,7 +265,14 @@
 
     <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const articles = {{ articles|tojson|safe }};
+    // Fix the JSON parsing issue with proper error handling
+    let articles = [];
+    try {
+        articles = JSON.parse('{{ articles|tojson|safe }}');
+    } catch (e) {
+        console.error("Error parsing articles data:", e);
+    }
+    
     const searchInput = document.getElementById('articleSearch');
     const articleList = document.getElementById('articleResults');
     const selectedTbody = document.getElementById('selectedArticles');

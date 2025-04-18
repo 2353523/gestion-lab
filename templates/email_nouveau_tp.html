@@ -1,0 +1,32 @@
+<html>
+<body>
+    <p>Bonjour,</p>
+    
+    <p>Une nouvelle séance de TP a été programmée :</p>
+    
+    <ul>
+        <li><strong>Nom du TP:</strong> {{ nom_tp }}</li>
+        <li><strong>Date:</strong> {{ date_tp }}</li>
+        <li><strong>Créneaux:</strong>
+            <ul>
+                {% for slot in slots %}
+                <li>{{ slot }}</li>
+                {% endfor %}
+            </ul>
+        </li>
+    </ul>
+
+    {% if pdf_link %}
+    <p style="margin-top: 20px;">
+        <a href="{{ pdf_link }}" 
+           style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;"
+           download>
+           Télécharger le sujet (.pdf)
+        </a>
+    </p>
+    {% endif %}
+
+    <p>Cordialement,<br>
+    <em>L'équipe LabManager</em></p>
+</body>
+</html>

@@ -183,100 +183,181 @@
 
     <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const availableArticles = {{ available_articles|tojson|safe }};
-    const existingArticles = {{ existing_articles|tojson|safe }};
-    const stockData = {{ stock|tojson|safe }};
-    let articleIndex = {{ existing_articles|length }};
+    const availableArticles = JSON.parse('{{ available_articles|tojson|safe }}');
+    const existingArticles = JSON.parse('{{ existing_articles|tojson|safe }}');
+    const stockData = JSON.parse('{{ stock|tojson|safe }}');
+    let articleIndex = existingArticles ? existingArticles.length : 0;
+    let selectedArticle = null;
 
+    // Function to update stock calculations and visual indicators
     function updateStock(row) {
         const articleId = parseInt(row.dataset.id);
         const degrade = parseInt(row.querySelector('.degrade-input').value) || 0;
         const remaining = stockData[articleId] - degrade;
 
-        row.querySelector('.remaining-stock span').textContent = 
-            `${remaining} ${row.dataset.unit}`;
+        const remainingSpan = row.querySelector('.remaining-stock span');
+        remainingSpan.textContent = `${remaining} ${row.dataset.unit}`;
+        
+        // Toggle warning class for negative stock
+        if (remaining < 0) {
+            remainingSpan.classList.add('stock-alert');
+        } else {
+            remainingSpan.classList.remove('stock-alert');
+        }
 
-        row.querySelector('.remaining-stock span').className = 
-            remaining < 0 ? 'stock-alert' : '';
-
+        // Mark input as invalid if degradation exceeds stock
         row.querySelector('.degrade-input').classList.toggle('is-invalid', remaining < 0);
     }
 
-    document.getElementById('articleSearch').addEventListener('input', function(e) {
+    // Search input handler
+    const searchInput = document.getElementById('articleSearch');
+    const addButton = document.getElementById('btnAddArticle');
+    
+    searchInput.addEventListener('input', function(e) {
         const term = e.target.value.toLowerCase();
+        selectedArticle = null;
+        addButton.disabled = true;
+        
+        // Get IDs of articles already in the table
         const existingIds = Array.from(document.querySelectorAll('.article-row'))
                            .map(row => parseInt(row.dataset.id));
 
+        // Filter available articles based on search term and existing selections
         const results = availableArticles.filter(article => 
             article.nom_article.toLowerCase().includes(term) &&
             !existingIds.includes(article.id_article)
         );
 
+        // Update results list
         const resultsDiv = document.getElementById('articleResults');
         resultsDiv.innerHTML = results.map(article => `
             <div class="datalist-item" 
                  data-id="${article.id_article}"
                  data-name="${article.nom_article}"
-                 data-stock="${stockData[article.id_article]}"
+                 data-stock="${stockData[article.id_article] || 0}"
                  data-unit="${article.unite_mesure}">
                 ${article.nom_article} 
                 <span class="badge bg-primary float-end">
-                    ${stockData[article.id_article]} ${article.unite_mesure}
+                    ${stockData[article.id_article] || 0} ${article.unite_mesure}
                 </span>
             </div>
         `).join('');
+        
+        // Show/hide results container
+        resultsDiv.style.display = results.length > 0 ? 'block' : 'none';
     });
 
+    // Handle selection from search results
     document.getElementById('articleResults').addEventListener('click', e => {
         const item = e.target.closest('.datalist-item');
         if (item) {
-            const maxDegrade = parseInt(item.dataset.stock);
+            // Store selected article
+            selectedArticle = {
+                id: item.dataset.id,
+                name: item.dataset.name,
+                stock: item.dataset.stock,
+                unit: item.dataset.unit
+            };
+            
+            // Update search input and enable add button
+            searchInput.value = selectedArticle.name;
+            addButton.disabled = false;
+            
+            // Hide results
+            document.getElementById('articleResults').style.display = 'none';
+        }
+    });
+    
+    // Add article button handler
+    addButton.addEventListener('click', () => {
+        if (selectedArticle) {
+            const maxDegrade = parseInt(selectedArticle.stock);
             const newRow = document.createElement('tr');
             newRow.className = 'article-row';
-            newRow.dataset.id = item.dataset.id;
-            newRow.dataset.unit = item.dataset.unit;
+            newRow.dataset.id = selectedArticle.id;
+            newRow.dataset.unit = selectedArticle.unit;
 
             newRow.innerHTML = `
-                <td>${item.dataset.name}</td>
+                <td>
+                    ${selectedArticle.name}
+                    <input type="hidden" 
+                           name="articles[${articleIndex}][id]" 
+                           value="${selectedArticle.id}">
+                </td>
                 <td>
                     <input type="number" 
                            name="articles[${articleIndex}][quantite]" 
                            class="form-control quantite-input" 
+                           value="1"
                            min="0">
                 </td>
                 <td>
                     <input type="number" 
                            name="articles[${articleIndex}][degrade]" 
                            class="form-control degrade-input" 
+                           value="0"
                            min="0" 
-                           max="${maxDegrade}"
                            required>
                 </td>
-                <td class="initial-stock">${maxDegrade} ${item.dataset.unit}</td>
+                <td class="initial-stock">${maxDegrade} ${selectedArticle.unit}</td>
                 <td class="remaining-stock">
-                    <span>${maxDegrade} ${item.dataset.unit}</span>
+                    <span>${maxDegrade} ${selectedArticle.unit}</span>
                 </td>
                 <td>
                     <button type="button" class="btn btn-danger btn-sm remove-btn">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
-                <input type="hidden" 
-                       name="articles[${articleIndex}][id]" 
-                       value="${item.dataset.id}">
             `;
 
-            newRow.querySelector('.degrade-input').addEventListener('input', () => updateStock(newRow));
-            newRow.querySelector('.remove-btn').addEventListener('click', () => newRow.remove());
+            // Add event listeners to new row
+            const degradeInput = newRow.querySelector('.degrade-input');
+            degradeInput.addEventListener('input', () => updateStock(newRow));
+            
+            const removeBtn = newRow.querySelector('.remove-btn');
+            removeBtn.addEventListener('click', () => newRow.remove());
 
+            // Add row to table
             document.getElementById('selectedArticles').appendChild(newRow);
+            
+            // Reset search
+            searchInput.value = '';
+            selectedArticle = null;
+            addButton.disabled = true;
+            
             articleIndex++;
         }
     });
 
+    // Setup event handlers for existing rows
     document.querySelectorAll('.article-row').forEach(row => {
         row.querySelector('.degrade-input').addEventListener('input', () => updateStock(row));
         row.querySelector('.remove-btn').addEventListener('click', () => row.remove());
+        
+        // Initialize stock display
+        updateStock(row);
+    });
+    
+    // Form validation before submit
+    document.getElementById('editForm').addEventListener('submit', (e) => {
+        let hasErrors = false;
+        
+        // Check all degradation inputs
+        document.querySelectorAll('.degrade-input').forEach(input => {
+            const row = input.closest('.article-row');
+            const articleId = parseInt(row.dataset.id);
+            const degrade = parseInt(input.value) || 0;
+            
+            if (degrade > stockData[articleId]) {
+                input.classList.add('is-invalid');
+                hasErrors = true;
+            }
+        });
+        
+        if (hasErrors) {
+            e.preventDefault();
+            alert('Erreur: Certaines dégradations dépassent le stock disponible.');
+        }
     });
 });
     </script>

@@ -473,12 +473,14 @@ def creer_tp():
 
             cur = mysql.connection.cursor()
             created_count = 0
-            
+            tp_slots = []
+
             for periode in data['periodes']:
                 if periode in CRENEAUX:
                     debut, fin = CRENEAUX[periode]
                     heure_debut = datetime.strptime(f"{data['date_tp']} {debut}", "%Y-%m-%d %H:%M")
                     heure_fin = datetime.strptime(f"{data['date_tp']} {fin}", "%Y-%m-%d %H:%M")
+                    tp_slots.append({'debut': heure_debut, 'fin': heure_fin})
 
                     # Vérification conflit professeur
                     cur.execute("""
@@ -553,6 +555,49 @@ def creer_tp():
                     created_count += 1
 
             mysql.connection.commit()
+
+            # Envoi email au professeur
+            try:
+                cur.execute("SELECT email FROM professeur WHERE id_prof = %s", (data['id_prof'],))
+                prof = cur.fetchone()
+                
+                if prof and prof['email']:
+                    date_formatted = datetime.strptime(data['date_tp'], "%Y-%m-%d").strftime("%d/%m/%Y")
+                    
+                    # Récupération de tous les créneaux formatés
+                    slots_info = []
+                    for periode in data['periodes']:
+                        if periode in CRENEAUX:
+                            debut, fin = CRENEAUX[periode]
+                            slots_info.append(f"{debut} - {fin} ({periode})")
+                    
+                    # Génération du lien de téléchargement direct
+                    pdf_link = None
+                    if sujet_pdf_filename:
+                        if sujet_pdf_filename:
+                            pdf_link = url_for('telecharger_sujet', 
+                                            filename=sujet_pdf_filename, 
+                                            _external=True)
+                    msg = Message(
+                        "Nouvelle séance de TP programmée",
+                        recipients=[prof['email']]
+                    )
+                    msg.html = render_template(
+                        'email_nouveau_tp.html',
+                        nom_tp=data['nom_tp'],
+                        date_tp=date_formatted,
+                        slots=slots_info,
+                        pdf_link=pdf_link,
+                        labo=data['id_laboratoire']
+                    )
+                    mail.send(msg)
+
+            except Exception as e:
+                app.logger.error(f"Erreur envoi email: {str(e)}")
+                flash("TP créés mais notification non envoyée", "warning")
+            finally:
+                cur.close()
+
             flash(f"{created_count} TP créés avec succès!", "success")
             return redirect(url_for('emploi' if from_emploi else 'index'))
 
@@ -586,6 +631,15 @@ def creer_tp():
                         default_periodes=[default_periode] if default_periode else [],
                         from_emploi=from_emploi)
 
+@app.route('/sujets/<filename>')
+def telecharger_sujet(filename):
+    return send_from_directory(
+        app.config['UPLOAD_FOLDER_SUJETS'],
+        filename,
+        as_attachment=True,
+        mimetype='application/pdf',
+        download_name=filename  # Force le nom original
+    )
 
 @app.route('/editer_tp/<int:id>', methods=['GET', 'POST'])
 def editer_tp(id):
