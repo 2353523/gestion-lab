@@ -237,8 +237,8 @@
                                                     } %}
                                                     <div class="ghs-icon-wrapper">
                                                         <img src="{{ url_for('static', filename='images/ghs' ~ padded_code ~ '.png') }}" 
-                                                             class="ghs-icon" 
-                                                             alt="GHS {{ padded_code }}">
+                                                            class="ghs-icon" 
+                                                            alt="GHS {{ padded_code }}"                          }}">
                                                         <div class="ghs-tooltip">
                                                             GHS{{ padded_code }}: {{ descriptions[padded_code]|default('Pictogramme de danger') }}
                                                         </div>
@@ -251,12 +251,12 @@
                                         
                                         <!-- Fiche SDS -->
                                         {% if item.sds_filename %}
-                                            <a href="{{ url_for('view_sds', filename=item.sds_filename) }}" 
-                                               target="_blank"
-                                               class="sds-btn"
-                                               title="Fiche de sécurité">
-                                                <i class="fas fa-file-pdf"></i> Fiche sécurité
-                                            </a>
+                                        <a href="{{ url_for('view_sds', filename=item.sds_filename) }}" 
+                                            target="_blank"
+                                            class="sds-btn"
+                                            title="Fiche de sécurité">
+                                            <i class="fas fa-file-pdf"></i> Fiche sécurité
+                                        </a>
                                         {% endif %}
                                     </div>
                                 </td>

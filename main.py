@@ -65,7 +65,8 @@ app.config['MAX_CONTENT_LENGTH_SUJETS'] = 5 * 1024 * 1024  # 5MB spécifique aux
 
 # Configuration SDS
 UPLOAD_FOLDER_SDS = 'static/sds'
-app.config['UPLOAD_FOLDER_SDS'] = UPLOAD_FOLDER_SDS
+app.config['UPLOAD_FOLDER_SDS'] = os.path.join(app.root_path, 'static/sds')
+os.makedirs(app.config['UPLOAD_FOLDER_SDS'], exist_ok=True)
 
 # Création des répertoires
 for folder in [UPLOAD_FOLDER_SUJETS, UPLOAD_FOLDER_SDS]:
@@ -271,6 +272,8 @@ def index():
         return redirect(url_for('login'))
     
     show_welcome = session.pop('show_welcome', False)
+    alertes_stock = []
+    tps_jour = []
 
     CRENEAUX = {
         'P1': ('08:00', '09:30'),
@@ -282,7 +285,8 @@ def index():
 
     try:
         cur = mysql.connection.cursor()
-        
+
+        # Récupération des TP du jour
         today = datetime.now().date()
         cur.execute("""
             SELECT 
@@ -290,7 +294,7 @@ def index():
                 tp.nom_tp,
                 tp.heure_debut,
                 tp.heure_fin,
-                tp.sujet_pdf,  # <-- Ajout de ce champ
+                tp.sujet_pdf,
                 CONCAT(p.prenom, ' ', p.nom) AS professeur,
                 m.nom_matiere AS matiere,
                 m.niveau,
@@ -303,18 +307,14 @@ def index():
             ORDER BY tp.heure_debut
         """, (today,))
         
-        tps_jour = []
+        # Formatage des TP
         for tp in cur.fetchall():
             start_dt = tp['heure_debut']
             end_dt = tp['heure_fin']
             start_time = start_dt.strftime('%H:%M')
             end_time = end_dt.strftime('%H:%M')
             
-            periode = None
-            for key, (s, e) in CRENEAUX.items():
-                if s == start_time and e == end_time:
-                    periode = key
-                    break
+            periode = next((key for key, (s, e) in CRENEAUX.items() if s == start_time and e == end_time), None)
             
             tps_jour.append({
                 **tp,
@@ -323,44 +323,63 @@ def index():
                 'heure_debut': start_time,
                 'heure_fin': end_time
             })
-        # Alertes stock
+
+        # Récupération des alertes stock
         cur.execute("""
-                SELECT 
-                    a.nom_article,
-                    a.unite_mesure,
-                    sm.quantite
-                FROM stock_magasin sm
-                JOIN article a ON sm.id_article = a.id_article  # ✅ Correction ici
-                WHERE sm.quantite < 10
-            """)
+            SELECT 
+                a.nom_article,
+                a.unite_mesure,
+                sm.quantite
+            FROM stock_magasin sm
+            JOIN article a ON sm.id_article = a.id_article
+            WHERE sm.quantite < 10
+        """)
         alertes_stock = cur.fetchall()
 
-        # Statistiques
-        cur.execute("SELECT COUNT(*) AS total FROM professeur")
-        stats_prof = cur.fetchone()['total']
-        cur.execute("SELECT COUNT(*) AS total FROM matiere")
-        stats_mat = cur.fetchone()['total']
-        cur.execute("SELECT COUNT(*) AS total FROM laboratoire")
-        stats_lab = cur.fetchone()['total']
+        # Envoi d'alerte email si nécessaire
+        if alertes_stock:
+            last_alert = session.get('last_stock_alert')
+            now = datetime.now()
+            
+            # Vérifier si au moins 24h depuis la dernière alerte
+            if not last_alert or (now - datetime.strptime(last_alert, "%Y-%m-%d %H:%M:%S")).days >= 1:
+                cur.execute("SELECT email FROM utilisateur WHERE role = 'super_admin' LIMIT 1")
+                super_admin = cur.fetchone()
+                
+                if super_admin:
+                    try:
+                        msg = Message("⚠ Alerte Stock Critique - LabManager",
+                                    recipients=[super_admin['email']])
+                        
+                        msg.html = render_template(
+                            'stock_alert_email.html',
+                            alertes=alertes_stock,
+                            date=now.strftime("%d/%m/%Y %H:%M"),
+                            count=len(alertes_stock)
+                        )
+                        
+                        mail.send(msg)
+                        session['last_stock_alert'] = now.strftime("%Y-%m-%d %H:%M:%S")
+                        flash("Alerte stock envoyée au super admin", "warning")
+                        
+                    except Exception as e:
+                        app.logger.error(f"Erreur envoi email alerte stock : {str(e)}")
+                        flash("Erreur lors de l'envoi de l'alerte stock", "danger")
 
     except Exception as e:
-        flash(f"Erreur base de données: {str(e)}", "danger")
-        tps_jour = []
-        alertes_stock = []
-        stats_prof = stats_mat = stats_lab = 0
+        app.logger.error(f"Erreur base de données : {str(e)}")
+        flash("Erreur de chargement des données", "danger")
+        
     finally:
-        cur.close()
-    
-    return render_template('index.html',
-                            show_welcome=show_welcome,
-                         tps_jour=tps_jour,
-                         alertes_stock=alertes_stock,
-                         stats={
-                             'professeurs': stats_prof,
-                             'matieres': stats_mat,
-                             'laboratoires': stats_lab
-                         },
-                         date_actuelle=datetime.now().strftime('%d/%m/%Y'))
+        cur.close() if 'cur' in locals() else None
+
+    return render_template(
+        'index.html',
+        show_welcome=show_welcome,
+        tps_jour=tps_jour,
+        alertes_stock=alertes_stock,
+        date_actuelle=datetime.now().strftime('%d/%m/%Y')
+    )
 
 @app.route('/supprimer_tp/<int:id>', methods=['POST'])
 def supprimer_tp(id):
@@ -1600,7 +1619,7 @@ def ajouter_article():
                 filename = secure_filename(sds_file.filename)
                 unique_id = uuid.uuid4().hex[:8]
                 sds_filename = f"{unique_id}_{filename}"
-                sds_file.save(os.path.join(app.config['UPLOAD_FOLDER'], sds_filename))
+                sds_file.save(os.path.join(app.config['UPLOAD_FOLDER_SDS'], sds_filename))
 
             try:
                 with mysql.connection.cursor() as trans_cur:
@@ -1724,12 +1743,12 @@ def editer_article(id):
                     if new_file_uploaded:
                         # Suppression ancien fichier
                         if existing_sds:
-                            old_path = os.path.join(app.config['UPLOAD_FOLDER'], existing_sds)
+                            old_path = os.path.join(app.config['UPLOAD_FOLDER_SDS'], existing_sds)
                             if os.path.exists(old_path):
                                 os.remove(old_path)
                         
                         # Sauvegarde nouveau fichier
-                        sds_file.save(os.path.join(app.config['UPLOAD_FOLDER'], sds_filename))
+                        sds_file.save(os.path.join(app.config['UPLOAD_FOLDER_SDS'], sds_filename))
 
                     flash("Article mis à jour avec succès", "success")
                     return redirect(url_for('stock_magasin'))
@@ -1737,8 +1756,8 @@ def editer_article(id):
             except Exception as e:
                 mysql.connection.rollback()
                 # Nettoyage fichier en cas d'erreur
-                if new_file_uploaded and os.path.exists(os.path.join(app.config['UPLOAD_FOLDER'], sds_filename)):
-                    os.remove(os.path.join(app.config['UPLOAD_FOLDER'], sds_filename))
+                if new_file_uploaded and os.path.exists(os.path.join(app.config['UPLOAD_FOLDER_SDS'], sds_filename)):
+                    os.remove(os.path.join(app.config['UPLOAD_FOLDER_SDS'], sds_filename))
                 raise e
 
         # Récupération données existantes
@@ -1791,7 +1810,7 @@ def supprimer_article(id):
 
             # Suppression fichier physique
             if sds_filename:
-                file_path = os.path.join(app.config['UPLOAD_FOLDER'], sds_filename)
+                file_path = os.path.join(app.config['UPLOAD_FOLDER_SDS'], sds_filename)
                 if os.path.exists(file_path):
                     os.remove(file_path)
 
@@ -3583,8 +3602,7 @@ def parametres():
 
 @app.route('/sds/<filename>')
 def view_sds(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
-
+    return send_from_directory(app.config['UPLOAD_FOLDER_SDS'], filename) 
 
 
 if __name__ == '__main__':

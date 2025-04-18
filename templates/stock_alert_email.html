@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        .alert-container { max-width: 600px; margin: 20px auto; font-family: Arial, sans-serif; }
+        .header { background: #dc3545; color: white; padding: 20px; text-align: center; }
+        .content { padding: 30px; background: #f8f9fa; }
+        ul { list-style: none; padding: 0; }
+        li { padding: 10px; background: white; margin-bottom: 10px; border-radius: 5px; }
+        .button { 
+            display: block; 
+            width: 200px; 
+            margin: 20px auto; 
+            padding: 10px; 
+            text-align: center; 
+            background: #00466a; 
+            color: white; 
+            text-decoration: none; 
+            border-radius: 5px; 
+        }
+    </style>
+</head>
+<body>
+    <div class="alert-container">
+        <div class="header">
+            <h2>ALERTE STOCK CRITIQUE</h2>
+            <p>{{ count }} article(s) nécessite(nt) une attention immédiate</p>
+        </div>
+        
+        <div class="content">
+            <h3>Articles en stock critique :</h3>
+            <ul>
+                {% for article in alertes %}
+                <li>
+                    🚨 {{ article.nom_article|upper }} - 
+                    <strong>{{ article.quantite }} {{ article.unite_mesure }}</strong> restant(s)
+                </li>
+                {% endfor %}
+            </ul>
+
+            <a href="{{ url_for('stock_magasin', _external=True) }}" class="button">
+                GÉRER LE STOCK
+            </a>
+
+            <p style="text-align: center; color: #666; margin-top: 30px;">
+                <em>Alert générée le {{ date }}</em>
+            </p>
+        </div>
+    </div>
+</body>
+</html>
