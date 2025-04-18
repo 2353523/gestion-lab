@@ -2907,7 +2907,7 @@ def liste_utilisateurs():
 
 @app.route('/admin/utilisateurs/creer', methods=['GET', 'POST'])
 def creer_utilisateur():
-    if 'user_id' not in session or session.get('role') != ('admin' or 'super_admin'):
+    if 'user_id' not in session or session.get('role') not in ['admin', 'super_admin']:
         abort(403)
     
     if request.method == 'POST':
