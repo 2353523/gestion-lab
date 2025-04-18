@@ -340,19 +340,22 @@ def index():
         if alertes_stock:
             last_alert = session.get('last_stock_alert')
             now = datetime.now()
-            
+    
             # Vérifier si au moins 24h depuis la dernière alerte
-            if not last_alert or (now - datetime.strptime(last_alert, "%Y-%m-%d %H:%M:%S")).days >= 1:
-                cur.execute("SELECT email FROM utilisateur WHERE role = 'super_admin' LIMIT 1")
-                super_admin = cur.fetchone()
+            if not last_alert or (now - datetime.strptime(last_alert, "%Y-%m-%d %H:%M:%S")).total_seconds() >= 86400:
+                cur.execute("SELECT email FROM utilisateur WHERE role = 'super_admin'")
+                super_admins = cur.fetchall()  # Récupérer tous les super_admins
                 
-                if super_admin:
+                if super_admins:
                     try:
+                        # Créer une liste des emails
+                        recipients = [admin['email'] for admin in super_admins]
+                        
                         msg = Message("⚠ Alerte Stock Critique - LabManager",
-                                    recipients=[super_admin['email']])
+                                    recipients=recipients)
                         
                         msg.html = render_template(
-                            'stock_alert_email.html',
+                            'emails/stock_alert.html',  # Chemin corrigé vers le template
                             alertes=alertes_stock,
                             date=now.strftime("%d/%m/%Y %H:%M"),
                             count=len(alertes_stock)
@@ -360,10 +363,10 @@ def index():
                         
                         mail.send(msg)
                         session['last_stock_alert'] = now.strftime("%Y-%m-%d %H:%M:%S")
-                        flash("Alerte stock envoyée au super admin", "warning")
+                        flash(f"Alerte stock envoyée à {len(recipients)} administrateur(s)", "warning")
                         
                     except Exception as e:
-                        app.logger.error(f"Erreur envoi email alerte stock : {str(e)}")
+                        app.logger.error(f"Erreur envoi email alerte stock : {str(e)}", exc_info=True)
                         flash("Erreur lors de l'envoi de l'alerte stock", "danger")
 
     except Exception as e:
