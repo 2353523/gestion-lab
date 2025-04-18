@@ -298,11 +298,12 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    Êtes-vous sûr de vouloir supprimer ce TP ?
+                    Êtes-vous sûr de vouloir supprimer ce TP définitivement ?
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <form id="deleteForm" method="POST"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <form id="deleteForm" method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="btn btn-danger">Supprimer</button>
                     </form>
                 </div>
@@ -324,26 +325,21 @@
         
         // Gestion du modal de suppression
         document.addEventListener('DOMContentLoaded', function() {
-            const deleteModal = document.getElementById('deleteModal');
-            if (deleteModal) {
-                deleteModal.addEventListener('show.bs.modal', function (event) {
-                    const button = event.relatedTarget;
-                    const tpId = button.getAttribute('data-tp-id');
-                    const labId = "{{ selected_lab|default('', true) }}";
-                    const weekOffset = "{{ week_offset|default('0', true) }}";
-                    
-                    const form = document.getElementById('deleteForm');
-                    if (form) {
-                        form.action = `/supprimer_tp/${tpId}?lab_id=${labId}&week_offset=${weekOffset}`;
-                        console.log("Form action set to:", form.action);
-                    } else {
-                        console.error("Delete form not found");
-                    }
-                });
-            } else {
-                console.error("Delete modal not found");
-            }
-        });
+        const deleteModal = document.getElementById('deleteModal');
+        if (deleteModal) {
+            deleteModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const tpId = button.getAttribute('data-tp-id');
+                const labId = "{{ lab_id|default('', true) }}";
+                const weekOffset = "{{ week_offset|default(0, true) }}";
+                
+                const form = document.getElementById('deleteForm');
+                if (form) {
+                    form.action = `/supprimer_tp/${tpId}?redirect_page=emploi&lab_id=${labId}&redirect_week=${weekOffset}`;
+                }
+            });
+        }
+    });
     </script>
 </body>
 </html>

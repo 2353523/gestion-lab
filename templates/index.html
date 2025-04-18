@@ -527,16 +527,28 @@
                                 </td>
                                 <td class="text-end pe-3">
                                     <div class="btn-group">
+                                        <!-- Bouton de téléchargement PDF -->
+                                        {% if tp.sujet_pdf %}
+                                        <a href="{{ url_for('telecharger_sujet', filename=tp.sujet_pdf) }}" 
+                                           class="btn btn-sm btn-outline-primary"
+                                           title="Télécharger le sujet"
+                                           download>
+                                            <i class="fas fa-file-pdf"></i>
+                                        </a>
+                                        {% endif %}
+                                        
+                                        <!-- Boutons existants -->
                                         <a href="{{ url_for('editer_tp', id=tp.id_tp, from_page='index') }}" 
                                             class="btn btn-sm btn-outline-warning"
                                             title="Modifier">
                                             <i class="fas fa-edit"></i>
                                         </a>
-                                        <form method="POST" action="{{ url_for('supprimer_tp', id=tp.id_tp) }}" class="d-inline">
+                                        <form method="POST" 
+                                            action="{{ url_for('supprimer_tp', id=tp.id_tp, redirect_page='index') }}" 
+                                            class="d-inline">
                                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <button type="submit" 
                                                     class="btn btn-sm btn-outline-danger"
-                                                    title="Supprimer"
                                                     onclick="return confirm('Supprimer ce TP définitivement ?')">
                                                 <i class="fas fa-trash-alt"></i>
                                             </button>

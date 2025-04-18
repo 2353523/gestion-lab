@@ -290,11 +290,12 @@ def index():
                 tp.nom_tp,
                 tp.heure_debut,
                 tp.heure_fin,
+                tp.sujet_pdf,  # <-- Ajout de ce champ
                 CONCAT(p.prenom, ' ', p.nom) AS professeur,
                 m.nom_matiere AS matiere,
                 m.niveau,
                 l.nom_laboratoire
-            FROM tp
+            FROM tp tp
             JOIN professeur p ON tp.id_prof = p.id_prof
             JOIN matiere m ON tp.id_matiere = m.id_matiere
             LEFT JOIN laboratoire l ON tp.id_laboratoire = l.id_laboratoire
@@ -363,21 +364,30 @@ def index():
 
 @app.route('/supprimer_tp/<int:id>', methods=['POST'])
 def supprimer_tp(id):
+    # Récupérer les paramètres de redirection
+    redirect_page = request.args.get('redirect_page', 'emploi')
     lab_id = request.args.get('lab_id', None, type=int)
     redirect_week = request.args.get('redirect_week', 0, type=int)
-    
+
     cur = mysql.connection.cursor()
     try:
+        # Supprimer le TP
         cur.execute("DELETE FROM tp WHERE id_tp = %s", (id,))
         mysql.connection.commit()
         flash("TP supprimé avec succès", "success")
     except Exception as e:
         mysql.connection.rollback()
-        flash(f"Erreur: {str(e)}", "danger")
+        flash(f"Erreur lors de la suppression : {str(e)}", "danger")
     finally:
         cur.close()
-    
-    return redirect(url_for('emploi', lab_id=lab_id, week_offset=redirect_week))
+
+    # Redirection conditionnelle
+    if redirect_page == 'emploi':
+        return redirect(url_for('emploi', lab_id=lab_id, week_offset=redirect_week))
+    elif redirect_page == 'index':
+        return redirect(url_for('index'))
+    else:
+        return redirect(url_for('emploi'))
 
 CRENEAUX = {
         'P1': ('08:00', '09:30'),
@@ -631,15 +641,6 @@ def creer_tp():
                         default_periodes=[default_periode] if default_periode else [],
                         from_emploi=from_emploi)
 
-@app.route('/sujets/<filename>')
-def telecharger_sujet(filename):
-    return send_from_directory(
-        app.config['UPLOAD_FOLDER_SUJETS'],
-        filename,
-        as_attachment=True,
-        mimetype='application/pdf',
-        download_name=filename  # Force le nom original
-    )
 
 @app.route('/editer_tp/<int:id>', methods=['GET', 'POST'])
 def editer_tp(id):
@@ -2525,18 +2526,19 @@ def detail_recu(id_recu):
     
     cur = mysql.connection.cursor()
     try:
-        # Récupération infos reçu
+        # Modification de la requête pour récupérer le sujet_pdf du TP
         cur.execute("""
             SELECT 
                 r.*, 
                 tp.nom_tp, 
+                tp.sujet_pdf,  # Ajout du champ sujet_pdf
                 l.nom_laboratoire,
-                m.nom_matiere,  -- Ajouter cette colonne
+                m.nom_matiere,
                 CONCAT(p.prenom, ' ', p.nom) AS professeur
             FROM recu r
             JOIN tp tp ON r.id_tp = tp.id_tp
             JOIN laboratoire l ON tp.id_laboratoire = l.id_laboratoire
-            JOIN matiere m ON tp.id_matiere = m.id_matiere  -- Nouvelle jointure
+            JOIN matiere m ON tp.id_matiere = m.id_matiere
             JOIN professeur p ON r.id_prof = p.id_prof
             WHERE r.id_recu = %s
         """, (id_recu,))
@@ -2565,6 +2567,23 @@ def detail_recu(id_recu):
         return redirect(url_for('liste_recus'))
     finally:
         cur.close()
+
+@app.template_filter('format_filename')
+def format_filename(filename):
+    """Enlève l'UUID généré du nom de fichier"""
+    if filename and '_' in filename:
+        return filename.split('_', 1)[1]
+    return filename
+
+@app.route('/sujets/<filename>')
+def telecharger_sujet(filename):
+    return send_from_directory(
+        app.config['UPLOAD_FOLDER_SUJETS'],
+        filename,
+        as_attachment=True,
+        mimetype='application/pdf',
+        download_name=filename.split('_', 1)[1]  # Nom original sans UUID
+    )
 
 @app.route('/recus/<int:id_recu>/supprimer', methods=['POST'])
 def supprimer_recu(id_recu):

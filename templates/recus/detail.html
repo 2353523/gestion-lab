@@ -217,6 +217,34 @@
                     </div>
                 </div>
 
+                <div class="mb-4">
+                    <h4 class="section-title">Document associé</h4>
+                    <div class="info-card">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-file-pdf text-danger me-3 fs-4"></i>
+                                <div>
+                                    <p class="mb-0 fw-medium">Sujet du TP</p>
+                                    <small class="text-muted">
+                                        {% if recu.sujet_pdf %}
+                                            {{ recu.sujet_pdf|format_filename }}
+                                        {% else %}
+                                            Aucun fichier associé
+                                        {% endif %}
+                                    </small>
+                                </div>
+                            </div>
+                            {% if recu.sujet_pdf %}
+                            <a href="{{ url_for('telecharger_sujet', filename=recu.sujet_pdf) }}" 
+                               class="btn btn-primary btn-sm"
+                               download>
+                                <i class="fas fa-download me-2"></i>Télécharger
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
                 <h4 class="section-title">Détail du Matériel</h4>
                 <div class="table-responsive mb-4">
                     <table class="table table-hover mb-0">
