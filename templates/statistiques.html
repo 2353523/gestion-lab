@@ -324,7 +324,7 @@ body {
             <div class="stat-card animated delay-1">
                 <div class="stat-icon"><i class="fas fa-vial"></i></div>
                 <div class="stat-value" id="totalTypes">0</div>
-                <div class="stat-title">Types  des Articles </div>
+                <div class="stat-title">Types des Articles</div>
             </div>
             
         </div>
@@ -348,7 +348,7 @@ body {
         <!-- Graphique Types -->
         <div class="chart-card animated delay-3">
             <div class="chart-header">
-                <h4 class="chart-title"><i class="fas fa-pie-chart me-2"></i>Répartition des Types</h4>
+                <h4 class="chart-title"><i class="fas fa-chart-pie me-2"></i>Répartition des Types</h4>
                 <div class="chart-controls">
                     <button class="export-btn" id="exportTypes"><i class="fas fa-download me-1"></i>Exporter</button>
                 </div>
@@ -378,196 +378,317 @@ body {
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const Dashboard = {
-                elements: {
-                    stats: {
-                        totalTP: document.getElementById('totalTP'),
-                        totalLabs: document.getElementById('totalLabs'),
-                        totalTypes: document.getElementById('totalTypes')
-                    },
-                    charts: {
-                        workload: document.getElementById('workloadChart'),
-                        type: document.getElementById('typeChart'),
-                        timeline: document.getElementById('timelineChart')
-                    }
-                },
-        
-                data: {
-                    labs: {
-                        names: {{ lab_names|tojson|default([], true) }},
-                        counts: {{ tp_counts|tojson|default([], true) }}
-                    },
-                    types: {
-                        names: {{ types|tojson|default([], true) }},
-                        data: {{ type_data|tojson|default([], true) }}
-                    },
-                    timeline: {
-                        labels: {{ timeline_labels|tojson|default([], true) }},
-                        counts: {{ timeline_counts|tojson|default([], true) }}
-                    }
-                },
-        
-                init() {
-                    this.validateData();
-                    this.initStats();
-                    this.initCharts();
-                    this.initEventHandlers();
-                },
-        
-                validateData() {
-                    // Normalisation des données
-                    this.data.labs.names = this.safeArray(this.data.labs.names);
-                    this.data.labs.counts = this.safeArray(this.data.labs.counts).map(Number);
-                    this.data.types.names = this.safeArray(this.data.types.names);
-                    this.data.types.data = this.safeArray(this.data.types.data);
-                    this.data.timeline.labels = this.safeArray(this.data.timeline.labels);
-                    this.data.timeline.counts = this.safeArray(this.data.timeline.counts).map(Number);
-                },
-        
-                safeArray(arr) {
-                    return Array.isArray(arr) ? arr : [];
-                },
-        
-                initStats() {
+        const Dashboard = {
+        elements: {
+            stats: {
+                totalTP: document.getElementById('totalTP'),
+                totalLabs: document.getElementById('totalLabs'),
+                totalTypes: document.getElementById('totalTypes')
+            },
+            charts: {
+                workload: document.getElementById('workloadChart'),
+                type: document.getElementById('typeChart'),
+                timeline: document.getElementById('timelineChart')
+            }
+        },
+
+        data: {
+            labs: {
+                names: {{ lab_names|tojson|default([], true) }},
+                counts: {{ tp_counts|tojson|default([], true) }}
+            },
+            types: {
+                names: {{ types|tojson|default([], true) }},
+                data: {{ type_data|tojson|default([], true) }}
+            },
+            timeline: {
+                labels: {{ timeline_labels|tojson|default([], true) }},
+                counts: {{ timeline_counts|tojson|default([], true) }}
+            }
+        },
+
+        // Stockage des instances de graphiques pour une récupération fiable
+        chartInstances: {},
+
+        init() {
+            console.log("Initialisation du tableau de bord...");
+            this.validateData();
+            this.initStats();
+            this.initCharts();
+            this.initEventHandlers();
+        },
+
+        validateData() {
+            // Normalisation des données
+            console.log("Validation des données...");
+            this.data.labs.names = this.safeArray(this.data.labs.names);
+            this.data.labs.counts = this.safeArray(this.data.labs.counts).map(val => Number(val) || 0);
+            this.data.types.names = this.safeArray(this.data.types.names);
+            
+            // Gestion correcte des données imbriquées pour les types
+            if (Array.isArray(this.data.types.data)) {
+                this.data.types.data = this.data.types.data.map(arr => 
+                    this.safeArray(arr).map(val => Number(val) || 0)
+                );
+            } else {
+                this.data.types.data = [];
+            }
+            
+            this.data.timeline.labels = this.safeArray(this.data.timeline.labels);
+            this.data.timeline.counts = this.safeArray(this.data.timeline.counts).map(val => Number(val) || 0);
+            
+            console.log("Données validées:", this.data);
+        },
+
+        safeArray(arr) {
+            return Array.isArray(arr) ? arr : [];
+        },
+
+        initStats() {
+            try {
+                if (this.elements.stats.totalTP) {
                     this.elements.stats.totalTP.textContent = this.data.labs.counts.reduce((a, b) => a + b, 0);
-                    this.elements.stats.totalLabs.textContent = this.data.labs.names.length;
-                    this.elements.stats.totalTypes.textContent = this.data.types.names.length;
-                },
-        
-                initCharts() {
-                    this.initWorkloadChart();
-                    this.initTypeChart();
-                    this.initTimelineChart();
-                },
-        
-                initWorkloadChart() {
-                    new Chart(this.elements.charts.workload, {
-                        type: 'bar',
-                        data: {
-                            labels: this.data.labs.names,
-                            datasets: [{
-                                label: 'TP par Laboratoire',
-                                data: this.data.labs.counts,
-                                backgroundColor: 'rgba(52, 152, 219, 0.8)',
-                                borderRadius: 5
-                            }]
-                        },
-                        options: this.getCommonOptions({
-                            scales: {
-                                y: {
-                                    beginAtZero: true,
-                                    title: { text: 'Nombre de TP' }
-                                }
-                            }
-                        })
-                    });
-                },
-        
-                initTypeChart() {
-                    const colors = this.generateColors(this.data.types.names.length);
-                    new Chart(this.elements.charts.type, {
-                        type: 'bar',
-                        data: {
-                            labels: this.data.labs.names,
-                            datasets: this.data.types.names.map((name, index) => ({
-                                label: name,
-                                data: this.data.types.data[index] || [],
-                                backgroundColor: colors[index] || '#ccc',
-                                borderWidth: 0
-                            }))
-                        },
-                        options: this.getCommonOptions({
-                            scales: {
-                                x: { stacked: true },
-                                y: {
-                                    stacked: true,
-                                    beginAtZero: true,
-                                    title: { text: 'Quantité' }
-                                }
-                            },
-                            plugins: {
-                                legend: { display: true }
-                            }
-                        })
-                    });
-                },
-        
-                initTimelineChart() {
-                    new Chart(this.elements.charts.timeline, {
-                        type: 'line',
-                        data: {
-                            labels: this.data.timeline.labels,
-                            datasets: [{
-                                label: 'Évolution des TP',
-                                data: this.data.timeline.counts,
-                                borderColor: '#e74c3c',
-                                tension: 0.4,
-                                fill: false
-                            }]
-                        },
-                        options: this.getCommonOptions({
-                            scales: {
-                                y: { beginAtZero: true }
-                            }
-                        })
-                    });
-                },
-        
-                initEventHandlers() {
-                    document.querySelectorAll('.export-btn').forEach(btn => {
-                        btn.addEventListener('click', e => {
-                            const chartId = e.target.id.replace('export', '').toLowerCase();
-                            this.exportChart(chartId);
-                        });
-                    });
-                },
-        
-                exportChart(chartType) {
-                    const chart = Chart.getChart(this.elements.charts[chartType]);
-                    if (!chart) return;
-        
-                    const originalBackground = chart.options.backgroundColor;
-                    chart.options.backgroundColor = 'white';
-                    
-                    const link = document.createElement('a');
-                    link.download = `${chartType}_export.png`;
-                    link.href = chart.toBase64Image('image/png', 1.0);
-                    link.click();
-                    
-                    chart.options.backgroundColor = originalBackground;
-                },
-        
-                generateColors(count) {
-                    return Array.from({length: count}, (_, i) => 
-                        `hsl(${(i * 360 / Math.max(1, count))}, 70%, 50%)`
-                    );
-                },
-        
-                getCommonOptions(custom = {}) {
-                    return {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                position: 'top',
-                                labels: {
-                                    boxWidth: 12,
-                                    usePointStyle: true
-                                }
-                            },
-                            tooltip: {
-                                backgroundColor: 'rgba(44, 62, 80, 0.95)',
-                                padding: 10,
-                                cornerRadius: 6
-                            }
-                        },
-                        ...custom
-                    };
                 }
+                if (this.elements.stats.totalLabs) {
+                    this.elements.stats.totalLabs.textContent = this.data.labs.names.length;
+                }
+                if (this.elements.stats.totalTypes) {
+                    this.elements.stats.totalTypes.textContent = this.data.types.names.length;
+                }
+                console.log("Statistiques initialisées");
+            } catch (error) {
+                console.error("Erreur lors de l'initialisation des statistiques:", error);
+            }
+        },
+
+        initCharts() {
+            try {
+                this.initWorkloadChart();
+                this.initTypeChart();
+                this.initTimelineChart();
+                console.log("Graphiques initialisés");
+            } catch (error) {
+                console.error("Erreur lors de l'initialisation des graphiques:", error);
+            }
+        },
+
+        initWorkloadChart() {
+            if (!this.elements.charts.workload) return;
+            
+            try {
+                this.chartInstances.workload = new Chart(this.elements.charts.workload, {
+                    type: 'bar',
+                    data: {
+                        labels: this.data.labs.names,
+                        datasets: [{
+                            label: 'TP par Laboratoire',
+                            data: this.data.labs.counts,
+                            backgroundColor: 'rgba(52, 152, 219, 0.8)',
+                            borderRadius: 5
+                        }]
+                    },
+                    options: this.getCommonOptions({
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: { text: 'Nombre de TP' }
+                            }
+                        }
+                    })
+                });
+                console.log("Graphique de charge de travail initialisé");
+            } catch (error) {
+                console.error("Erreur lors de l'initialisation du graphique de charge:", error);
+            }
+        },
+
+        initTypeChart() {
+            if (!this.elements.charts.type) return;
+            
+            try {
+                const colors = this.generateColors(this.data.types.names.length);
+                this.chartInstances.type = new Chart(this.elements.charts.type, {
+                    type: 'bar',
+                    data: {
+                        labels: this.data.labs.names,
+                        datasets: this.data.types.names.map((name, index) => ({
+                            label: name,
+                            data: this.data.types.data[index] || [],
+                            backgroundColor: colors[index] || '#ccc',
+                            borderWidth: 0
+                        }))
+                    },
+                    options: this.getCommonOptions({
+                        scales: {
+                            x: { stacked: true },
+                            y: {
+                                stacked: true,
+                                beginAtZero: true,
+                                title: { text: 'Quantité' }
+                            }
+                        },
+                        plugins: {
+                            legend: { display: true }
+                        }
+                    })
+                });
+                console.log("Graphique de types initialisé");
+            } catch (error) {
+                console.error("Erreur lors de l'initialisation du graphique de types:", error);
+            }
+        },
+
+        initTimelineChart() {
+            if (!this.elements.charts.timeline) return;
+            
+            try {
+                this.chartInstances.timeline = new Chart(this.elements.charts.timeline, {
+                    type: 'line',
+                    data: {
+                        labels: this.data.timeline.labels,
+                        datasets: [{
+                            label: 'Évolution des TP',
+                            data: this.data.timeline.counts,
+                            borderColor: '#e74c3c',
+                            tension: 0.4,
+                            fill: false
+                        }]
+                    },
+                    options: this.getCommonOptions({
+                        scales: {
+                            y: { beginAtZero: true }
+                        }
+                    })
+                });
+                console.log("Graphique d'évolution temporelle initialisé");
+            } catch (error) {
+                console.error("Erreur lors de l'initialisation du graphique d'évolution:", error);
+            }
+        },
+
+        initEventHandlers() {
+            try {
+                document.querySelectorAll('.export-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        // Empêcher la propagation de l'événement
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        // Récupérer l'identifiant du graphique à exporter
+                        const btnId = e.currentTarget.id;
+                        console.log("Bouton exportation cliqué:", btnId);
+                        
+                        // Mapper correctement les ID de boutons aux instances de graphiques
+                        let chartType;
+                        switch (btnId) {
+                            case 'exportWorkload':
+                                chartType = 'workload';
+                                break;
+                            case 'exportTypes':
+                                chartType = 'type';
+                                break;
+                            case 'exportTimeline':
+                                chartType = 'timeline';
+                                break;
+                            default:
+                                console.error("ID de bouton inconnu:", btnId);
+                                return;
+                        }
+                        
+                        this.exportChart(chartType);
+                    });
+                });
+                console.log("Gestionnaires d'événements initialisés");
+            } catch (error) {
+                console.error("Erreur lors de l'initialisation des gestionnaires d'événements:", error);
+            }
+        },
+
+        exportChart(chartType) {
+            console.log("Tentative d'exportation du graphique:", chartType);
+            
+            try {
+                // Récupérer l'instance du graphique depuis notre cache
+                const chart = this.chartInstances[chartType];
+                
+                if (!chart) {
+                    console.error("Graphique non trouvé pour l'exportation:", chartType);
+                    return;
+                }
+                
+                // Sauvegarder les options actuelles
+                const originalOptions = JSON.parse(JSON.stringify(chart.options));
+                
+                // Désactiver les animations et tooltips pour l'exportation
+                chart.options.animation = false;
+                chart.options.plugins.tooltip.enabled = false;
+                chart.update();
+                
+                // Créer un canvas temporaire pour l'exportation
+                const exportCanvas = document.createElement('canvas');
+                exportCanvas.width = chart.canvas.width;
+                exportCanvas.height = chart.canvas.height;
+                const exportContext = exportCanvas.getContext('2d');
+                
+                // Dessiner un arrière-plan blanc
+                exportContext.fillStyle = 'white';
+                exportContext.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+                
+                // Dessiner le graphique sur le canvas temporaire
+                exportContext.drawImage(chart.canvas, 0, 0);
+                
+                // Créer le lien de téléchargement
+                const link = document.createElement('a');
+                link.download = `${chartType}_export_${new Date().toISOString().slice(0, 10)}.png`;
+                link.href = exportCanvas.toDataURL('image/png', 1.0);
+                
+                // Déclencher le téléchargement
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                // Restaurer les options d'origine
+                chart.options = JSON.parse(JSON.stringify(originalOptions));
+                chart.update();
+                
+                console.log(`Graphique ${chartType} exporté avec succès`);
+            } catch (error) {
+                console.error(`Erreur lors de l'exportation du graphique ${chartType}:`, error);
+                alert(`Une erreur est survenue lors de l'exportation du graphique. Veuillez réessayer.`);
+            }
+        },
+
+        generateColors(count) {
+            return Array.from({length: count}, (_, i) => 
+                `hsl(${(i * 360 / Math.max(1, count))}, 70%, 50%)`
+            );
+        },
+
+        getCommonOptions(custom = {}) {
+            return {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            boxWidth: 12,
+                            usePointStyle: true
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(44, 62, 80, 0.95)',
+                        padding: 10,
+                        cornerRadius: 6
+                    }
+                },
+                ...custom
             };
-        
-            Dashboard.init();
-        });
+        }
+    };
+
+    Dashboard.init();
+});
         </script>
 </body>
 </html>

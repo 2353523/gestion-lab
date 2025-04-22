@@ -48,7 +48,7 @@ app.config.update(
     MAIL_USE_TLS=True,
     MAIL_USERNAME='8559250c64a2ffb049cd789fc94c2b67',  # À récupérer sur le dashboard Mailjet
     MAIL_PASSWORD='69a105021dc70ca8f5a0934b3f4a1280',  # À récupérer sur le dashboard Mailjet
-    MAIL_DEFAULT_SENDER=('LabManager', '23535@isme.esp.mr')
+    MAIL_DEFAULT_SENDER=('GestionLab', '23535@isme.esp.mr')
 )
 
 mail = Mail(app)
@@ -342,7 +342,7 @@ def index():
             now = datetime.now()
     
             # Vérifier si au moins 24h depuis la dernière alerte
-            if not last_alert or (now - datetime.strptime(last_alert, "%Y-%m-%d %H:%M:%S")).total_seconds() >= 0:
+            if not last_alert or (now - datetime.strptime(last_alert, "%Y-%m-%d %H:%M:%S")).total_seconds() >= 86400:
                 cur.execute("SELECT email FROM utilisateur WHERE role = 'super_admin'")
                 super_admins = cur.fetchall()  # Récupérer tous les super_admins
                 
