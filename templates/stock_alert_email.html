@@ -3,7 +3,8 @@
 <head>
     <style>
         .alert-container { max-width: 600px; margin: 20px auto; font-family: Arial, sans-serif; }
-        .header { background: #dc3545; color: white; padding: 20px; text-align: center; }
+        .header { background: #0066cc; color: white; padding: 20px; text-align: center; position: relative; }
+        .header img { height: 50px; position: absolute; top: 15px; left: 15px; }
         .content { padding: 30px; background: #f8f9fa; }
         ul { list-style: none; padding: 0; }
         li { padding: 10px; background: white; margin-bottom: 10px; border-radius: 5px; }
@@ -23,6 +24,7 @@
 <body>
     <div class="alert-container">
         <div class="header">
+            <img src="https://i.imgur.com/UZRZCUm.png" alt="Logo Bécher">
             <h2>ALERTE STOCK CRITIQUE</h2>
             <p>{{ count }} article(s) nécessite(nt) une attention immédiate</p>
         </div>
