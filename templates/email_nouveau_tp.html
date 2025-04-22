@@ -1,32 +1,87 @@
+<!DOCTYPE html>
 <html>
-<body>
-    <p>Bonjour,</p>
-    
-    <p>Une nouvelle séance de TP a été programmée :</p>
-    
-    <ul>
-        <li><strong>Nom du TP:</strong> {{ nom_tp }}</li>
-        <li><strong>Date:</strong> {{ date_tp }}</li>
-        <li><strong>Créneaux:</strong>
-            <ul>
-                {% for slot in slots %}
-                <li>{{ slot }}</li>
-                {% endfor %}
-            </ul>
-        </li>
-    </ul>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body style="margin: 0; padding: 20px 0; background-color: #f3f6fb; font-family: 'Segoe UI', Arial, sans-serif;">
+    <!-- Conteneur principal -->
+    <div style="max-width: 640px; margin: 0 auto; background: white; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,0.08);">
+        <!-- En-tête -->
+        <div style="background: linear-gradient(135deg, #00466a 0%, #0083b0 100%); padding: 40px 30px; border-radius: 12px 12px 0 0; text-align: center;">
+            <img src="https://i.imgur.com/UZRZCUm.png" alt="Logo LabManager" style="height: 64px; width: auto; margin-bottom: 20px;">
+            <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -0.5px;">
+                Nouvelle séance programmée 🔬
+            </h1>
+        </div>
 
-    {% if pdf_link %}
-    <p style="margin-top: 20px;">
-        <a href="{{ pdf_link }}" 
-           style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;"
-           download>
-           Télécharger le sujet (.pdf)
-        </a>
-    </p>
-    {% endif %}
+        <!-- Corps du message -->
+        <div style="padding: 40px 30px; color: #4a5568;">
+            <p style="margin: 0 0 25px 0; font-size: 16px; line-height: 1.6;">
+                Bonjour,<br>
+                Une nouvelle séance de travaux pratiques a été planifiée :
+            </p>
 
-    <p>Cordialement,<br>
-    <em>L'équipe LabManager</em></p>
+            <!-- Carte des détails -->
+            <div style="background: #f8fafc; border-radius: 8px; padding: 25px; margin-bottom: 30px;">
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 20px;">
+                    <div>
+                        <div style="color: #718096; font-size: 14px; margin-bottom: 8px;">📝 Nom du TP</div>
+                        <div style="font-weight: 600; color: #2d3748;">{{ nom_tp }}</div>
+                    </div>
+                    <div>
+                        <div style="color: #718096; font-size: 14px; margin-bottom: 8px;">📅 Date</div>
+                        <div style="font-weight: 600; color: #2d3748;">{{ date_tp }}</div>
+                    </div>
+                </div>
+
+                <div>
+                    <div style="color: #718096; font-size: 14px; margin-bottom: 8px;">⏰ Créneaux horaires</div>
+                    <div style="background: white; border-radius: 6px; padding: 15px;">
+                        <ul style="margin: 0; padding: 0; list-style: none;">
+                            {% for slot in slots %}
+                            <li style="padding: 8px 0; border-bottom: 1px solid #edf2f7; color: #2d3748;">
+                                🕒 {{ slot }}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bouton de téléchargement -->
+            {% if pdf_link %}
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{{ pdf_link }}" 
+                   style="display: inline-flex; align-items: center; 
+                          background: #48bb78; color: white; 
+                          padding: 14px 28px; border-radius: 8px; 
+                          text-decoration: none; font-weight: 600;
+                          transition: transform 0.2s ease;
+                          box-shadow: 0 4px 6px rgba(0,0,0,0.1);"
+                   onmouseover="this.style.transform='translateY(-2px)'" 
+                   onmouseout="this.style.transform='none'">
+                   📥 Télécharger le sujet (PDF)
+                </a>
+            </div>
+            {% endif %}
+
+            <!-- Signature -->
+            <div style="border-top: 1px solid #e2e8f0; padding-top: 30px;">
+                <p style="margin: 0; font-size: 14px; color: #718096;">
+                    Cordialement,<br>
+                    <strong style="color: #2d3748;">L'équipe LabManager</strong>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div style="max-width: 640px; margin: 20px auto 0; text-align: center; color: #a0aec0; font-size: 12px;">
+        <p style="margin: 0;">
+            © 2024 LabManager. Tous droits réservés.<br>
+            [Adresse du laboratoire] | [Téléphone]
+        </p>
+    </div>
 </body>
 </html>

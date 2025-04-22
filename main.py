@@ -342,7 +342,7 @@ def index():
             now = datetime.now()
     
             # Vérifier si au moins 24h depuis la dernière alerte
-            if not last_alert or (now - datetime.strptime(last_alert, "%Y-%m-%d %H:%M:%S")).total_seconds() >= 0:
+            if not last_alert or (now - datetime.strptime(last_alert, "%Y-%m-%d %H:%M:%S")).total_seconds() >= 86400:
                 cur.execute("SELECT email FROM utilisateur WHERE role = 'super_admin'")
                 super_admins = cur.fetchall()  # Récupérer tous les super_admins
                 
