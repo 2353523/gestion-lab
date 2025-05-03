@@ -1,0 +1,8 @@
+Flask
+flask-mysqldb
+Werkzeug
+flask-session
+flask-wtf
+python-dateutil
+itsdangerous
+Flask-Mail

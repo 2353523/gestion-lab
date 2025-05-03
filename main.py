@@ -14,7 +14,6 @@ from dateutil.relativedelta import relativedelta
 from itsdangerous import URLSafeTimedSerializer
 import secrets
 import smtplib
-import re
 from flask_mail import Mail, Message
 
 app = Flask(__name__)
